@@ -36,7 +36,8 @@ def _build_gflags():
     _safe_makedirs(gflags_path)
     environ = os.environ.copy()
     environ['CXXFLAGS'] = '-fPIC'  # PIC build, as it is required by glog.
-    subprocess.check_call(['cmake', '../../third_party/gflags'],
+    subprocess.check_call(['cmake', '../../third_party/gflags',
+                           '-DGFLAGS_NAMESPACE=google'],
                           cwd=gflags_path,
                           env=environ)
     subprocess.check_call(['make'], cwd=gflags_path)
