@@ -26,7 +26,9 @@ def load_solutions():
       with open(path) as f:
         problem_result = json.load(f)
       for seed_result in problem_result:
-        solution_map.setdefault((seed_result['problemId'], seed_result['seed']), seed_result)
+        key = (seed_result['problemId'], seed_result['seed'])
+        if key not in solution_map or seed_result['_score'] > solution_map[key]['_score']:
+          solution_map[key] = seed_result
   return solution_map
 
 
