@@ -1,11 +1,6 @@
 var g_canvasContext;
 
-var g_currentBoard;
-var g_ls_old
-var g_currentScore;
-var g_currentJson;
-var g_currentUnit;
-var g_currentSource;
+var g_currentGame;
 
 function determineStart(board, unit) {
   var unitBoundBox = getUnitBoundBox(unit, false);
@@ -44,15 +39,14 @@ function inBoard(board, position) {
     position.y >= 0 && position.y < board[0].length;
 }
 
-function isInvalidPosition(position, board) {
+function isInvalidPosition(board, position) {
   return !inBoard(board, position) ||
     board[position.x][position.y] != 0;
 }
 
-function isInvalidUnitPlacement(unit, board) {
+function isInvalidUnitPlacement(board, unit) {
   for (var i = 0; i < unit.members.length; ++i) {
-    var member = unit.members[i];
-    if (isInvalidPosition(member, board)) {
+    if (isInvalidPosition(board, unit.members[i])) {
       return true;
     }
   }
@@ -183,7 +177,8 @@ function getUnitBoundBox(unit, includePivot) {
 function drawUnits(units, r, gridMul, topLeft) {
   var margin = {x: 20, y: 20};
 
-  var totalSize = {x: 0, y: 0};
+  var totalWidth = 0;
+  var totalHeight = 0;
 
   for (var i = 0; i < units.length; ++i) {
     var members = units[i].members;
@@ -206,14 +201,17 @@ function drawUnits(units, r, gridMul, topLeft) {
 
     var unitSize = coordToPosition({x: width, y: height}, r, gridMul);
 
-    totalSize.x = Math.max(totalSize.x, unitSize.x);
-    totalSize.y += unitSize.y;
+    totalWidth = Math.max(totalWidth, unitSize.x);
+    totalHeight += unitSize.y;
   }
 
   g_canvasContext.strokeStyle = 'black';
   g_canvasContext.fillStyle = 'black';
   g_canvasContext.beginPath();
-  g_canvasContext.rect(topLeft.x, topLeft.y, totalSize.x + margin.x * 2, totalSize.y + margin.y * 2);
+  g_canvasContext.rect(topLeft.x,
+                       topLeft.y,
+                       totalWidth + margin.x * 2,
+                       totalHeight + margin.y * 2);
   g_canvasContext.closePath();
   g_canvasContext.stroke();
 
@@ -224,9 +222,7 @@ function drawUnits(units, r, gridMul, topLeft) {
     var unit = units[i];
 
     var unitBoundBox = getUnitBoundBox(unit, true);
-
     var board = createBoard(unitBoundBox.right + 1, unitBoundBox.bottom + 1);
-
     placeUnit(board, unit, true);
 
     drawBoard(board, r, gridMul, {x: topLeft.x + left, y: topLeft.y + top});
@@ -247,52 +243,107 @@ function createBoard(width, height) {
   return board;
 }
 
-function lockCheck(newUnit) {
-  if (isInvalidUnitPlacement(newUnit, g_currentBoard)) {
-    placeUnit(g_currentBoard, g_currentUnit, false);
+function countCleared(board, unit) {
+  var rowsSet = {};
+  for (var i = 0; i < unit.members.length; ++i) {
+    rowsSet[unit.members[i].y] = true;
+  }
 
-    var size = g_currentUnit.members.length;
-
-    var rowsSet = {};
-    for (var i = 0; i < g_currentUnit.members.length; ++i) {
-      var member = g_currentUnit.members[i];
-      rowsSet[member.y] = true;
-    }
-
-    var ls = 0;
-    for (var y = 0; y < g_currentBoard[0].length; ++y) {
-      if (rowsSet[y]) {
-        var cleared = true;
-        for (var x = 0; x < g_currentBoard.length; ++x) {
-          if (g_currentBoard[x][y] == 0) {
-            cleared = false;
-            break;
-          }
-        }
-        if (cleared) {
-          ls += 1;
+  var ls = 0;
+  for (var y = 0; y < board[0].length; ++y) {
+    if (rowsSet[y]) {
+      var cleared = true;
+      for (var x = 0; x < board.length; ++x) {
+        if (board[x][y] == 0) {
+          cleared = false;
+          break;
         }
       }
+      if (cleared) {
+        ls += 1;
+      }
     }
-
-    var points = size + 100 * (1 + ls) * ls / 2;
-    var line_bonus = g_ls_old > 1 ? Math.floor((g_ls_old - 1) * points / 10) : 0;
-    var move_score = points + line_bonus;
-
-    g_ls_old = ls;
-
-    g_currentScore += move_score;
-    updateScore();
-
-    g_currentUnit = undefined;
-  } else {
-    g_currentUnit = newUnit;
   }
+
+  return ls;
+}
+
+function calculateScore(board, unit) {
+  var size = unit.members.length;
+
+  var ls = countCleared(board, unit);
+
+  var points = size + 100 * (1 + ls) * ls / 2;
+  var line_bonus = g_currentGame.ls_old > 1 ?
+    Math.floor((g_currentGame.ls_old - 1) * points / 10) : 0;
+  var move_score = points + line_bonus;
+
+  g_currentGame.ls_old = ls;
+
+  g_currentGame.score += move_score;
+  updateScore();
 }
 
 function updateScore() {
+  if (g_currentGame === undefined) {
+    return;
+  }
+
   var scoreDiv = document.getElementById("score");
-  scoreDiv.innerText = g_currentScore + ' pts';
+  scoreDiv.innerText = g_currentGame.score + ' pts';
+}
+
+function handleKey(e) {
+  if (g_currentGame === undefined ||
+      g_currentGame.unit === undefined) {
+    return;
+  }
+
+  var newUnit = cloneUnit(g_currentGame.unit);
+
+  switch (e.keyCode) {
+  case 'W'.charCodeAt(0):
+    moveUnit(newUnit, moveCounterClockwise.bind(undefined, newUnit.pivot));
+    logKey('rotate counter-clockwise');
+    break;
+
+  case 'E'.charCodeAt(0):
+    moveUnit(newUnit, moveClockwise.bind(undefined, newUnit.pivot));
+    logKey('rotate clockwise');
+    break;
+
+  case 'A'.charCodeAt(0):
+    moveUnit(newUnit, moveW);
+    logKey('move W');
+    break;
+
+  case 'Z'.charCodeAt(0):
+    moveUnit(newUnit, moveSW);
+    logKey('move SW');
+    break;
+
+  case 'X'.charCodeAt(0):
+    moveUnit(newUnit, moveSE);
+    logKey('move SE');
+    break;
+
+  case 'D'.charCodeAt(0):
+    moveUnit(newUnit, moveE);
+    logKey('move E');
+    break;
+
+  default:
+    return;
+  }
+
+  if (!isInvalidUnitPlacement(g_currentGame.board, newUnit)) {
+    g_currentGame.unit = newUnit;
+  } else {
+    placeUnit(g_currentGame.board, g_currentGame.unit, false);
+    calculateScore(g_currentGame.board, g_currentGame.unit);
+    g_currentGame.unit = undefined;
+  }
+  drawGame();
 }
 
 function init() {
@@ -314,76 +365,7 @@ function init() {
 
   drawProblem(problems.options[problems.selectedIndex].value);
 
-  document.body.addEventListener('keydown', function (e) {
-    if (g_currentUnit === undefined) {
-      return;
-    }
-
-    var newUnit = cloneUnit(g_currentUnit);
-
-    switch (e.keyCode) {
-    case 'W'.charCodeAt(0):
-      // Counter clockwise
-      moveUnit(newUnit, moveCounterClockwise.bind(undefined, newUnit.pivot));
-
-      lockCheck(newUnit);
-
-      logKey('rotate counter-clockwise');
-
-      drawGame();
-      break;
-    case 'E'.charCodeAt(0):
-      // Clockwise
-      moveUnit(newUnit, moveClockwise.bind(undefined, newUnit.pivot));
-
-      lockCheck(newUnit);
-
-      logKey('rotate clockwise');
-
-      drawGame();
-      break;
-    case 'A'.charCodeAt(0):
-      // West
-      moveUnit(newUnit, moveW);
-
-      lockCheck(newUnit);
-
-      logKey('move W');
-
-      drawGame();
-      break;
-    case 'Z'.charCodeAt(0):
-      // South west
-      moveUnit(newUnit, moveSW);
-
-      lockCheck(newUnit);
-
-      logKey('move SW');
-
-      drawGame();
-      break;
-    case 'X'.charCodeAt(0):
-      // South east
-      moveUnit(newUnit, moveSE);
-
-      lockCheck(newUnit);
-
-      logKey('move SE');
-
-      drawGame();
-      break;
-    case 'D'.charCodeAt(0):
-      // East
-      moveUnit(newUnit, moveE);
-
-      lockCheck(newUnit);
-
-      logKey('move E');
-
-      drawGame();
-      break;
-    }
-  });
+  document.body.addEventListener('keydown', handleKey);
 }
 
 function cloneBoard(board) {
@@ -430,49 +412,56 @@ function drawGame() {
   var r = 15;
   var gridMul = 1.1;
 
-  var margin = {x: 10, y: 10};
+  if (g_currentGame.unit === undefined) {
+    if (g_currentGame.source.length > 0) {
+      var newUnit = cloneUnit(g_currentGame.configurations.units[g_currentGame.source.shift()]);
+      var move = determineStart(g_currentGame.board, newUnit);
+      moveUnit(newUnit, function (position) {
+        position.x += move.x;
+        position.y += move.y;
+      });
 
-  var position = margin;
-
-  var boardForDisplay = cloneBoard(g_currentBoard);
-
-  if (g_currentUnit === undefined) {
-    if (g_currentSource.length > 0) {
-      var newUnit = cloneUnit(g_currentJson.units[g_currentSource.shift()]);
-      var move = determineStart(boardForDisplay, newUnit);
-      moveUnit(newUnit, function (position) { position.x += move.x; position.y += move.y; });
-
-      if (!isInvalidUnitPlacement(newUnit, g_currentBoard)) {
-        g_currentUnit = newUnit;
+      if (!isInvalidUnitPlacement(g_currentGame.board, newUnit)) {
+        g_currentGame.unit = newUnit;
       }
     }
   }
 
-  if (g_currentUnit) {
-    placeUnit(boardForDisplay, g_currentUnit, true);
+  var boardForDisplay = cloneBoard(g_currentGame.board);
+
+  if (g_currentGame.unit) {
+    placeUnit(boardForDisplay, g_currentGame.unit, true);
   }
+
+  var margin = {x: 10, y: 10};
+  var position = margin;
 
   drawBoard(boardForDisplay, r, gridMul, position);
 
-  position.x += coordToPosition({x: g_currentJson.width, y: 0}, r, gridMul).x + 20;
-
-  drawUnits(g_currentJson.units, r, gridMul, position);
+  position.x += coordToPosition(
+    {x: g_currentGame.configurations.width, y: 0}, r, gridMul).x + 20;
+  drawUnits(g_currentGame.configurations.units, r, gridMul, position);
 }
 
-function setupGame(json) {
-  g_currentJson = json;
-
-  g_currentSource = calcRandSeq(json.units.length, json.sourceSeeds[0], json.sourceLength);
-  g_currentBoard = createBoard(json.width, json.height);
-
-  for (var i = 0; i < json.filled.length; ++i) {
-    var cell = json.filled[i];
-    g_currentBoard[cell.x][cell.y] = 1;
+function setupGame(configurations) {
+  var board = createBoard(configurations.width, configurations.height);
+  var filled = configurations.filled;
+  for (var i = 0; i < filled.length; ++i) {
+    var filledCell = filled[i];
+    board[filledCell.x][filledCell.y] = 1;
   }
 
-  g_currentUnit = undefined;
-  g_ls_old = 0;
-  g_currentScore = 0;
+  g_currentGame = {
+    source: calcRandSeq(configurations.units.length,
+                        configurations.sourceSeeds[0],
+                        configurations.sourceLength),
+    board: board,
+    configurations: configurations,
+    unit: undefined,
+    score: 0,
+    ls_old: 0,
+  };
+
   updateScore();
 
   drawGame();
