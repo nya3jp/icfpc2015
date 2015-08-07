@@ -332,6 +332,7 @@ function beginGame(gameState) {
     });
 }
 
+// Render the game state to the canvas.
 function render(gameState) {
     var canvas = document.getElementById('canvas');
     ctx = canvas.getContext('2d');
@@ -341,8 +342,9 @@ function render(gameState) {
     var gridMul = 1.1;
     var topLeft = {x:5, y:5};
     function coordToPosition(p) {
-        return {x: p.x * r * gridMul * 1.7 + r * Math.sqrt(3) / 2.0 * gridMul,
-             y: p.y * r * gridMul * 1.5 + r * gridMul};
+        return {
+			x: p.x * r * gridMul * 1.7 + r * Math.sqrt(3) / 2.0 * gridMul,
+            y: p.y * r * gridMul * 1.5 + r * gridMul};
     }
 
     function drawHex(cx, cy, r) {
@@ -351,7 +353,7 @@ function render(gameState) {
             var d = Math.PI / 6.0;
             ctx.lineTo(cx + r * Math.cos(d + Math.PI * i / 3.0), cy + r * Math.sin(d + Math.PI * i / 3.0));
         }
-         ctx.closePath();
+        ctx.closePath();
     }
 
     var textBoard = gameState.board.d.map(function(line){
@@ -368,7 +370,6 @@ function render(gameState) {
         px = gameState.currentUnit.pivot.x;
     }
 
-
     for (var y=0; y<gameState.board.h; ++y)
     for (var x=0; x<gameState.board.w; ++x) {
         var position = coordToPosition({x: x, y: y});
@@ -377,19 +378,19 @@ function render(gameState) {
         if ((y&1) == 1)
             cx += r * Math.sqrt(3) / 2.0 * gridMul;
         if (textBoard[y][x]=='*') {
-	        ctx.fillStyle = 'black';
-	        drawHex(cx, cy, r);
+            ctx.fillStyle = 'black';
+            drawHex(cx, cy, r);
             ctx.fill();
         } else if (textBoard[y][x]=='#') {
-	        ctx.fillStyle = '#080';
-	        drawHex(cx, cy, r);
+            ctx.fillStyle = '#080';
+            drawHex(cx, cy, r);
             ctx.fill();
         }
         else {
-	        ctx.strokeStyle = 'black';
-	        drawHex(cx, cy, r);
+            ctx.strokeStyle = 'black';
+            drawHex(cx, cy, r);
             ctx.stroke();
-		}
+        }
 
         if (y==py && x==px) {
             ctx.fillStyle = '#8c8';
@@ -398,6 +399,5 @@ function render(gameState) {
         }
     }
 }
-
 
 window.addEventListener('load', onLoad);
