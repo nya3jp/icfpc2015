@@ -101,7 +101,9 @@ function readBoard(json) {
         'd': new Array(json.height),
     };
     for(var y=0; y<board.h; ++y) {
-        board.d[y] = new Array(board.w).fill(false);
+        board.d[y] = new Array(board.w);
+    	for(var x=0; x<board.w; ++x)
+			board.d[y][x] = false;
     }
 
     json.filled.forEach(function(pos) {
