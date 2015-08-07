@@ -24,8 +24,23 @@ class HexPoint {
     return HexPoint(x_ - other.x_, y_ - other.y_);
   }
 
+  HexPoint& operator+=(const HexPoint& other) {
+    x_ += other.x_;
+    y_ += other.y_;
+    return *this;
+  }
+
+  HexPoint& operator-=(const HexPoint& other) {
+    x_ -= other.x_;
+    y_ -= other.y_;
+    return *this;
+  }
+
   bool operator==(const HexPoint& other) const {
     return x_ == other.x_ && y_ == other.y_;
+  }
+  bool operator!=(const HexPoint& other) const {
+    return !(*this == other);
   }
 
   HexPoint RotateClockwise() const {
@@ -38,7 +53,7 @@ class HexPoint {
     zz = -yy;
     yy = -tmp;
 
-    return HexPoint(xx + (zz - (zz&1)) / 2, zz);
+    return HexPoint(xx + zz / 2, zz);
   }
 
   HexPoint RotateCounterClockwise() const {
@@ -67,7 +82,7 @@ class HexPoint {
   int y_;
 };
 
-std::ostream& operator<<(std::ostream& os, const HexPoint& p) {
+inline std::ostream& operator<<(std::ostream& os, const HexPoint& p) {
   return os << "(" << p.x() << ", " << p.y() << ")";
 }
 

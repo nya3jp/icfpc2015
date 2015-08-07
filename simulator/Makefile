@@ -14,8 +14,8 @@ CFLAGS=-O2 -DPICOJSON_USE_INT64 --std=c++11 $(INCLUDE)
 
 all: simulator hexpoint_test
 
-simulator: main.o board.o
-	g++ $(CFLAGS) -o $@ $^ $(LIBS)
+simulator: main.o board.o game.o
+	g++ -Wl,-rpath=$(PWD)/../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 
 hexpoint_test: hexpoint_test.cc
 	g++ $(CFLAGS) -o $@ $^ $(TEST_LIBS) $(LIBS)
