@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <glog/logging.h>
 
 #include "game.h"
 
@@ -110,6 +111,9 @@ bool Game::SpawnNewUnit() {
 }
 
 bool Game::Run(Command command) {
+  if (command == Command::IGNORED) {
+    return true;
+  }
   Unit new_unit = current_unit_;
   switch (command) {
     case Command::E: {

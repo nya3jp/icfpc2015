@@ -23,7 +23,7 @@ class Game {
   bool SpawnNewUnit();
 
   enum class Command {
-    E, W, SE, SW, CW, CCW,
+    E, W, SE, SW, CW, CCW, IGNORED,
   };
 
   bool Run(Command action);
