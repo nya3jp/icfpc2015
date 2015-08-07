@@ -6,16 +6,19 @@ INCLUDE = -I../googlelib/gflags/include \
 LIBS = -L../googlelib/glog/.libs -lglog \
        -L../googlelib/gflags/lib -lgflags \
        -lpthread
-TEST_LIB = -L../../googlelib/gtest -lgtest_main -lgtest
+TEST_LIBS = -L../googlelib/gtest -lgtest_main -lgtest
 
 CFLAGS=-O2 -DPICOJSON_USE_INT64 --std=c++11 $(INCLUDE)
 
 .PHONY: clean
 
-all: simulator
+all: simulator hexpoint_test
 
 simulator: main.o board.o
 	g++ $(CFLAGS) -o $@ $^ $(LIBS)
+
+hexpoint_test: hexpoint_test.cc
+	g++ $(CFLAGS) -o $@ $^ $(TEST_LIBS) $(LIBS)
 
 %.o:%.cc
 	g++ $(CFLAGS) -c -o $@ $<
