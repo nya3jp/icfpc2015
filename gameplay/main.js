@@ -130,7 +130,7 @@ function beginGame(gameState) {
 
         // TODO: verify the precise definition of 'center'
         var yoffset = -ymin;
-        var xoffset = Math.floor((gameState.board.w - (xmax-xmin)) / 2);
+        var xoffset = Math.floor((gameState.board.w - (xmax+1-xmin)) / 2) - xmin;
 
         var placedUnit = {
             'members': unitSrc.members.map(function(memSrc){
@@ -224,11 +224,13 @@ function beginGame(gameState) {
             pivot: shiftFunc(cur.pivot),
         };
 
+		// TODO: clean up later.
         var rotFunc = function(obj) { return {x:obj.x, y:obj.y}; };
         switch(e.keyCode) {
         case VK_D: // Rotate left
             rotFunc = function(obj) {
-                var x_ = obj.x - neo.pivot.x;
+				var xoff = (neo.pivot.y&1)==1 && (obj.y&1)==0 ? +1 : 0;
+                var x_ = obj.x - neo.pivot.x - xoff;
                 var y_ = obj.y - neo.pivot.y;
                 var xx = x_ - Math.floor(y_ / 2);
                 var zz = y_;
@@ -238,12 +240,14 @@ function beginGame(gameState) {
                 xx = -yy;
                 yy = -zz;
                 zz = -tmp;
-                return {x:xx+Math.floor(zz/2)+neo.pivot.x, y:zz+neo.pivot.y};
+				xoff = (neo.pivot.y&1)==1 && ((zz+neo.pivot.y)&1)==0 ? +1 : 0;
+                return {x:xx+Math.floor(zz/2)+neo.pivot.x+xoff, y:zz+neo.pivot.y};
             };
             break;
         case VK_L: // Rotate right
             rotFunc = function(obj) {
-                var x_ = obj.x - neo.pivot.x;
+				var xoff = (neo.pivot.y&1)==1 && (obj.y&1)==0 ? +1 : 0;
+                var x_ = obj.x - neo.pivot.x - xoff;
                 var y_ = obj.y - neo.pivot.y;
                 var xx = x_ - Math.floor(y_ / 2);
                 var zz = y_;
@@ -253,7 +257,8 @@ function beginGame(gameState) {
                 xx = -zz;
                 zz = -yy;
                 yy = -tmp;
-                return {x:xx+Math.floor((zz-(zz&1))/2)+neo.pivot.x, y:zz+neo.pivot.y};
+				xoff = (neo.pivot.y&1)==1 && ((zz+neo.pivot.y)&1)==0 ? +1 : 0;
+                return {x:xx+Math.floor((zz-(zz&1))/2)+neo.pivot.x+xoff, y:zz+neo.pivot.y};
             };
             break;
         }
