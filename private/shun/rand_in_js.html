@@ -1,0 +1,24 @@
+<html>
+<script>
+function test() {
+var rlow = 17;
+var rhigh = 0;
+
+var multlow = 20077;
+var multhigh = 16838;
+
+for(var i = 0; i < 100; ++i) {
+    var rnd = rhigh & 0x7fff;
+    document.writeln(rnd);
+    var rlow_next = rlow * multlow + 12345;
+    var rhigh_next = rlow * multhigh + rhigh * multlow;
+    rhigh_next += rlow_next >> 16;
+    rlow_next &= 0xffff;
+    rhigh_next &= 0xffff;
+    rhigh = rhigh_next;
+    rlow = rlow_next;
+}
+}
+</script>
+<body onload="test()"/>
+</html>

@@ -18,10 +18,13 @@ simulator: main.o board.o game.o
 	g++ -Wl,-rpath=$(PWD)/../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 
 hexpoint_test: hexpoint_test.cc
-	g++ $(CFLAGS) -o $@ $^ $(TEST_LIBS) $(LIBS)
+	g++ -Wl,-rpath=$(PWD)/../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(TEST_LIBS) $(LIBS)
 
 %.o:%.cc
 	g++ $(CFLAGS) -c -o $@ $<
 
+test: hexpoint_test
+	./hexpoint_test
+
 clean:
-	rm -rf simulator *.o
+	rm -rf simulator hexpoint_test *.o
