@@ -67,14 +67,24 @@ function readUnits(json) {
 
 function readRandSeq(json) {
     function calcRandSeq(mod, seed, len) {
-        var mul=1103515245, inc=12345;
+		var seed_lo = seed & 0xffff;
+		var seed_hi = seed >> 16;
+
+        var mult_lo=20077;
+		var mult_hi=16838;
+		var inc=12345;
         var result = [];
         for(var i=0; i<len; ++i) {
-            // TODO: majime. How to do unsigned 32-bit op in JS...?
-            result.push(i % mod);
-            // result.push(seed % mod);
-            // seed = (seed*mul + inc) & 0xffffffff;
-        }
+			var rnd = seed_hi & 0x7fff;
+            result.push(rnd % mod);
+			var rlo_next = seed_lo * mult_lo + inc;
+			var rhi_next = seed_lo * mult_hi + seed_hi * mult_lo;
+			rhi_next += rlo_next >> 16;
+			rlo_next &= 0xffff;
+			rhi_next &= 0xffff;
+			seed_lo = rlo_next;
+			seed_hi = rhi_next;
+		}
         return result;
     }
 
