@@ -3,7 +3,6 @@ import datetime
 import logging
 import logging.handlers
 import os
-import socket
 import sys
 
 import gflags
@@ -25,42 +24,32 @@ gflags.DEFINE_enum(
 _DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 _LOG_BASE_FORMAT = '%(levelname)s [%(filename)s:%(lineno)d] %(message)s'
 
-# Set in run()
-appname = None
-
 
 class ExtendedFormatter(logging.Formatter):
+  def __init__(self, appname):
+    super(ExtendedFormatter, self).__init__(fmt, datefmt)
+    self._appname = appname
+
   def format(self, record):
-    record.appname = appname
+    record.appname = self._appname
     return super(ExtendedFormatter, self).format(record)
 
 
-class NullHandler(logging.Handler):
-  def handle(self, record):
-    pass
-
-  def emit(self, record):
-    pass
-
-  def createLock(self):
-    self.lock = None
-
-
 def setup():
-  global appname
   appname = os.path.splitext(os.path.basename(__main__.__file__))[0]
 
   root = logging.getLogger()
   root.setLevel(logging.DEBUG)
 
   # Avoid basicConfig() is called.
-  root.addHandler(NullHandler())
+  root.addHandler(logging.handlers.NullHandler())
 
   if FLAGS.logtostderr != 'none':
     handler = logging.StreamHandler(sys.stderr)
     formatter = ExtendedFormatter(
         fmt='%(asctime)-15s ' + _LOG_BASE_FORMAT,
-        datefmt=_DATE_FORMAT)
+        datefmt=_DATE_FORMAT,
+        appname=appname)
     handler.setFormatter(formatter)
     handler.setLevel(getattr(logging, FLAGS.logtostderr.upper()))
     root.addHandler(handler)
@@ -69,7 +58,8 @@ def setup():
     handler = logging.handlers.SysLogHandler('/dev/log', facility='local0')
     formatter = ExtendedFormatter(
         fmt='%(appname)s[%(process)d]: ' + _LOG_BASE_FORMAT,
-        datefmt=_DATE_FORMAT)
+        datefmt=_DATE_FORMAT,
+        appname=appname)
     handler.setFormatter(formatter)
     handler.setLevel(getattr(logging, FLAGS.logtosyslog.upper()))
     root.addHandler(handler)
