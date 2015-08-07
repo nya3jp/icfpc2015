@@ -7,20 +7,31 @@
 #include <picojson.h>
 
 #include "common.h"
+#include "unit.h"
 
 class Board {
  public:
+  // TODO(hidehiko): more efficient implementation.
+  typedef std::vector<std::vector<int> > Map;
+
   Board();
   ~Board();
 
-  void Load(const picojson::value& parsed);
+  int width() const { return width_; }
+  int height() const { return height_; }
+  const Map& cells() const { return cells_; }
 
+  void Load(const picojson::value& parsed);
   void Init(int width, int height);
+
+  bool IsConflicting(const Unit& unit) const;
+  void Lock(const Unit& unit);
+
   void Dump(std::ostream* os) const ;
 
  private:
-  // TODO(hidehiko): more efficient implementation.
-  typedef std::vector<std::vector<int> > Map;
+  int width_;
+  int height_;
   Map cells_;
 
   DISALLOW_COPY_AND_ASSIGN(Board);

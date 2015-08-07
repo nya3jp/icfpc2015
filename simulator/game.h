@@ -15,6 +15,16 @@ class Game {
 
   void Load(const picojson::value& parsed, int seed_index);
   void Dump(std::ostream* os) const;
+  void DumpCurrent(std::ostream* os) const;
+
+  // Find a new unit, and put it to the source.
+  bool SpawnNewUnit();
+
+  enum class Command {
+    E, W, SE, SW, CW, CCW,
+  };
+
+  bool Run(Command action);
 
  private:
   int id_;

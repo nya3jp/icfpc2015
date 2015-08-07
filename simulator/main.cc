@@ -26,5 +26,14 @@ int main(int argc, char* argv[]) {
   game.Load(parsed, 0);  // TODO seed_index.
   LOG(ERROR) << game;
 
+  // TODO
+  while (true) {
+    game.DumpCurrent(&std::cerr);
+    std::cerr << "\n";
+    if (!game.Run(Game::Command::SE)) {
+      break;
+    }
+  }
+
   return 0;
 }

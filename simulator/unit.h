@@ -5,7 +5,7 @@
 
 class Unit {
  public:
-  Unit() {
+  Unit() : pivot_(-1, -1) {
   }
 
   Unit(const HexPoint& pivot, std::vector<HexPoint>&& members)
@@ -30,20 +30,20 @@ class Unit {
     return true;
   }
 
-  void MoveEast() {
-    const HexPoint movement(-1, 0);
+  void Shift(int x) {
+    const HexPoint movement(x, 0);
     pivot_ += movement;
     for (auto& member : members_) {
       member += movement;
     }
   }
 
+  void MoveEast() {
+    Shift(-1);
+  }
+
   void MoveWest() {
-    const HexPoint movement(1, 0);
-    pivot_ += movement;
-    for (auto& member : members_) {
-      member += movement;
-    }
+    Shift(1);
   }
 
   void MoveSouthEast() {

@@ -1,6 +1,8 @@
+#include <algorithm>
+
 #include "board.h"
 
-Board::Board() {
+Board::Board() : width_(0), height_(0) {
 }
 
 Board::~Board() {
@@ -21,7 +23,38 @@ void Board::Load(const picojson::value& parsed) {
 }
 
 void Board::Init(int width, int height) {
+  width_ = width;
+  height_ = height;
   cells_ = Map(height, std::vector<int>(width));
+}
+
+bool Board::IsConflicting(const Unit& unit) const {
+  for (const auto& member : unit.members()) {
+    // Hack.
+    if (member.y() < 0 || height_ < member.y() ||
+        member.x() < 0 || width_ < member.x()) {
+      return true;
+    }
+    if (cells_[member.y()][member.x()]) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void Board::Lock(const Unit& unit) {
+  for (const auto& member: unit.members()) {
+    cells_[member.y()][member.x()] = 1;
+  }
+
+  // Clears for each row if necessary.
+  for (auto& row : cells_) {
+    if (std::all_of(std::begin(row), std::end(row),
+                    [](int cell) { return cell; })) {
+      std::fill(std::begin(row), std::end(row), 0);
+    }
+  }
+
 }
 
 void Board::Dump(std::ostream* os) const {
