@@ -4,6 +4,48 @@
 
 var ctx;
 
+function determineStart(board, unit) {
+  var unitRect = getUnitRect(unit, false);
+
+  var unitWidth = unitRect.right - unitRect.left + 1;
+  if (unitWidth % 2 == 0 && board.length % 2 == 0) {
+    return {x: board.length / 2 - unitWidth / 2, y: -unitRect.top};
+  } else if (unitWidth % 2 == 0) {
+    return {x: (board.length - unitWidth + 1) / 2, y: -unitRect.top};
+  } else if (board.length % 2 == 0) {
+    return {x: (board.length - unitWidth + 1) / 2, y: -unitRect.top};
+  } else {
+    return {x: (board.length - unitWidth) / 2, y: -unitRect.top};
+  }
+}
+
+function getUnitRect(unit, includePivot) {
+  var members = unit.members;
+
+  var right = 0;
+  var top = Infinity;
+  var left = Infinity;
+  var bottom = 0;
+
+  for (var j = 0; j < members.length; ++j) {
+    right = Math.max(right, members[j].x);
+    top = Math.min(top, members[j].y);
+    left = Math.min(left, members[j].x);
+    bottom = Math.max(bottom, members[j].y);
+  }
+
+  if (includePivot) {
+    var pivot = unit.pivot;
+
+    right = Math.max(right, pivot.x);
+    top = Math.min(top, pivot.y);
+    left = Math.min(left, pivot.x);
+    bottom = Math.max(bottom, pivot.y);
+  }
+
+  return {top: top, right: right, left: left, bottom: bottom};
+}
+
 function drawUnits(units, r, gridMul, topLeft) {
   var margin = {x: 20, y: 20};
 
@@ -45,43 +87,25 @@ function drawUnits(units, r, gridMul, topLeft) {
   var left = margin.y;
 
   for (var i = 0; i < units.length; ++i) {
-    var members = units[i].members;
+    var unit = units[i];
 
-    var width = 0;
-    var height = 0;
+    var unitRect = getUnitRect(unit, true);
 
-    for (var j = 0; j < members.length; ++j) {
-      width = Math.max(width, members[j].x);
-      height = Math.max(height, members[j].y);
-    }
+    var board = createBoard({x: unitRect.right + 1, y: unitRect.bottom + 1});
 
-    var pivot = units[i].pivot;
-
-    width = Math.max(width, pivot.x);
-    height = Math.max(height, pivot.y);
-
-    width += 1;
-    height += 1;
-
-    var board = createBoard(width, height);
-
-    for (var j = 0; j < members.length; ++j) {
-      board[members[j].x][members[j].y] = board[members[j].x][members[j].y] | 1;
-    }
-
-    board[pivot.x][pivot.y] = board[pivot.x][pivot.y] | 2;
+    putUnit(unit, board, {x: 0, y: 0});
 
     drawBoard(board, r, gridMul, {x: topLeft.x + left, y: topLeft.y + top});
 
-    top += coordToPosition({x: 0, y: height}, r, gridMul).y;
+    top += coordToPosition({x: 0, y: unitRect.bottom + 1}, r, gridMul).y;
   }
 }
 
-function createBoard(width, height) {
+function createBoard(size) {
   var board = [];
-  for (var x = 0; x < width; ++x) {
+  for (var x = 0; x < size.x; ++x) {
     var col = [];
-    for (var y = 0; y < height; ++y) {
+    for (var y = 0; y < size.y; ++y) {
       col.push(0);
     }
     board.push(col);
@@ -125,13 +149,49 @@ function drawProblem(file) {
 
     var position = margin;
 
-    drawBoard(createBoard(json.width, json.height), r, gridMul, position);
+    var board = createBoard({x: json.width, y: json.height});
+
+    var firstUnit = json.units[0];
+
+    var start = determineStart(board, firstUnit);
+    putUnit(firstUnit, board, start);
+
+    drawBoard(board, r, gridMul, position);
 
     position.x += coordToPosition({x: json.width, y: 0}, r, gridMul).x + 20;
 
     drawUnits(json.units, r, gridMul, position);
   };
   x.send();
+}
+
+function putUnit(unit, board, position) {
+  var members = unit.members;
+
+  var boardWidth = board.length;
+  var boardHeight = board[0].length;
+
+  for (var j = 0; j < members.length; ++j) {
+    var x = members[j].x + position.x;
+    var y = members[j].y + position.y;
+
+    if (x < 0 || x >= boardWidth || y < 0 || y > boardHeight) {
+      continue;
+    }
+
+    board[x][y] = board[x][y] | 1;
+  }
+
+  var pivot = unit.pivot;
+
+  var x = pivot.x + position.x;
+  var y = pivot.y + position.y;
+
+  if (x < 0 || x >= boardWidth || y < 0 || y > boardHeight) {
+    return;
+  }
+
+  board[x][y] = board[x][y] | 2;
 }
 
 function drawHex(cx, cy, r) {
