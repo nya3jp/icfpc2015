@@ -26,7 +26,7 @@ _LOG_BASE_FORMAT = '%(levelname)s [%(filename)s:%(lineno)d] %(message)s'
 
 
 class ExtendedFormatter(logging.Formatter):
-  def __init__(self, appname):
+  def __init__(self, appname, fmt, datefmt):
     super(ExtendedFormatter, self).__init__(fmt, datefmt)
     self._appname = appname
 
@@ -42,7 +42,7 @@ def setup():
   root.setLevel(logging.DEBUG)
 
   # Avoid basicConfig() is called.
-  root.addHandler(logging.handlers.NullHandler())
+  root.addHandler(logging.NullHandler())
 
   if FLAGS.logtostderr != 'none':
     handler = logging.StreamHandler(sys.stderr)
