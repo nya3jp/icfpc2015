@@ -71,6 +71,7 @@ def main(argv):
     for ai_dir in ai_dirs:
       ai_name = os.path.basename(ai_dir)
       runner_path = os.path.join(ai_dir, RUNNER_NAME)
+      logging.info('Running AI %s for problem %d', ai_name, problem_id)
       try:
         with open(os.devnull) as devnull:
           output = subprocess.check_output(
@@ -87,6 +88,10 @@ def main(argv):
            'solution': [],
            '_score': -1}
           for seed in seeds]
+      else:
+        logging.info(
+          'AI finished. score: %s',
+          ', '.join(str(seed_result['_score']) for seed_result in problem_result))
       for seed_result in problem_result:
         seed_result['_ai_name'] = ai_name
       with open(os.path.join(FLAGS.output_dir, 'solution_%d_%s.json' % (problem_id, ai_name)), 'w') as f:
