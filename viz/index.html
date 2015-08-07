@@ -240,6 +240,54 @@ function createBoard(size) {
   return board;
 }
 
+function lockCheck(newUnit) {
+  if (isInvalidUnit(newUnit, currentBoard)) {
+    putUnit(currentUnit, currentBoard, false);
+
+    var size = currentUnit.members.length;
+
+    var rowsSet = {};
+    for (var i = 0; i < currentUnit.members.length; ++i) {
+      var member = currentUnit.members[i];
+      rowsSet[member.y] = true;
+    }
+
+    var ls = 0;
+    for (var y = 0; y < currentBoard[0].length; ++y) {
+      if (rowsSet[y]) {
+        var cleared = true;
+        for (var x = 0; x < currentBoard.length; ++x) {
+          if (currentBoard[x][y] == 0) {
+            cleared = false;
+            break;
+          }
+        }
+        if (cleared) {
+          ls += 1;
+        }
+      }
+    }
+
+    var points = size + 100 * (1 + ls) * ls / 2;
+    var line_bonus = ls_old > 1 ? Math.floor((ls_old - 1) * points / 10) : 0;
+    var move_score = points + line_bonus;
+
+    ls_old = ls;
+
+    currentScore += move_score;
+    updateScore();
+
+    currentUnit = undefined;
+  } else {
+    currentUnit = newUnit;
+  }
+}
+
+function updateScore() {
+  var scoreDiv = document.getElementById("score");
+  scoreDiv.innerText = currentScore + ' pts';
+}
+
 function init() {
   var canvas = document.getElementById('canvassample');
   ctx = canvas.getContext('2d');
@@ -269,31 +317,21 @@ function init() {
     switch (e.keyCode) {
     case 'W'.charCodeAt(0):
       // Counter clockwise
-      moveUnit(newUnit, moveClockwise.bind(undefined, newUnit.pivot));
+      moveUnit(newUnit, moveCounterClockwise.bind(undefined, newUnit.pivot));
 
-      if (!isInvalidUnit(newUnit, currentBoard)) {
-        currentUnit = newUnit;
-      } else {
-        putUnit(currentUnit, currentBoard, false);
-        currentUnit = undefined;
-      }
+      lockCheck(newUnit);
 
-      logKey('w');
+      logKey('rotate counter-clockwise');
 
       drawGame();
       break;
     case 'E'.charCodeAt(0):
       // Clockwise
-      moveUnit(newUnit, moveCounterClockwise.bind(undefined, newUnit.pivot));
+      moveUnit(newUnit, moveClockwise.bind(undefined, newUnit.pivot));
 
-      if (!isInvalidUnit(newUnit, currentBoard)) {
-        currentUnit = newUnit;
-      } else {
-        putUnit(currentUnit, currentBoard, false);
-        currentUnit = undefined;
-      }
+      lockCheck(newUnit);
 
-      logKey('e');
+      logKey('rotate clockwise');
 
       drawGame();
       break;
@@ -301,14 +339,9 @@ function init() {
       // West
       moveUnit(newUnit, moveW);
 
-      if (!isInvalidUnit(newUnit, currentBoard)) {
-        currentUnit = newUnit;
-      } else {
-        putUnit(currentUnit, currentBoard, false);
-        currentUnit = undefined;
-      }
+      lockCheck(newUnit);
 
-      logKey('a');
+      logKey('move W');
 
       drawGame();
       break;
@@ -316,14 +349,9 @@ function init() {
       // South west
       moveUnit(newUnit, moveSW);
 
-      if (!isInvalidUnit(newUnit, currentBoard)) {
-        currentUnit = newUnit;
-      } else {
-        putUnit(currentUnit, currentBoard, false);
-        currentUnit = undefined;
-      }
+      lockCheck(newUnit);
 
-      logKey('z');
+      logKey('move SW');
 
       drawGame();
       break;
@@ -331,14 +359,9 @@ function init() {
       // South east
       moveUnit(newUnit, moveSE);
 
-      if (!isInvalidUnit(newUnit, currentBoard)) {
-        currentUnit = newUnit;
-      } else {
-        putUnit(currentUnit, currentBoard, false);
-        currentUnit = undefined;
-      }
+      lockCheck(newUnit);
 
-      logKey('x');
+      logKey('move SE');
 
       drawGame();
       break;
@@ -346,14 +369,9 @@ function init() {
       // East
       moveUnit(newUnit, moveE);
 
-      if (!isInvalidUnit(newUnit, currentBoard)) {
-        currentUnit = newUnit;
-      } else {
-        putUnit(currentUnit, currentBoard, false);
-        currentUnit = undefined;
-      }
+      lockCheck(newUnit);
 
-      logKey('d');
+      logKey('move E');
 
       drawGame();
       break;
@@ -362,6 +380,8 @@ function init() {
 }
 
 var currentBoard;
+var ls_old
+var currentScore;
 
 function cloneBoard(board) {
   var width = board.length;
@@ -453,7 +473,10 @@ function drawProblem(file) {
 
     currentSource = calcRandSeq(json.units.length, json.sourceSeeds[0], json.sourceLength);
     currentBoard = createBoard({x: json.width, y: json.height});
-    nextUnit = json.seed;
+    currentUnit = undefined;
+    ls_old = 0;
+    currentScore = 0;
+    updateScore();
 
     drawGame();
   };
@@ -555,6 +578,7 @@ function drawBoard(board, r, gridMul, topLeft) {
 
   (SW) Z X (SE)
 </pre>
+<div id="score"></div>
 <select id="problems"></select>
 <textarea id="log" rows=4></textarea>
 <canvas id="canvassample" width="4000" height="4000"></canvas>
