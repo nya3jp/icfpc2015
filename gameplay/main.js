@@ -10,6 +10,31 @@ function hideStartScreen() {
     document.getElementById('startscreen').style.display = 'none';
 }
 
+function addMoveLog(cmd) {
+	var chr = ''
+	switch(cmd) {
+	case 'W':
+		chr = 'p';
+		break;
+	case 'E':
+		chr = 'b';
+		break;
+	case 'SW':
+		chr = 'a';
+		break;
+	case 'SE':
+		chr = 'l';
+		break;
+	case 'RC':
+		chr = 'd';
+		break;
+	case 'RCC':
+		chr = 'k';
+		break;
+	}
+	document.getElementById('keyseq').textContent = document.getElementById('keyseq').textContent + chr;
+}
+
 
 
 // Main
@@ -198,26 +223,31 @@ function beginGame(gameState) {
 
         // Move
         var neo = null;
+		var moveCmd = null;
 
         var shiftFunc = function(obj) { return {x:obj.x, y:obj.y}; };
         switch(e.keyCode) {
         case VK_LEFT:
         case 70: // F
+			moveCmd = 'W';
             shiftFunc = function(obj) { return {x:obj.x-1, y:obj.y}; };
             break;
         case VK_RIGHT:
         case 75:
+			moveCmd = 'E';
             shiftFunc = function(obj) { return {x:obj.x+1, y:obj.y}; };
             break;
         case 66: // B, sw
+			moveCmd = 'SW';
             shiftFunc = function(obj) { return {x:obj.x-1+(obj.y%2), y:obj.y+1}; };
             break;
         case 78: // N, se
+			moveCmd = 'SE';
             shiftFunc = function(obj) { return {x:obj.x+(obj.y%2), y:obj.y+1}; };
             break;
-        case VK_UP:
-            shiftFunc = function(obj) { return {x:obj.x, y:obj.y-1}; };
-            break;
+        // case VK_UP:
+        //     shiftFunc = function(obj) { return {x:obj.x, y:obj.y-1}; };
+        //     break;
         }
         var neo = {
             members: cur.members.map(shiftFunc),
@@ -227,7 +257,8 @@ function beginGame(gameState) {
 		// TODO: clean up later.
         var rotFunc = function(obj) { return {x:obj.x, y:obj.y}; };
         switch(e.keyCode) {
-        case VK_D: // Rotate left
+        case VK_D: // Rotate left/counterclockwise
+			moveCmd = 'RCC';
             rotFunc = function(obj) {
 				var xoff = (neo.pivot.y&1)==1 && (obj.y&1)==0 ? +1 : 0;
                 var x_ = obj.x - neo.pivot.x - xoff;
@@ -244,7 +275,8 @@ function beginGame(gameState) {
                 return {x:xx+Math.floor(zz/2)+neo.pivot.x+xoff, y:zz+neo.pivot.y};
             };
             break;
-        case VK_L: // Rotate right
+        case VK_L: // Rotate right/clockwise
+			moveCmd = 'RC';
             rotFunc = function(obj) {
 				var xoff = (neo.pivot.y&1)==1 && (obj.y&1)==0 ? +1 : 0;
                 var x_ = obj.x - neo.pivot.x - xoff;
@@ -278,6 +310,7 @@ function beginGame(gameState) {
                 isValidMove = false;
         });
 
+		addMoveLog(moveCmd);
         if(isValidMove) {
             gameState.currentUnit = neo;
         } else {
