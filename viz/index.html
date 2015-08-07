@@ -1,0 +1,190 @@
+<html>
+
+<script>
+
+var ctx;
+
+function drawUnits(units, r, gridMul, topLeft) {
+  var margin = {x: 20, y: 20};
+
+  var totalSize = {x: 0, y: 0};
+
+  for (var i = 0; i < units.length; ++i) {
+    var members = units[i].members;
+
+    var width = 0;
+    var height = 0;
+
+    for (var j = 0; j < members.length; ++j) {
+      width = Math.max(width, members[j].x);
+      height = Math.max(height, members[j].y);
+    }
+
+    var pivot = units[i].pivot;
+
+    width = Math.max(width, pivot.x);
+    height = Math.max(height, pivot.y);
+
+    width += 1;
+    height += 1;
+
+    var unitSize = coordToPosition({x: width, y: height}, r, gridMul);
+
+    totalSize.x = Math.max(totalSize.x, unitSize.x);
+    totalSize.y += unitSize.y;
+  }
+
+  ctx.strokeStyle = 'black';
+  ctx.fillStyle = 'black';
+  ctx.beginPath();
+  ctx.rect(topLeft.x, topLeft.y, totalSize.x + margin.x * 2, totalSize.y + margin.y * 2);
+  ctx.closePath();
+  ctx.stroke();
+
+  var top = margin.x;
+  var left = margin.y;
+
+  for (var i = 0; i < units.length; ++i) {
+    var members = units[i].members;
+
+    var width = 0;
+    var height = 0;
+
+    for (var j = 0; j < members.length; ++j) {
+      width = Math.max(width, members[j].x);
+      height = Math.max(height, members[j].y);
+    }
+
+    var pivot = units[i].pivot;
+
+    width = Math.max(width, pivot.x);
+    height = Math.max(height, pivot.y);
+
+    width += 1;
+    height += 1;
+
+    var board = createBoard(width, height);
+
+    for (var j = 0; j < members.length; ++j) {
+      board[members[j].x][members[j].y] = board[members[j].x][members[j].y] | 1;
+    }
+
+    board[pivot.x][pivot.y] = board[pivot.x][pivot.y] | 2;
+
+    drawBoard(board, r, gridMul, {x: topLeft.x + left, y: topLeft.y + top});
+
+    top += coordToPosition({x: 0, y: height}, r, gridMul).y;
+  }
+}
+
+function createBoard(width, height) {
+  var board = [];
+  for (var x = 0; x < width; ++x) {
+    var col = [];
+    for (var y = 0; y < height; ++y) {
+      col.push(0);
+    }
+    board.push(col);
+  }
+  return board;
+}
+
+function init() {
+  var canvas = document.getElementById('canvassample');
+  ctx = canvas.getContext('2d');
+
+  var problems = document.getElementById('problems');
+  for (var i = 0; i < 23; ++i) {
+    var file = 'problem_' + i + '.json';
+    var option = document.createElement('option');
+    option.value = file;
+    option.innerText = file;
+    problems.appendChild(option);
+  }
+
+  problems.addEventListener('change', function () {
+    drawProblem(problems.options[problems.selectedIndex].value);
+  });
+
+  drawProblem(problems.options[problems.selectedIndex].value);
+}
+
+function drawProblem(file) {
+  var x = new XMLHttpRequest();
+  x.open('GET', '../problems/' + file);
+  x.responseType = 'json';
+  x.onload = function () {
+    var json = x.response;
+
+    ctx.clearRect(0, 0, 4000, 4000);
+
+    var r = 15;
+    var gridMul = 1.1;
+
+    var margin = {x: 10, y: 10};
+
+    var position = margin;
+
+    drawBoard(createBoard(json.width, json.height), r, gridMul, position);
+
+    position.x += coordToPosition({x: json.width, y: 0}, r, gridMul).x + 20;
+
+    drawUnits(json.units, r, gridMul, position);
+  };
+  x.send();
+}
+
+function drawHex(cx, cy, r) {
+  ctx.beginPath();
+  for (var i = 0; i < 6; ++i) {
+    var d = Math.PI / 6.0;
+    ctx.lineTo(cx + r * Math.cos(d + Math.PI * i / 3.0), cy + r * Math.sin(d + Math.PI * i / 3.0));
+  }
+  ctx.closePath();
+}
+
+function coordToPosition(p, r, gridMul) {
+  return {x: p.x * r * gridMul * 1.7 + r * Math.sqrt(3) / 2.0 * gridMul,
+          y: p.y * r * gridMul * 1.5 + r * gridMul};
+}
+
+function drawBoard(board, r, gridMul, topLeft) {
+  var height = board[0].length;
+  var width = board.length;
+
+  for (var x = 0; x < width; ++x) {
+    for (var y = 0; y < height; ++y) {
+      var position = coordToPosition({x: x, y: y}, r, gridMul)
+      var cx = position.x + topLeft.x;
+      var cy = position.y + topLeft.y;
+      if (y % 2 == 1) {
+        cx += r * Math.sqrt(3) / 2.0 * gridMul;
+      }
+
+      ctx.strokeStyle = 'black';
+      ctx.fillStyle = 'black';
+      drawHex(cx, cy, r);
+
+      var data = board[x][y];
+      if ((data & 1) == 1) {
+        ctx.fill();
+      } else {
+        ctx.stroke();
+      }
+
+      if ((data & 2) == 2) {
+        ctx.strokeStyle = 'gray';
+        ctx.fillStyle = 'gray';
+        drawHex(cx, cy, r * 0.4);
+        ctx.fill();
+      }
+    }
+  }
+}
+</script>
+
+<body onload="init()">
+
+<select id="problems"></select>
+
+<canvas id="canvassample" width="4000" height="4000"></canvas>
