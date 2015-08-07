@@ -473,6 +473,12 @@ function drawProblem(file) {
 
     currentSource = calcRandSeq(json.units.length, json.sourceSeeds[0], json.sourceLength);
     currentBoard = createBoard({x: json.width, y: json.height});
+
+    for (var i = 0; i < json.filled.length; ++i) {
+      var cell = json.filled[i];
+      currentBoard[cell.x][cell.y] = 1;
+    }
+
     currentUnit = undefined;
     ls_old = 0;
     currentScore = 0;
