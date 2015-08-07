@@ -88,6 +88,9 @@ function readRandSeq(json) {
         return result;
     }
 
+	if(json.sourceSeeds.length>1) {
+		showErrorMessage('This JSON contains multiple seeds, but the player loads ony the first one.')
+	}
     return calcRandSeq(
         json.units.length,
         json.sourceSeeds[0], // TODO: support multiple games.
