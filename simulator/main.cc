@@ -34,6 +34,7 @@ int main(int argc, char* argv[]) {
       break;
     }
   }
+  LOG(ERROR) << "Score: " << game.score();
 
   return 0;
 }

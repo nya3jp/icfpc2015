@@ -25,7 +25,7 @@ class Board {
   void Init(int width, int height);
 
   bool IsConflicting(const Unit& unit) const;
-  void Lock(const Unit& unit);
+  int Lock(const Unit& unit);
 
   void Dump(std::ostream* os) const ;
 

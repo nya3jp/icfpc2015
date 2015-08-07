@@ -42,19 +42,21 @@ bool Board::IsConflicting(const Unit& unit) const {
   return false;
 }
 
-void Board::Lock(const Unit& unit) {
+int Board::Lock(const Unit& unit) {
   for (const auto& member: unit.members()) {
     cells_[member.y()][member.x()] = 1;
   }
 
   // Clears for each row if necessary.
+  int num_cleared_lines = 0;
   for (auto& row : cells_) {
     if (std::all_of(std::begin(row), std::end(row),
                     [](int cell) { return cell; })) {
       std::fill(std::begin(row), std::end(row), 0);
+      ++num_cleared_lines;
     }
   }
-
+  return num_cleared_lines;
 }
 
 void Board::Dump(std::ostream* os) const {

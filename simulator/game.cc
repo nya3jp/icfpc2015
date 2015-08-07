@@ -34,7 +34,7 @@ bool Contains(const Container& container, const T& value) {
 }
 
 Game::Game()
-    : id_(-1), source_length_(-1), current_index_(-1) {
+    : id_(-1), source_length_(-1), current_index_(-1), score_(-1) {
 }
 
 Game::~Game() {
@@ -70,7 +70,8 @@ void Game::Load(const picojson::value& parsed, int seed_index) {
   // Reset the current status.
   current_unit_ = Unit();
   current_index_ = 0;
-
+  score_ = 0;
+  total_cleared_lines_ = 0;
   SpawnNewUnit();
 }
 
@@ -139,12 +140,18 @@ bool Game::Run(Command command) {
 
   if (Contains(history_, new_unit)) {
     // Error.
-    // TODO score = 0;
+    score_ = 0;
     return false;
   }
 
   if (board_.IsConflicting(new_unit)) {
-    board_.Lock(current_unit_);
+    int num_cleard_lines = board_.Lock(current_unit_);
+    int points = current_unit_.members().size()
+        + 100 * (1 + num_cleard_lines) * num_cleard_lines / 2;
+    int line_bonus = total_cleared_lines_ > 0 ?
+        (total_cleared_lines_ - 1) * points / 10 : 0;
+    total_cleared_lines_ += num_cleard_lines;
+    score_ += (points + line_bonus);
     return SpawnNewUnit();
   }
 
