@@ -1,0 +1,12 @@
+#errorscreen {
+	color: red;
+	font-weight: bold;
+	font-size: 200%;
+}
+
+#board {
+	border: 1px #ccc solid;
+	line-height: 1em;
+	font-size: 150%;
+	font-weight: bold;
+}
