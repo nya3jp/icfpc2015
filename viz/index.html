@@ -49,7 +49,7 @@ function isInvalidUnit(unit, board) {
       return true;
     }
   }
-  return isInvalidPosition(unit.pivot, board)
+  return false;
 }
 
 function rotateClockwise(position) {
@@ -548,7 +548,13 @@ function drawBoard(board, r, gridMul, topLeft) {
 </script>
 
 <body onload="init()">
+<pre>
+(RCCW) W E (RCW)
 
+  (W) A   D (E)
+
+  (SW) Z X (SE)
+</pre>
 <select id="problems"></select>
 <textarea id="log" rows=4></textarea>
 <canvas id="canvassample" width="4000" height="4000"></canvas>
