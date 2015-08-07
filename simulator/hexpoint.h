@@ -44,7 +44,7 @@ class HexPoint {
   }
 
   HexPoint RotateClockwise() const {
-    int xx = x_ - y_ / 2;
+    int xx = x_ - (y_ - (y_ & 1)) / 2;
     int zz = y_;
     int yy = -xx - zz;
 
@@ -53,11 +53,11 @@ class HexPoint {
     zz = -yy;
     yy = -tmp;
 
-    return HexPoint(xx + zz / 2, zz);
+    return HexPoint(xx + (zz - (zz & 1)) / 2, zz);
   }
 
   HexPoint RotateCounterClockwise() const {
-    int xx = x_ - y_ / 2;
+    int xx = x_ - (y_ - (y_ & 1)) / 2;
     int zz = y_;
     int yy = -xx - zz;
 
@@ -66,7 +66,7 @@ class HexPoint {
     yy = -zz;
     zz = -tmp;
 
-    return HexPoint(xx + zz / 2, zz);
+    return HexPoint(xx + (zz - (zz & 1)) / 2, zz);
   }
 
   HexPoint RotateClockwise(const HexPoint& origin) const {
@@ -92,10 +92,10 @@ class HexPoint {
     }
     moved = moved.RotateCounterClockwise();
     // Move 0, 0 back to the origin.
+    moved += origin;
     if ((origin.y() & 1) && !(moved.y() & 1)) {
       moved += HexPoint(1, 0);
     }
-    moved += origin;
     return moved;
   }
 
