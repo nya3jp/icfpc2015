@@ -11,12 +11,123 @@ function determineStart(board, unit) {
   if (unitWidth % 2 == 0 && board.length % 2 == 0) {
     return {x: board.length / 2 - unitWidth / 2, y: -unitRect.top};
   } else if (unitWidth % 2 == 0) {
-    return {x: (board.length - unitWidth + 1) / 2, y: -unitRect.top};
+    return {x: (board.length - unitWidth - 1) / 2, y: -unitRect.top};
   } else if (board.length % 2 == 0) {
-    return {x: (board.length - unitWidth + 1) / 2, y: -unitRect.top};
+    return {x: (board.length - unitWidth - 1) / 2, y: -unitRect.top};
   } else {
     return {x: (board.length - unitWidth) / 2, y: -unitRect.top};
   }
+}
+
+function cloneUnit(unit) {
+  var newUnit = {members: [], pivot: {}};
+  for (var i = 0; i < unit.members.length; ++i) {
+    newUnit.members.push({x: unit.members[i].x, y: unit.members[i].y});
+  }
+  newUnit.pivot.x = unit.pivot.x;
+  newUnit.pivot.y = unit.pivot.y;
+  return newUnit;
+}
+
+function moveUnit(unit, op) {
+  for (var i = 0; i < unit.members.length; ++i) {
+    op(unit.members[i]);
+  }
+  op(unit.pivot);
+}
+
+function rotateClockwise(position) {
+  var xx = position.x - Math.floor(position.y / 2);
+  var zz = position.y;
+  var yy = -xx - zz;
+
+  var tmp = xx;
+  xx = -zz;
+  zz = -yy;
+  yy = -tmp;
+  position.x = xx + Math.floor(zz / 2);
+  position.y = zz;
+}
+
+function rotateCounterClockwise(position) {
+  var xx = position.x - Math.floor(position.y / 2);
+  var zz = position.y;
+  var yy = -xx - zz;
+
+  var tmp = xx;
+  xx = -yy;
+  yy = -zz;
+  zz = -tmp;
+  position.x = xx + Math.floor(zz / 2);
+  position.y = zz;
+}
+
+function moveClockwise(origin, position) {
+  var moved = {x: position.x - origin.x,
+               y: position.y - origin.y};
+
+  if ((origin.y & 1) && !(position.y & 1)) {
+    moved.x -= 1;
+  }
+
+  rotateClockwise(moved);
+
+  moved.x += origin.x;
+  moved.y += origin.y;
+
+  if ((origin.y & 1) && (!(moved.y & 1))) {
+    moved.x += 1;
+  }
+
+  position.x = moved.x;
+  position.y = moved.y;
+}
+
+function moveCounterClockwise(origin, position) {
+  var moved = {x: position.x - origin.x,
+               y: position.y - origin.y};
+
+  if ((origin.y & 1) && !(position.y & 1)) {
+    moved.x -= 1;
+  }
+
+  rotateCounterClockwise(moved);
+
+  if ((origin.y & 1) && (!(moved.y & 1))) {
+    moved.x += 1;
+  }
+
+  moved.x += origin.x;
+  moved.y += origin.y;
+
+  position.x = moved.x;
+  position.y = moved.y;
+}
+
+function moveW(position) {
+  position.x -= 1;
+}
+
+function moveSW(position) {
+  if (position.y % 2 == 0) {
+    position.x -= 1;
+    position.y += 1;
+  } else {
+    position.y += 1;
+  }
+}
+
+function moveSE(position) {
+  if (position.y % 2 == 0) {
+    position.y += 1;
+  } else {
+    position.x += 1;
+    position.y += 1;
+  }
+}
+
+function moveE(position) {
+  position.x += 1;
 }
 
 function getUnitRect(unit, includePivot) {
@@ -93,7 +204,7 @@ function drawUnits(units, r, gridMul, topLeft) {
 
     var board = createBoard({x: unitRect.right + 1, y: unitRect.bottom + 1});
 
-    putUnit(unit, board, {x: 0, y: 0});
+    putUnit(unit, board);
 
     drawBoard(board, r, gridMul, {x: topLeft.x + left, y: topLeft.y + top});
 
@@ -131,6 +242,96 @@ function init() {
   });
 
   drawProblem(problems.options[problems.selectedIndex].value);
+
+  document.body.addEventListener('keydown', function (e) {
+    switch (e.keyCode) {
+    case 'W'.charCodeAt(0):
+      // Counter clockwise
+      moveUnit(currentUnit, moveClockwise.bind(undefined, currentUnit.pivot));
+
+      drawGame();
+      break;
+    case 'E'.charCodeAt(0):
+      // Clockwise
+      moveUnit(currentUnit, moveCounterClockwise.bind(undefined, currentUnit.pivot));
+
+      drawGame();
+      break;
+    case 'A'.charCodeAt(0):
+      // West
+      moveUnit(currentUnit, moveW);
+
+      drawGame();
+      break;
+    case 'Z'.charCodeAt(0):
+      // South west
+      moveUnit(currentUnit, moveSW);
+
+      drawGame();
+      break;
+    case 'X'.charCodeAt(0):
+      // South east
+      moveUnit(currentUnit, moveSE);
+
+      drawGame();
+      break;
+    case 'D'.charCodeAt(0):
+      // East
+      moveUnit(currentUnit, moveE);
+
+      drawGame();
+      break;
+    }
+  });
+}
+
+var currentBoard;
+
+function cloneBoard(board) {
+  var width = board.length;
+  var height = board[0].length;
+
+  var newBoard = [];
+
+  for (var x = 0; x < width; ++x) {
+    var col = [];
+    for (var y = 0; y < height; ++y) {
+      col.push(board[x][y]);
+    }
+    newBoard.push(col);
+  }
+  return newBoard;
+}
+
+var currentJson;
+var currentUnit;
+
+function drawGame() {
+  ctx.clearRect(0, 0, 4000, 4000);
+
+  var r = 15;
+  var gridMul = 1.1;
+
+  var margin = {x: 10, y: 10};
+
+  var position = margin;
+
+  var boardForDisplay = cloneBoard(currentBoard);
+
+  if (currentUnit === undefined) {
+    currentUnit = cloneUnit(currentJson.units[0]);
+    var move = determineStart(boardForDisplay, currentUnit);
+    console.log(move);
+    moveUnit(currentUnit, function (position) { position.x += move.x; position.y += move.y; });
+  }
+
+  putUnit(currentUnit, boardForDisplay);
+
+  drawBoard(boardForDisplay, r, gridMul, position);
+
+  position.x += coordToPosition({x: currentJson.width, y: 0}, r, gridMul).x + 20;
+
+  drawUnits(currentJson.units, r, gridMul, position);
 }
 
 function drawProblem(file) {
@@ -139,41 +340,25 @@ function drawProblem(file) {
   x.responseType = 'json';
   x.onload = function () {
     var json = x.response;
+    currentJson = json;
 
-    ctx.clearRect(0, 0, 4000, 4000);
+    currentUnit = undefined;
+    currentBoard = createBoard({x: json.width, y: json.height});
 
-    var r = 15;
-    var gridMul = 1.1;
-
-    var margin = {x: 10, y: 10};
-
-    var position = margin;
-
-    var board = createBoard({x: json.width, y: json.height});
-
-    var firstUnit = json.units[0];
-
-    var start = determineStart(board, firstUnit);
-    putUnit(firstUnit, board, start);
-
-    drawBoard(board, r, gridMul, position);
-
-    position.x += coordToPosition({x: json.width, y: 0}, r, gridMul).x + 20;
-
-    drawUnits(json.units, r, gridMul, position);
+    drawGame();
   };
   x.send();
 }
 
-function putUnit(unit, board, position) {
+function putUnit(unit, board) {
   var members = unit.members;
 
   var boardWidth = board.length;
   var boardHeight = board[0].length;
 
   for (var j = 0; j < members.length; ++j) {
-    var x = members[j].x + position.x;
-    var y = members[j].y + position.y;
+    var x = members[j].x;
+    var y = members[j].y;
 
     if (x < 0 || x >= boardWidth || y < 0 || y > boardHeight) {
       continue;
@@ -184,8 +369,8 @@ function putUnit(unit, board, position) {
 
   var pivot = unit.pivot;
 
-  var x = pivot.x + position.x;
-  var y = pivot.y + position.y;
+  var x = pivot.x;
+  var y = pivot.y;
 
   if (x < 0 || x >= boardWidth || y < 0 || y > boardHeight) {
     return;
