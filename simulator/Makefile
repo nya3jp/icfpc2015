@@ -20,14 +20,15 @@ scorer: scorer.o board.o game.o
 simulator: main.o board.o game.o
 	g++ -Wl,-rpath=$(PWD)/../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 
-hexpoint_test: hexpoint_test.cc
+%_test: %_test.cc
 	g++ -Wl,-rpath=$(PWD)/../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(TEST_LIBS) $(LIBS)
 
 %.o:%.cc
 	g++ $(CFLAGS) -c -o $@ $<
 
-test: hexpoint_test
+test: hexpoint_test rand_test
 	./hexpoint_test
+	./rand_test
 
 clean:
-	rm -rf simulator scorer hexpoint_test *.o
+	rm -rf simulator scorer hexpoint_test rand_test *.o
