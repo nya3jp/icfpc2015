@@ -25,7 +25,7 @@ def main(argv):
         'problemId': problem['id'],
         'seed': seed,
         'tag': 'nop',
-        'solution': [],
+        'solution': '',
         '_score': 0,
       })
   json.dump(response, sys.stdout)
