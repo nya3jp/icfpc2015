@@ -46,7 +46,7 @@ function readRandSeq(json) {
         var result = [];
         for(var i=0; i<len; ++i) {
             // TODO: majime. How to do unsigned 32-bit op in JS...?
-            result.push(len % mod);
+            result.push(i % mod);
             // result.push(seed % mod);
             // seed = (seed*mul + inc) & 0xffffffff;
         }
@@ -224,7 +224,6 @@ function beginGame(gameState) {
             pivot: shiftFunc(cur.pivot),
         };
 
-        // TODO: Rotate
         var rotFunc = function(obj) { return {x:obj.x, y:obj.y}; };
         switch(e.keyCode) {
         case VK_D: // Rotate left
