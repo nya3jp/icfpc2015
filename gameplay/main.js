@@ -102,8 +102,8 @@ function readBoard(json) {
     };
     for(var y=0; y<board.h; ++y) {
         board.d[y] = new Array(board.w);
-    	for(var x=0; x<board.w; ++x)
-			board.d[y][x] = false;
+        for(var x=0; x<board.w; ++x)
+            board.d[y][x] = false;
     }
 
     json.filled.forEach(function(pos) {
@@ -333,32 +333,71 @@ function beginGame(gameState) {
 }
 
 function render(gameState) {
-    var board = gameState.board;
+    var canvas = document.getElementById('canvas');
+    ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 4000, 4000);
+
+    var r = 15;
+    var gridMul = 1.1;
+    var topLeft = {x:5, y:5};
+    function coordToPosition(p) {
+        return {x: p.x * r * gridMul * 1.7 + r * Math.sqrt(3) / 2.0 * gridMul,
+             y: p.y * r * gridMul * 1.5 + r * gridMul};
+    }
+
+    function drawHex(cx, cy, r) {
+        ctx.beginPath();
+        for (var i = 0; i < 6; ++i) {
+            var d = Math.PI / 6.0;
+            ctx.lineTo(cx + r * Math.cos(d + Math.PI * i / 3.0), cy + r * Math.sin(d + Math.PI * i / 3.0));
+        }
+         ctx.closePath();
+    }
 
     var textBoard = gameState.board.d.map(function(line){
         return line.map(function(c){
             return c ? '*' : '-';
         });
     });
-
+    var py=null, px=null;
     if (gameState.currentUnit) {
         gameState.currentUnit.members.forEach(function(mem){
             textBoard[mem.y][mem.x] = '#';
         });
+        py = gameState.currentUnit.pivot.y;
+        px = gameState.currentUnit.pivot.x;
     }
 
 
-    var boardElem = document.getElementById('board');
-    var text = '';
-    for(var y=0; y<board.h; ++y) {
-        var line = (y%2==0 ? "" : " ");
-        for(var x=0; x<board.w; ++x) {
-            line += textBoard[y][x];
-            line += ' ';
+    for (var y=0; y<gameState.board.h; ++y)
+    for (var x=0; x<gameState.board.w; ++x) {
+        var position = coordToPosition({x: x, y: y});
+        var cx = position.x + topLeft.x;
+        var cy = position.y + topLeft.y;
+        if ((y&1) == 1)
+            cx += r * Math.sqrt(3) / 2.0 * gridMul;
+        if (textBoard[y][x]=='*') {
+	        ctx.fillStyle = 'black';
+	        drawHex(cx, cy, r);
+            ctx.fill();
+        } else if (textBoard[y][x]=='#') {
+	        ctx.fillStyle = '#080';
+	        drawHex(cx, cy, r);
+            ctx.fill();
         }
-        text += line + '\n';
+        else {
+	        ctx.strokeStyle = 'black';
+	        drawHex(cx, cy, r);
+            ctx.stroke();
+		}
+
+        if (y==py && x==px) {
+            ctx.fillStyle = '#8c8';
+            drawHex(cx, cy, r * 0.4);
+            ctx.fill();
+        }
     }
-    boardElem.textContent = text;
 }
+
 
 window.addEventListener('load', onLoad);
