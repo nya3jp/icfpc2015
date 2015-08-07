@@ -174,6 +174,14 @@ function getUnitBoundBox(unit, includePivot) {
   return {top: top, right: right, left: left, bottom: bottom};
 }
 
+function drawUnit(unit, topLeft, r, gridMul) {
+  var unitBoundBox = getUnitBoundBox(unit, true);
+  var board = createBoard(unitBoundBox.right + 1, unitBoundBox.bottom + 1);
+  placeUnit(board, unit, true);
+  drawBoard(board, r, gridMul, topLeft);
+  return coordToPosition({x: 0, y: unitBoundBox.bottom + 1}, r, gridMul).y;
+}
+
 function drawUnits(units, r, gridMul, topLeft) {
   var margin = {x: 20, y: 20};
 
@@ -202,24 +210,30 @@ function drawUnits(units, r, gridMul, topLeft) {
     var unitSize = coordToPosition({x: width, y: height}, r, gridMul);
 
     totalWidth = Math.max(totalWidth, unitSize.x);
-    totalHeight += unitSize.y;
+    totalHeight += unitSize.y + 10;
   }
-
-  g_canvasContext.strokeStyle = 'black';
-  g_canvasContext.fillStyle = 'black';
-  g_canvasContext.beginPath();
-  g_canvasContext.rect(topLeft.x,
-                       topLeft.y,
-                       totalWidth + margin.x * 2,
-                       totalHeight + margin.y * 2);
-  g_canvasContext.closePath();
-  g_canvasContext.stroke();
 
   var top = margin.x;
   var left = margin.y;
 
+  g_canvasContext.fillText('Units coming', topLeft.x + left, topLeft.y + top + 10);
+  top += 10;
+
+  for (var i = 0; i < Math.min(g_currentGame.source.length, 5); ++i) {
+    top += drawUnit(units[g_currentGame.source[i]],
+                    {x: topLeft.x + left, y: topLeft.y + top}, r, gridMul);
+  }
+
+  g_canvasContext.fillText('=============', topLeft.x + left, topLeft.y + top + 10);
+  top += 10;
+  g_canvasContext.fillText('All units', topLeft.x + left, topLeft.y + top + 10);
+  top += 10;
+
   for (var i = 0; i < units.length; ++i) {
     var unit = units[i];
+
+    g_canvasContext.fillText(i, topLeft.x + left, topLeft.y + top + 10);
+    top += 10;
 
     var unitBoundBox = getUnitBoundBox(unit, true);
     var board = createBoard(unitBoundBox.right + 1, unitBoundBox.bottom + 1);
@@ -293,15 +307,10 @@ function updateScore() {
   scoreDiv.innerText = g_currentGame.score + ' pts';
 }
 
-function handleKey(e) {
-  if (g_currentGame === undefined ||
-      g_currentGame.unit === undefined) {
-    return;
-  }
-
+function handleKey(keyCode) {
   var newUnit = cloneUnit(g_currentGame.unit);
 
-  switch (e.keyCode) {
+  switch (keyCode) {
   case 'W'.charCodeAt(0):
     moveUnit(newUnit, moveCounterClockwise.bind(undefined, newUnit.pivot));
     logKey('rotate counter-clockwise');
@@ -365,7 +374,14 @@ function init() {
 
   drawProblem(problems.options[problems.selectedIndex].value);
 
-  document.body.addEventListener('keydown', handleKey);
+  document.body.addEventListener('keydown', function (e) {
+    if (g_currentGame === undefined ||
+        g_currentGame.unit === undefined) {
+      return;
+    }
+
+    handleKey(e.keyCode);
+  });
 }
 
 function cloneBoard(board) {
