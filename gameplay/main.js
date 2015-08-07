@@ -225,12 +225,43 @@ function beginGame(gameState) {
         };
 
         // TODO: Rotate
+        var rotFunc = function(obj) { return {x:obj.x, y:obj.y}; };
         switch(e.keyCode) {
         case VK_D: // Rotate left
+            rotFunc = function(obj) {
+                var x_ = obj.x - neo.pivot.x;
+                var y_ = obj.y - neo.pivot.y;
+                var xx = x_ - Math.floor(y_ / 2);
+                var zz = y_;
+                var yy = -xx - zz;
+
+                var tmp = xx;
+                xx = -yy;
+                yy = -zz;
+                zz = -tmp;
+                return {x:xx+Math.floor(zz/2)+neo.pivot.x, y:zz+neo.pivot.y};
+            };
             break;
         case VK_L: // Rotate right
+            rotFunc = function(obj) {
+                var x_ = obj.x - neo.pivot.x;
+                var y_ = obj.y - neo.pivot.y;
+                var xx = x_ - Math.floor(y_ / 2);
+                var zz = y_;
+                var yy = -xx - zz;
+
+                var tmp = xx;
+                xx = -zz;
+                zz = -yy;
+                yy = -tmp;
+                return {x:xx+Math.floor((zz-(zz&1))/2)+neo.pivot.x, y:zz+neo.pivot.y};
+            };
             break;
         }
+        neo = {
+            members: neo.members.map(rotFunc),
+            pivot: rotFunc(neo.pivot),
+        };
 
         // Validate
         var isValidMove = true;
