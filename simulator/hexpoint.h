@@ -70,11 +70,33 @@ class HexPoint {
   }
 
   HexPoint RotateClockwise(const HexPoint& origin) const {
-    return (*this - origin).RotateClockwise() + origin;
+    // Move origin to 0, 0.
+    HexPoint moved = *this - origin;
+    if ((origin.y() & 1) && !(y() & 1)) {
+      moved -= HexPoint(1, 0);
+    }
+    moved = moved.RotateClockwise();
+    // Move 0, 0 back to the origin.
+    moved += origin;
+    if ((origin.y() & 1) && !(moved.y() & 1)) {
+      moved += HexPoint(1, 0);
+    }
+    return moved;
   }
 
   HexPoint RotateCounterClockwise(const HexPoint& origin) const {
-    return (*this - origin).RotateCounterClockwise() + origin;
+    // Move origin to 0, 0.
+    HexPoint moved = *this - origin;
+    if ((origin.y() & 1) && !(y() & 1)) {
+      moved -= HexPoint(1, 0);
+    }
+    moved = moved.RotateCounterClockwise();
+    // Move 0, 0 back to the origin.
+    if ((origin.y() & 1) && !(moved.y() & 1)) {
+      moved += HexPoint(1, 0);
+    }
+    moved += origin;
+    return moved;
   }
 
  private:
