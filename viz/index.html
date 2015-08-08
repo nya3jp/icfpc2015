@@ -23,7 +23,10 @@
 </p>
 
 <!-- problem chooser -->
-<select id="problems"></select>
+<p>
+  Input: <select id="problems"></select><br>
+  Seed: <select id="seeds"></select><br>
+</p>
 
 <!-- usage -->
 <pre id="manual" onclick="hideManual()" style="display: none">
@@ -37,27 +40,18 @@ Shift: dry-run
 
 </pre>
 
-<!-- state description -->
-<div id="info"></div>
-<textarea id="log" rows=8 cols=15></textarea>
-<div id="message" style="color:red"></div>
-</div>
-
-<div id="mainbar">
-<canvas id="canvassample" width="4000" height="4000"></canvas>
-</div>
-=======
 <div id="showManualDiv" onclick="showManual()">
 Show manual
 </div>
-<p>
-  Input: <select id="problems"></select><br>
-  Seed: <select id="seeds"></select><br>
-</p>
-<div>
-  <span id="info"></span>
-  <span id="message" style="color:red"></span>
+
 </div>
+
+<!-- state description -->
+
+<div id="mainbar">
+
+<div id="info"></div>
+<div id="message" style="color:red"></div>
 <p>
   <textarea id="log" rows=1 cols=100></textarea>
 </p>
@@ -69,4 +63,5 @@ Show manual
 <td valign=top>All units<br><canvas id="list" width="0" height="0"></canvas></td>
 </tr>
 </table>
->>>>>>> Improved UI and added seed selection feature
+
+</div>
