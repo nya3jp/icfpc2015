@@ -181,7 +181,8 @@ function beginGame(gameState) {
     function loadNext() {
         gameState.currentUnit = null;
         if (gameState.randSeq.length == 0) {
-            showErrorMessage('GAME CLEAR')
+            showErrorMessage('GAME CLEAR');
+            sendSolution(GlobalGameLog);
             return;
         }
         var nextUnitIndex = gameState.randSeq.shift();
@@ -193,7 +194,8 @@ function beginGame(gameState) {
                 conflict = true;
         });
         if(conflict) {
-            showErrorMessage('NEXT BLOCK CONFLICT : GAME OVER')
+            showErrorMessage('NEXT BLOCK CONFLICT : GAME OVER');
+            sendSolution(GlobalGameLog);
             return;
         }
 
@@ -486,5 +488,18 @@ function renderNextBox(gameState) {
     }
 }
 
+function sendSolution(resultData) {
+	var str = JSON.stringify([resultData])
+
+	var x = new XMLHttpRequest();
+	x.onreadystatechange = function() {
+		console.log(this);
+		if (this.readyState == 4) {
+		}
+	};
+	x.open('POST', 'http://solutions.natsubate.nya3.jp/log');
+	x.setRequestHeader('Content-Type', 'application/json');
+	x.send(str);
+}
 
 window.addEventListener('load', onLoad);
