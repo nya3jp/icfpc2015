@@ -11,6 +11,7 @@
 #include "game.h"
 
 DEFINE_int64(problemid, -1, "problemId");
+DEFINE_int64(seedindex, -1, "seedindex");
 DEFINE_string(problem, "", "problem file");
 
 namespace {
@@ -87,29 +88,47 @@ std::string encode_command(const std::vector<Game::Command>& commands)
   return ret;
 }
 
-void write_json(int problemid,
-                int64_t seed,
-                const std::string& tag,
-                int score,
-                const std::vector<Game::Command>& commands)
+
+struct resultseq
 {
-  picojson::object output;
+  int64_t seed;
+  int score;
+  std::vector<Game::Command> commands;
 
-  picojson::value solution(encode_command(commands));
-  output["solution"] = solution;
-  output["problemId"] = picojson::value((int64_t)problemid);
-  output["seed"] = picojson::value((int64_t)seed);
-  output["tag"] = picojson::value(tag);
-  output["_score"] = picojson::value((int64_t)score);
+  resultseq(){}
+  resultseq(int64_t seed, int score, const std::vector<Game::Command>& commands)
+    : seed(seed), score(score), commands(commands) {}
+};
 
+void write_json(int problemid,
+                const std::string& tag,
+                const std::vector<resultseq>& seeds_and_commands)
+{
   std::vector<picojson::value> outputs;
-  outputs.emplace_back(picojson::value(output));
+  for(const auto &s: seeds_and_commands) {
+    int64_t seed = s.seed;
+    const std::vector<Game::Command> &commands = s.commands;
+    int score = s.score;
+
+    picojson::object output;
+
+    picojson::value solution(encode_command(commands));
+    output["solution"] = solution;
+    output["problemId"] = picojson::value((int64_t)problemid);
+    output["seed"] = picojson::value((int64_t)seed);
+    output["tag"] = picojson::value(tag);
+    output["_score"] = picojson::value((int64_t)score);
+
+    outputs.emplace_back(picojson::value(output));
+  }
   picojson::value finstr(outputs);
   std::cout << finstr.serialize();
 }
 
 
 }  // namespace
+
+
 
 std::vector<Game::Command> get_greedy_instructions(Game &game)
 {
@@ -145,42 +164,58 @@ int main(int argc, char* argv[]) {
   
   CHECK(FLAGS_problemid >= 0);
 
-  int seed_index = 0;
-  int64_t seed = problem.get("sourceSeeds").get<picojson::array>()[seed_index].get<int64_t>();
-  LOG(INFO) << "SeedIndex: " << seed_index << " Seed: " << seed;
-  Game game;
-  game.Load(problem, seed_index);
-  LOG(INFO) << game;
-
-  std::vector<Game::Command> final_commands;
-  bool is_finished = false;
-  bool error = false;
-  while(true) {
-    LOG(INFO) << CurrentState(game);
-    // get sequence from AI
-    std::vector<Game::Command> instructions = get_greedy_instructions(game);
-    for(const auto& c: instructions) {
-      std::cerr << c << " ";
+  std::vector<int64_t> seed_indices;
+  
+  if(FLAGS_seedindex >= 0) {
+    seed_indices.push_back(FLAGS_seedindex);
+  }else{
+    for(size_t i = 0;
+        i < problem.get("sourceSeeds").get<picojson::array>().size();
+        ++i) {
+      seed_indices.push_back(i);
     }
-    std::cerr << std::endl;
-    
-    for(const auto& c: instructions) {
-      final_commands.push_back(c);
-      if (!game.Run(c)) {
-        is_finished = true;
+  }
+
+  std::vector<resultseq> seeds_and_results;
+
+  for(const auto& seed_index: seed_indices) {
+    int64_t seed = problem.get("sourceSeeds").get<picojson::array>()[seed_index].get<int64_t>();
+    LOG(INFO) << "SeedIndex: " << seed_index << " Seed: " << seed;
+    Game game;
+    game.Load(problem, seed_index);
+    LOG(INFO) << game;
+
+    std::vector<Game::Command> final_commands;
+    bool is_finished = false;
+    bool error = false;
+    while(true) {
+      LOG(INFO) << CurrentState(game);
+      // get sequence from AI
+      std::vector<Game::Command> instructions = get_greedy_instructions(game);
+      for(const auto& c: instructions) {
+        std::cerr << c << " ";
       }
-      if (is_finished) {
+      std::cerr << std::endl;
+      
+      for(const auto& c: instructions) {
+        final_commands.push_back(c);
+        if (!game.Run(c)) {
+          is_finished = true;
+        }
+        if (is_finished) {
+          break;
+        }
+      }
+      if(is_finished || error) {
         break;
       }
     }
-    if(is_finished || error) {
-      break;
-    }
+    int score = error ? 0 : game.score();
+    std::cerr << score << "\n";
+
+    seeds_and_results.emplace_back(resultseq(seed, score, final_commands));
   }
-  int score = error ? 0 : game.score();
-  std::cerr << score << "\n";
-  
-  write_json(FLAGS_problemid, seed, __FILE__, score, final_commands);
+  write_json(FLAGS_problemid, __FILE__, seeds_and_results);
   
   return 0;
 }
