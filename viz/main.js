@@ -26,6 +26,7 @@ function cloneGame(game) {
   newGame.unit = game.unit ? cloneUnit(game.unit) : undefined;
   newGame.score = game.score;
   newGame.ls_old = game.ls_old;
+  newGame.commandHistory = game.commandHistory;
   return newGame;
 }
 
@@ -342,42 +343,44 @@ function undo() {
 function handleKey(keyCode) {
   var newUnit = cloneUnit(g_currentGame.unit);
 
+  var command;
+
   switch (keyCode) {
   case 'W'.charCodeAt(0):
     moveUnit(newUnit, moveCounterClockwise.bind(undefined, newUnit.pivot));
-    saveGame();
-    logKey('rotate counter-clockwise');
+    command = 'k';
     break;
 
   case 'E'.charCodeAt(0):
     moveUnit(newUnit, moveClockwise.bind(undefined, newUnit.pivot));
-    logKey('rotate clockwise');
+    command = 'd';
     break;
 
   case 'A'.charCodeAt(0):
     moveUnit(newUnit, moveW);
-    logKey('move W');
+    command = 'p';
     break;
 
   case 'Z'.charCodeAt(0):
     moveUnit(newUnit, moveSW);
-    logKey('move SW');
+    command = 'a';
     break;
 
   case 'X'.charCodeAt(0):
     moveUnit(newUnit, moveSE);
-    logKey('move SE');
+    command = 'l';
     break;
 
   case 'D'.charCodeAt(0):
     moveUnit(newUnit, moveE);
-    logKey('move E');
+    command = 'b';
     break;
 
   case 'U'.charCodeAt(0):
     undo();
-    logKey('undo');
+
     drawGame();
+    logKey();
     return;
 
   default:
@@ -385,6 +388,8 @@ function handleKey(keyCode) {
   }
 
   saveGame();
+  g_currentGame.commandHistory += command;
+  logKey();
   if (!isInvalidUnitPlacement(g_currentGame.board, newUnit)) {
     g_currentGame.unit = newUnit;
   } else {
@@ -520,6 +525,7 @@ function setupGame(configurations) {
     unit: undefined,
     score: 0,
     ls_old: 0,
+    commandHistory: '',
   };
   g_history = [];
   saveGame();
@@ -577,9 +583,26 @@ function coordToPosition(p, r, gridMul) {
           y: p.y * r * gridMul * 1.5 + r * gridMul};
 }
 
-function logKey(key) {
+function logKey() {
   var log = document.getElementById('log');
-  log.value += key + '\n';
+  log.value = g_currentGame.commandHistory;
+}
+
+function sendSolution() {
+  var str = JSON.stringify([{problemId: g_currentGame.configurations.id,
+                             seed: g_currentGame.configurations.sourceSeeds[0],
+                             tag: 'handplay_viz',
+                             solution: g_currentGame.commandHistory}]);
+
+  var x = new XMLHttpRequest();
+  x.onreadystatechange = function() {
+    console.log(this);
+    if (this.readyState == 4) {
+    }
+  };
+  x.open('POST', 'http://solutions.natsubate.nya3.jp/log');
+  x.setRequestHeader('Content-Type', 'application/json');
+  x.send(str);
 }
 
 function drawBoard(board, r, gridMul, topLeft) {
