@@ -81,6 +81,9 @@ def state_of_the_art_json_handler():
     solution.pop('_id', None)
     solution.pop('_processed', None)
   bottle.response.content_type = 'application/json'
+  bottle.response.headers['Access-Control-Allow-Origin'] = '*'
+  bottle.response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+  bottle.response.headers['Access-Control-Allow-Headers'] = 'Origin, Accept, X-Requested-With'
   return json.dumps(solutions)
 
 
