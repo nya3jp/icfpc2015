@@ -10,7 +10,6 @@
 
 #include "game.h"
 
-DEFINE_int64(problemid, -1, "problemId");
 DEFINE_int64(seedindex, -1, "seedindex");
 DEFINE_string(problem, "", "problem file");
 
@@ -162,8 +161,6 @@ int main(int argc, char* argv[]) {
     CHECK(stream.good()) << picojson::get_last_error();
   }
   
-  CHECK(FLAGS_problemid >= 0);
-
   std::vector<int64_t> seed_indices;
   
   if(FLAGS_seedindex >= 0) {
@@ -215,7 +212,7 @@ int main(int argc, char* argv[]) {
 
     seeds_and_results.emplace_back(resultseq(seed, score, final_commands));
   }
-  write_json(FLAGS_problemid, __FILE__, seeds_and_results);
+  write_json(problem.get("id").get<int64_t>(), __FILE__, seeds_and_results);
   
   return 0;
 }
