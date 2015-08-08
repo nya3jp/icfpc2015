@@ -849,7 +849,7 @@ function spawnNewUnit() {
 }
 
 function getPowerScores(commands) {
-  var phrasesOfPower = ["r'lyeh", 'yuggoth', 'ia! ia!'];
+  var phrasesOfPower = ["r'lyeh", 'yuggoth', 'ia! ia!', 'ei!'];
   var score = 0;
   for (var i = 0; i < phrasesOfPower.length; ++i) {
     var phrase = phrasesOfPower[i];
