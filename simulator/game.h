@@ -19,6 +19,8 @@ class Game {
   void Dump(std::ostream* os) const;
   void DumpCurrent(std::ostream* os) const;
 
+  const Board& GetBoard() const { return board_; } 
+
   // Find a new unit, and put it to the source.
   bool SpawnNewUnit();
 

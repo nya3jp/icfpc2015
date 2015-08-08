@@ -12,6 +12,7 @@
 
 DEFINE_int64(seedindex, -1, "seedindex");
 DEFINE_string(problem, "", "problem file");
+DEFINE_string(ai_tag, __FILE__, "Tag of this trial");
 
 namespace {
 
@@ -134,14 +135,17 @@ std::vector<Game::Command> get_greedy_instructions(Game &game)
   std::vector<Game::Command> ret;
 
   std::vector<Game::SearchResult> bfsresult;
+  int distx = 1 << 30;
   int maxy = -1;
   game.ReachableUnits(&bfsresult);
   for(const auto &res: bfsresult) {
     const Unit &u = res.first;
     for(const auto &m: u.members()) {
-      if(m.y() > maxy) {
+      int dx = std::min(m.x(), game.GetBoard().width() - 1 - m.x());
+      if(m.y() > maxy || (m.y() == maxy && dx < distx)) {
         ret = res.second;
         maxy = m.y();
+        distx = dx;
       }
     }
   }
@@ -212,7 +216,8 @@ int main(int argc, char* argv[]) {
 
     seeds_and_results.emplace_back(resultseq(seed, score, final_commands));
   }
-  write_json(problem.get("id").get<int64_t>(), __FILE__, seeds_and_results);
+  write_json(problem.get("id").get<int64_t>(), FLAGS_ai_tag,
+             seeds_and_results);
   
   return 0;
 }
