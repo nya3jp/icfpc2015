@@ -99,6 +99,8 @@ bool Game::SpawnNewUnit() {
     for (auto& member : *current_unit_.mutable_members()) {
       member = member.TranslateToOrigin(origin);
     }
+    *current_unit_.mutable_pivot() =
+        current_unit_.pivot().TranslateToOrigin(origin);
   }
 
   // Center it.

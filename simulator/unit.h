@@ -16,6 +16,7 @@ class Unit {
   const std::vector<HexPoint>& members() const { return members_; }
   int angle() const { return angle_; }
 
+  HexPoint* mutable_pivot() { return &pivot_; }
   std::vector<HexPoint>* mutable_members() { return &members_; }
 
   bool operator==(const Unit& other) const {
