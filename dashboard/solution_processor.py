@@ -1,5 +1,9 @@
+import json
 import logging
+import os
+import subprocess
 import sys
+import tempfile
 import time
 
 import logging_util
@@ -8,7 +12,48 @@ import pymongo
 
 FLAGS = gflags.FLAGS
 
-PROCESSOR_VERSION = 1
+gflags.DEFINE_string('scorer', None, 'scorer path')
+gflags.MarkFlagAsRequired('scorer')
+
+PROCESSOR_VERSION = 4
+
+
+def init_problems(db):
+  problems_dir = os.path.join(os.path.dirname(__file__), '..', 'problems')
+  for name in os.listdir(problems_dir):
+    path = os.path.join(problems_dir, name)
+    if path.endswith('.json'):
+      with open(path) as f:
+        problem = json.load(f)
+      db.problems.update({'id': problem['id']}, problem, upsert=True)
+
+
+def ensure_index(db):
+  db.solutions.ensure_index([('_processed', pymongo.ASCENDING)])
+
+
+def compute_score(db, solution):
+  problem = db.problems.find_one({'id': solution['problemId']})
+  if not problem:
+    logging.error('Unknown problem %d', solution['problemId'])
+    return -1
+  problem_json = problem.copy()
+  del problem_json['_id']
+  solution_json = solution.copy()
+  del solution_json['_id']
+  with tempfile.NamedTemporaryFile() as problem_f:
+    json.dump(problem_json, problem_f)
+    problem_f.flush()
+    with tempfile.NamedTemporaryFile() as solution_f:
+      json.dump([solution_json], solution_f)
+      solution_f.flush()
+      with open(os.devnull, 'w') as devnull:
+        output = subprocess.check_output(
+          [FLAGS.scorer,
+           '--problem=%s' % problem_f.name,
+           '--output=%s' % solution_f.name],
+          stderr=devnull)
+  return int(output.strip())
 
 
 def process_solution(db, solution):
@@ -18,21 +63,26 @@ def process_solution(db, solution):
   task_query = {'problemId': problem_id, 'seed': seed}
   logging.info(
     'Processing solution: problem %s, seed %s, tag %s', problem_id, seed, tag)
+  solution['_score'] = compute_score(db, solution)
   solution['_processed'] = PROCESSOR_VERSION
   best_solution = db.best_solutions.find_one(task_query)
   if not best_solution or solution['_score'] > best_solution['_score']:
     logging.info(
       'New record: problem %s, seed %s: score %s',
       problem_id, seed, solution['_score'])
-    db.best_solutions.update(task_query, solution, upsert=True)
-  db.solutions.update({'_id': solution['_id']}, {'$set': {'_processed': PROCESSOR_VERSION}})
+    new_solution = solution.copy()
+    del new_solution['_id']
+    db.best_solutions.update(task_query, new_solution, upsert=True)
+  db.solutions.save(solution)
 
 
 def main(unused_argv):
   logging_util.setup()
 
   db = pymongo.MongoClient().natsubate
-  db.solutions.ensure_index([('_processed', pymongo.ASCENDING)])
+  init_problems(db)
+  ensure_index(db)
+
   while True:
     solution = db.solutions.find_one({'_processed': None})
     if not solution:
