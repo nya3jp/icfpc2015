@@ -9,11 +9,12 @@ class Unit {
   }
 
   Unit(const HexPoint& pivot, std::vector<HexPoint>&& members)
-      : pivot_(pivot), members_(std::move(members)) {
+      : pivot_(pivot), members_(std::move(members)), angle_(0) {
   }
 
   const HexPoint& pivot() const { return pivot_; }
   const std::vector<HexPoint>& members() const { return members_; }
+  int angle() const { return angle_; }
 
   std::vector<HexPoint>* mutable_members() { return &members_; }
 
@@ -67,6 +68,8 @@ class Unit {
   }
 
   void RotateClockwise() {
+    angle_ += 5;
+    angle_ %= 6;
     for (auto& member : members_) {
       member = member.RotateClockwise(pivot_);
     }
@@ -74,6 +77,8 @@ class Unit {
   }
 
   void RotateCounterClockwise() {
+    angle_ ++;
+    angle_ %= 6;
     for (auto& member : members_) {
       member = member.RotateCounterClockwise(pivot_);
     }
@@ -89,6 +94,7 @@ class Unit {
 
   HexPoint pivot_;
   std::vector<HexPoint> members_;
+  int angle_;
 };
 
 #endif  // UNIT_H_
