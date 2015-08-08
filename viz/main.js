@@ -405,8 +405,15 @@ function init() {
   g_canvasContext = canvas.getContext('2d');
 
   var problems = document.getElementById('problems');
-  for (var i = 0; i < 23; ++i) {
+  for (var i = 0; i < 24; ++i) {
     var file = 'problem_' + i + '.json';
+    var option = document.createElement('option');
+    option.value = file;
+    option.innerText = file;
+    problems.appendChild(option);
+  }
+  for (var i = 0; i < 100; ++i) {
+    var file = 'test_' + i + '.json';
     var option = document.createElement('option');
     option.value = file;
     option.innerText = file;
