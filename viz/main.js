@@ -56,6 +56,7 @@ function cloneGame(game) {
   newGame.ls_old = game.ls_old;
   newGame.commandHistory = game.commandHistory;
   newGame.done = game.done;
+  newGame.seed = game.seed;
   newGame.currentUnitHistory = [].concat(game.currentUnitHistory);
   return newGame;
 }
@@ -335,7 +336,8 @@ function updateInfo() {
   var infoDiv = document.getElementById("info");
   infoDiv.innerText =
     'Score: ' + g_currentGame.score + '\n' +
-    'Remaining units: ' + g_currentGame.source.length;
+    'Remaining units: ' + g_currentGame.source.length + '\n' +
+    'Command length: ' + g_currentGame.commandHistory.length;
 }
 
 function undo() {
@@ -617,7 +619,11 @@ function drawGame(dryUnit) {
       if (!isInvalidUnitPlacement(g_currentGame.board, newUnit)) {
         g_currentGame.unit = newUnit;
         g_currentGame.currentUnitHistory = [hashUnit(newUnit)];
+      } else {
+        showAlertMessage('CONFLICT!')
       }
+    } else {
+      showAlertMessage('GAME CLEAR!')
     }
   }
 
