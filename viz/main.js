@@ -370,12 +370,13 @@ function undoAll() {
 }
 
 function redo() {
-  if (g_redoHistory.length > 0) {
-    saveGame();
-    g_currentGame = g_redoHistory.pop();
-    showAlertMessage(''); // clear
-  }
-  updateInfo();
+  if (g_redoHistory.length == 0)
+    return false;
+
+  saveGame();
+  g_currentGame = g_redoHistory.pop();
+  showAlertMessage(''); // clear
+  return true;
 }
 
 function handleKey(e) {
@@ -391,12 +392,12 @@ function handleKey(e) {
   }
 
   if (keyCode == 'R'.charCodeAt(0)) {
-    redo();
-
-    spawnNewUnit();
-    checkGameOver();
-    drawGame(undefined);
-    logKey();
+    if (redo()) {
+      spawnNewUnit();
+      checkGameOver();
+      drawGame(undefined);
+      logKey();
+    }
     return;
   }
 
