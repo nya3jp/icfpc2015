@@ -89,6 +89,7 @@ def index_handler():
     'total_rank': total_rank,
     'live_solution_map': live_solution_map,
     'rank_solution_map': rank_solution_map,
+    'leaderboard_time': leaderboard['time'],
   }
   return bottle.template('index.html', **template_values)
 
