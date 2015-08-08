@@ -246,6 +246,7 @@ function beginGame(gameState) {
                     for(var x=0; x<gameState.board.w; ++x)
                         gameState.board.d[yy][x] = (yy>0 ? gameState.board.d[yy-1][x] : false);
                 }
+				++y;
             }
         }
     }
