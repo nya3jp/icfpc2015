@@ -552,7 +552,7 @@ function doCommand(command, dryRun) {
 
 function drawSelectedProblem() {
   var name = problems.options[problems.selectedIndex].value;
-  fetchAndDrawProblem(name, 0, []);
+  fetchAndDrawProblem(name, -1, []);
   window.location.hash = name;
 }
 
@@ -743,7 +743,7 @@ function drawGame(dryUnit) {
     placeUnit(boardForDisplay, dryUnit, true, true);
   }
 
-  var r = 12;
+  var r = 8;
   var gridMul = 1.05;
 
   var boardMargin = {x: 10, y: 10};
@@ -862,7 +862,7 @@ function fetchAndDrawProblem(file, seed, commands) {
       option.innerText = seedCandidate;
       seeds.appendChild(option);
 
-      if (seedCandidate == seed) {
+      if (seed !== undefined && seedCandidate == seed) {
         seeds.selectedIndex = seeds.options.length - 1;
       }
     }
@@ -872,7 +872,8 @@ function fetchAndDrawProblem(file, seed, commands) {
       setupGame(configurations, file, selectedSeed);
     });
 
-    setupGame(configurations, file, seed);
+    var selectedSeed = parseInt(seeds.options[seeds.selectedIndex].value);
+    setupGame(configurations, file, selectedSeed);
     if (commands) {
       replayCommands(commands);
     }
