@@ -31,8 +31,8 @@ void Board::Init(int width, int height) {
 bool Board::IsConflicting(const Unit& unit) const {
   for (const auto& member : unit.members()) {
     // Hack.
-    if (member.y() < 0 || height_ < member.y() ||
-        member.x() < 0 || width_ < member.x()) {
+    if (member.y() < 0 || height_ <= member.y() ||
+        member.x() < 0 || width_ <= member.x()) {
       return true;
     }
     if (cells_[member.y()][member.x()]) {
