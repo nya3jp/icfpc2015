@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <queue>
 #include <glog/logging.h>
 
 #include "game.h"
@@ -191,14 +192,45 @@ bool Game::Run(Command command) {
   return true;
 }
 
-bool Game::IsLockable() const {
-  for (Command c = Command::E; c != Command::IGNORED; c=(Command)((int)c+1)) {
-    Unit new_unit = Game::NextUnit(current_unit_, c);
+bool Game::IsLockable(const Unit& current) const {
+  for (Command c = Command::E; c != Command::IGNORED; ++c) {
+    Unit new_unit = Game::NextUnit(current, c);
     if (board_.IsConflicting(new_unit)) {
       return true;
     }
   }
   return false;
+}
+
+void Game::ReachableUnits(std::vector<Unit>* result) const {
+  result->clear();
+  if (IsLockable(current_unit_)) {
+    result->emplace_back(current_unit_);
+  }
+  std::queue<Unit> todo;
+  todo.push(current_unit_);
+  std::vector<Unit> covered;
+  covered.emplace_back(current_unit_);
+  while (!todo.empty()) {
+    Unit current = todo.front();
+    todo.pop();
+    for (Command c = Command::E; c != Command::IGNORED; ++c) {
+      Unit next = Game::NextUnit(current, c);
+      // TODO: performance improvement using set and such.
+      if (Contains(covered, next)) {
+        continue;
+      }
+      if (board_.IsConflicting(next)) {
+        continue;
+      }
+      todo.push(next);
+      covered.emplace_back(next);
+      if (IsLockable(next)) {
+        result->emplace_back(next);
+      }
+    }
+  }
+  return;
 }
 
 void Game::Dump(std::ostream* os) const {

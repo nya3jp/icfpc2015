@@ -30,7 +30,8 @@ class Game {
 
   bool Run(Command action);
 
-  bool IsLockable() const;
+  bool IsLockable(const Unit& current) const;
+  void ReachableUnits(std::vector<Unit>* result) const;
 
  private:
   int id_;
@@ -45,6 +46,10 @@ class Game {
   int score_;
   int prev_cleared_lines_;
 };
+
+inline Game::Command operator++( Game::Command& x ) {
+  return x = (Game::Command)(((int)(x) + 1));
+}
 
 std::ostream& operator<<(std::ostream& os, const Game& game);
 
