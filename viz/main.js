@@ -3,19 +3,29 @@ var g_canvasContext;
 var g_currentGame;
 var g_history;
 
+// Move |newOrig| to (0,0), then where |pos| moves to?
+function makeOriginAs(newOrig, pos) {
+  var x = pos.x - newOrig.x;
+  var y = pos.y - newOrig.y;
+  if((newOrig.y & 1) == 1 && (pos.y & 1) == 0) x--;
+  return {x: x, y: y};
+}
+
+// Move (0,0) to |newOrig|, then where |pos| moves to?
+function moveOriginTo(newOrig, pos) {
+  var x = pos.x + newOrig.x;
+  var y = pos.y + newOrig.y;
+  if((newOrig.y & 1) == 1 && (y & 1) == 0) x++;
+  return {x: x, y: y};
+}
+
+// The (unit-local) coordinate to be moved to the origin (of board).
 function determineStart(board, unit) {
   var unitBoundBox = getUnitBoundBox(unit, false);
 
   var unitWidth = unitBoundBox.right - unitBoundBox.left + 1;
-  if (unitWidth % 2 == 0 && board.length % 2 == 0) {
-    return {x: board.length / 2 - unitWidth / 2, y: -unitBoundBox.top};
-  } else if (unitWidth % 2 == 0) {
-    return {x: (board.length - unitWidth - 1) / 2, y: -unitBoundBox.top};
-  } else if (board.length % 2 == 0) {
-    return {x: (board.length - unitWidth - 1) / 2, y: -unitBoundBox.top};
-  } else {
-    return {x: (board.length - unitWidth) / 2, y: -unitBoundBox.top};
-  }
+  var leftSpace = Math.floor((board.length - unitWidth) / 2);
+  return {x: unitBoundBox.left - leftSpace, y: unitBoundBox.top};
 }
 
 function cloneGame(game) {
@@ -93,42 +103,18 @@ function rotateCounterClockwise(position) {
 }
 
 function moveClockwise(origin, position) {
-  var moved = {x: position.x - origin.x,
-               y: position.y - origin.y};
-
-  if ((origin.y & 1) && !(position.y & 1)) {
-    moved.x -= 1;
-  }
-
+  var moved = makeOriginAs(origin, position);
   rotateClockwise(moved);
-
-  moved.x += origin.x;
-  moved.y += origin.y;
-
-  if ((origin.y & 1) && (!(moved.y & 1))) {
-    moved.x += 1;
-  }
+  moved = moveOriginTo(origin, moved);
 
   position.x = moved.x;
   position.y = moved.y;
 }
 
 function moveCounterClockwise(origin, position) {
-  var moved = {x: position.x - origin.x,
-               y: position.y - origin.y};
-
-  if ((origin.y & 1) && !(position.y & 1)) {
-    moved.x -= 1;
-  }
-
+  var moved = makeOriginAs(origin, position);
   rotateCounterClockwise(moved);
-
-  if ((origin.y & 1) && ((moved.y & 1))) {
-    moved.x += 1;
-  }
-
-  moved.x += origin.x;
-  moved.y += origin.y;
+  moved = moveOriginTo(origin, moved);
 
   position.x = moved.x;
   position.y = moved.y;
@@ -483,10 +469,11 @@ function drawGame() {
   if (g_currentGame.unit === undefined) {
     if (g_currentGame.source.length > 0) {
       var newUnit = cloneUnit(g_currentGame.configurations.units[g_currentGame.source.shift()]);
-      var move = determineStart(g_currentGame.board, newUnit);
+      var newOrigin = determineStart(g_currentGame.board, newUnit);
       moveUnit(newUnit, function (position) {
-        position.x += move.x;
-        position.y += move.y;
+        var newp = makeOriginAs(newOrigin, position);
+        position.x = newp.x;
+        position.y = newp.y;
       });
 
       if (!isInvalidUnitPlacement(g_currentGame.board, newUnit)) {
