@@ -14,15 +14,25 @@ body {
 }
 #mainbar {
   margin-left: 19ex;
+  padding: 8px 8px 0 4px;
 }
 #logo {
   font-family: cursive;
   font-weight: bold;
   line-height: 1em;
-  font-size: 140%;
+  font-size: 160%;
+  transform:rotate(-20deg);
+  margin: 0;
 }
 #problems {
   max-width: 18ex;
+}
+#info {
+  font-family: monospace;
+  background: black;
+  color: lime;
+  padding: 5px;
+  margin: 0;
 }
 </style>
 <body onload="init()">
@@ -65,7 +75,6 @@ Shift: dry-run
 Show manual
 </div>
 <div id="message" style="color:red"></div>
-
 </div>
 
 <!-- state description -->
