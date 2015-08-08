@@ -29,6 +29,12 @@ def log_handler():
   return 'OK'
 
 
+@bottle.route('/log', method='OPTIONS')
+def log_options_handler():
+  bottle.response.headers['Access-Control-Allow-Origin'] = '*'
+  bottle.response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+
+
 def main(unused_argv):
   global db
   db = pymongo.MongoClient().natsubate.solutions
