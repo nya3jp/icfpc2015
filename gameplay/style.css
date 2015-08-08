@@ -16,3 +16,10 @@
 	font-size: 80%;
 	height: 1em;
 }
+
+#nextbox {
+	border: 1px black solid;
+	margin-right: 10px;
+}
+#canvas {
+}

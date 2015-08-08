@@ -61,8 +61,39 @@ function onFileChanged() {
     reader.readAsText(fp);
 }
 
+// Move newOrig to (0,0), then where |pos| moves?
+function makeOrigAs(newOrig, pos) {
+    var xoff = (newOrig.y&1)==1 && (pos.y&1)==0 ? +1 : 0;
+    return {x: pos.x - newOrig.x - xoff, y: pos.y-newOrig.y};
+}
+
+// Move (0,0) to |newOrig|, then where |pos| moves?
+function moveOrigTo(newOrig, pos) {
+    var xoff = (newOrig.y&1)==1 && ((pos.y+newOrig.y)&1)==0 ? +1 : 0;
+    return {x: pos.x + newOrig.x + xoff, y: pos.y+newOrig.y};
+}
+
 function readUnits(json) {
-    return json.units;
+	function normalizeUnit(u) {
+		var xs = u.members.map(function(mem){return mem.x;});
+		var ys = u.members.map(function(mem){return mem.x;});
+		var xmin = Math.min.apply(null, xs);
+		var xmax = Math.max.apply(null, xs);
+		var ymin = Math.min.apply(null, ys);
+		var ymax = Math.max.apply(null, ys);
+		var shift = function(xy){
+			return makeOrigAs({x:Math.min(u.pivot.x,xmin), y:Math.min(u.pivot.y,ymin)}, xy)
+		};
+		return {
+			xmin: 0,
+			xmax: xmax - xmin,
+			ymin: 0,
+			ymax: ymax - ymin,
+			pivot: shift(u.pivot),
+			members: u.members.map(shift),
+		};
+	}
+    return json.units.map(normalizeUnit);
 }
 
 function readRandSeq(json) {
@@ -119,15 +150,11 @@ function readBoard(json) {
 function onJsonLoaded(json) {
     hideStartScreen();
 
-    var board = readBoard(json);
-    var randSeq = readRandSeq(json);
-    var units = readUnits(json);
-
     var gameState = {
-        'board': board,
-        'randSeq': randSeq,
-        'units': units,
-        'currentUnit': null,
+        board:       readBoard(json),
+        randSeq:     readRandSeq(json),
+        units:       readUnits(json),
+        currentUnit: null,
     };
 
     beginGame(gameState);
@@ -159,29 +186,16 @@ function beginGame(gameState) {
 
     // Place to the center.
     function loadUnit(idx) {
-        var unitSrc = gameState.units[idx];
-
-        var ymin=0xffffffff, xmin=0xffffffff, xmax=0;
-        unitSrc.members.forEach(function(cell) {
-            ymin = Math.min(ymin, cell.y);
-            xmin = Math.min(xmin, cell.x);
-            xmax = Math.max(xmax, cell.x);
-        });
+        var u = gameState.units[idx];
 
         // TODO: verify the precise definition of 'center'
-        var yoffset = -ymin;
-        var xoffset = Math.floor((gameState.board.w - (xmax+1-xmin)) / 2) - xmin;
+        var yoffset = -u.ymin;
+        var xoffset = Math.floor((gameState.board.w - (u.xmax+1-u.xmin)) / 2) - u.xmin;
+		var shift = function(xy){return {x:xy.x+xoffset, y:xy.y+yoffset}};
 
-        var placedUnit = {
-            'members': unitSrc.members.map(function(memSrc){
-                return {
-                    'y': memSrc.y + yoffset,
-                    'x': memSrc.x + xoffset,
-                }}),
-            'pivot': {
-                'y': unitSrc.pivot.y + yoffset,
-                'x': unitSrc.pivot.x + xoffset,
-            },
+        return {
+            members: u.members.map(shift),
+            pivot: shift(u.pivot),
         };
         return placedUnit;
     }
@@ -275,9 +289,9 @@ function beginGame(gameState) {
         case VK_D: // Rotate left/counterclockwise
             moveCmd = 'RCC';
             rotFunc = function(obj) {
-                var xoff = (neo.pivot.y&1)==1 && (obj.y&1)==0 ? +1 : 0;
-                var x_ = obj.x - neo.pivot.x - xoff;
-                var y_ = obj.y - neo.pivot.y;
+                var xy = makeOrigAs(neo.pivot, obj);
+                var x_ = xy.x;
+                var y_ = xy.y;
                 var xx = x_ - Math.floor(y_ / 2);
                 var zz = y_;
                 var yy = -xx - zz;
@@ -286,16 +300,15 @@ function beginGame(gameState) {
                 xx = -yy;
                 yy = -zz;
                 zz = -tmp;
-                xoff = (neo.pivot.y&1)==1 && ((zz+neo.pivot.y)&1)==0 ? +1 : 0;
-                return {x:xx+Math.floor(zz/2)+neo.pivot.x+xoff, y:zz+neo.pivot.y};
+				return moveOrigTo(neo.pivot, {x:xx+Math.floor(zz/2), y:zz});
             };
             break;
         case VK_L: // Rotate right/clockwise
             moveCmd = 'RC';
             rotFunc = function(obj) {
-                var xoff = (neo.pivot.y&1)==1 && (obj.y&1)==0 ? +1 : 0;
-                var x_ = obj.x - neo.pivot.x - xoff;
-                var y_ = obj.y - neo.pivot.y;
+                var xy = makeOrigAs(neo.pivot, obj);
+                var x_ = xy.x;
+                var y_ = xy.y;
                 var xx = x_ - Math.floor(y_ / 2);
                 var zz = y_;
                 var yy = -xx - zz;
@@ -304,8 +317,7 @@ function beginGame(gameState) {
                 xx = -zz;
                 zz = -yy;
                 yy = -tmp;
-                xoff = (neo.pivot.y&1)==1 && ((zz+neo.pivot.y)&1)==0 ? +1 : 0;
-                return {x:xx+Math.floor((zz-(zz&1))/2)+neo.pivot.x+xoff, y:zz+neo.pivot.y};
+				return moveOrigTo(neo.pivot, {x:xx+Math.floor((zz-(zz&1))/2), y:zz});
             };
             break;
         }
@@ -339,7 +351,7 @@ function beginGame(gameState) {
 function render(gameState) {
     var canvas = document.getElementById('canvas');
     ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, 4000, 4000);
+    ctx.clearRect(0, 0, 1000, 4000);
 
     var r = 15;
     var gridMul = 1.1;
@@ -401,6 +413,61 @@ function render(gameState) {
             ctx.fill();
         }
     }
+
+	renderNextBox(gameState)
 }
+
+function renderNextBox(gameState) {
+	// TODO: share code with above.
+    var canvas = document.getElementById('nextbox');
+    ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 200, 4000);
+
+    var r = 15;
+    var gridMul = 1.1;
+    function coordToPosition(p) {
+        return {
+			x: p.x * r * gridMul * 1.7 + r * Math.sqrt(3) / 2.0 * gridMul,
+            y: p.y * r * gridMul * 1.5 + r * gridMul};
+    }
+
+    function drawHex(cx, cy, r) {
+        ctx.beginPath();
+        for (var i = 0; i < 6; ++i) {
+            var d = Math.PI / 6.0;
+            ctx.lineTo(cx + r * Math.cos(d + Math.PI * i / 3.0), cy + r * Math.sin(d + Math.PI * i / 3.0));
+        }
+        ctx.closePath();
+    }
+
+    var ox=5, oy=5
+    for (var i=0; i<gameState.randSeq.length; ++i) {
+        var u = gameState.units[gameState.randSeq[i]]
+        u.members.forEach(function(mem){
+            var x = mem.x;
+            var y = mem.y;
+            var pos = coordToPosition({x:x,y:y});
+            var cx = pos.x + ox;
+            var cy = pos.y + oy;
+            if ((y&1) == 1)
+                cx += r * Math.sqrt(3) / 2.0 * gridMul;
+            ctx.fillStyle = '#008';
+            drawHex(cx, cy, r);
+            ctx.fill();
+        });
+        var x = u.pivot.x;
+        var y = u.pivot.y;
+        var pos = coordToPosition({x:x,y:y});
+        var cx = pos.x + ox;
+        var cy = pos.y + oy;
+        if ((y&1) == 1)
+           cx += r * Math.sqrt(3) / 2.0 * gridMul;
+        ctx.fillStyle = '#88c'
+        drawHex(cx, cy, r * 0.4);
+        ctx.fill();
+		oy += coordToPosition({x:0, y:u.ymax+3}).y;
+    }
+}
+
 
 window.addEventListener('load', onLoad);
