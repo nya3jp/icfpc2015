@@ -30,8 +30,11 @@ class Game {
 
   bool Run(Command action);
 
+  Command GetLockCommand(const Unit& current) const;
   bool IsLockable(const Unit& current) const;
-  void ReachableUnits(std::vector<Unit>* result) const;
+
+  typedef std::pair<Unit, std::vector<Command>> SearchResult;
+  void ReachableUnits(std::vector<SearchResult>* result) const;
 
  private:
   int id_;

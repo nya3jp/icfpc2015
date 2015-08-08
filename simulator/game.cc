@@ -192,27 +192,36 @@ bool Game::Run(Command command) {
   return true;
 }
 
-bool Game::IsLockable(const Unit& current) const {
+Game::Command Game::GetLockCommand(const Unit& current) const {
   for (Command c = Command::E; c != Command::IGNORED; ++c) {
     Unit new_unit = Game::NextUnit(current, c);
     if (board_.IsConflicting(new_unit)) {
-      return true;
+      return c;
     }
   }
-  return false;
+  return Command::IGNORED;
 }
 
-void Game::ReachableUnits(std::vector<Unit>* result) const {
+bool Game::IsLockable(const Unit& current) const {
+  return GetLockCommand(current) != Command::IGNORED;
+}
+
+void Game::ReachableUnits(std::vector<SearchResult>* result) const {
   result->clear();
-  if (IsLockable(current_unit_)) {
-    result->emplace_back(current_unit_);
+  {
+    Command c = GetLockCommand(current_unit_);
+    if (c != Command::IGNORED) {
+      result->emplace_back(SearchResult(current_unit_, {c}));
+    }
   }
-  std::queue<Unit> todo;
-  todo.push(current_unit_);
+
+  std::queue<SearchResult> todo;
+  todo.push(SearchResult(current_unit_, {}));
   std::vector<Unit> covered;
   covered.emplace_back(current_unit_);
   while (!todo.empty()) {
-    Unit current = todo.front();
+    Unit current = todo.front().first;
+    std::vector<Command> moves = todo.front().second;
     todo.pop();
     for (Command c = Command::E; c != Command::IGNORED; ++c) {
       Unit next = Game::NextUnit(current, c);
@@ -223,11 +232,16 @@ void Game::ReachableUnits(std::vector<Unit>* result) const {
       if (board_.IsConflicting(next)) {
         continue;
       }
-      todo.push(next);
+      moves.emplace_back(c);
+      todo.push(SearchResult(next, moves));
       covered.emplace_back(next);
-      if (IsLockable(next)) {
-        result->emplace_back(next);
+      Command lock_command = GetLockCommand(next);
+      if (lock_command != Command::IGNORED) {
+        moves.emplace_back(lock_command);
+        result->emplace_back(SearchResult(next, moves));
+        moves.pop_back();
       }
+      moves.pop_back();
     }
   }
   return;
