@@ -54,7 +54,7 @@ function cloneGame(game) {
   newGame.board = game.locks ? cloneBoard(game.board) : game.board;
   newGame.configurations = game.configurations;
   newGame.unit = game.unit ? cloneUnit(game.unit) : undefined;
-  newGame.score = game.score;
+  newGame.move_scores = game.move_scores;
   newGame.ls_old = game.ls_old;
   newGame.commandHistory = game.commandHistory;
   newGame.done = game.done;
@@ -315,7 +315,7 @@ function doLock() {
 
   g_currentGame.ls_old = ls;
 
-  g_currentGame.score += move_score;
+  g_currentGame.move_scores += move_score;
 
   g_currentGame.board = result.board;
 }
@@ -335,11 +335,13 @@ function updateInfo() {
     return;
   }
 
+  var power_scores = getPowerScores(g_currentGame.commandHistory);
+
   var infoDiv = document.getElementById("info");
   infoDiv.innerText =
     'Problem ID: ' + g_currentGame.configurations.id + ' / ' +
     'Seed: ' + g_currentGame.seed + '\n' +
-    'Score: ' + g_currentGame.score + '\n' +
+    'Score: ' + (g_currentGame.move_scores + power_scores) + ' = ' + g_currentGame.move_scores + ' + ' + power_scores + '\n' +
     'ls_old: ' + g_currentGame.ls_old + '\n' +
     'Remaining units: ' + (g_currentGame.source.length - g_currentGame.sourceIndex) + '\n' +
     'Command length: ' + g_currentGame.commandHistory.length;
@@ -846,13 +848,39 @@ function spawnNewUnit() {
   }
 }
 
+function getPowerScores(commands) {
+  var phrasesOfPower = ["r'lyeh", 'yuggoth', 'ia! ia!'];
+  var score = 0;
+  for (var i = 0; i < phrasesOfPower.length; ++i) {
+    var phrase = phrasesOfPower[i];
+    var reps = 0;
+    for (var j = 0; j < commands.length; ++j) {
+      var found = false;
+      if (commands.length - j >= phrase.length) {
+        found = true;
+        for (var k = 0; k < phrase.length; ++k) {
+          if (commands[j + k] != phrase[k]) {
+            found = false;
+            break;
+          }
+        }
+      }
+      if (found) {
+        reps += 1;
+      }
+    }
+    score += 2 * phrase.length * reps + (reps > 0 ? 300 : 0);
+  }
+  return score;
+}
+
 function checkGameOver() {
   if (g_currentGame.unit !== undefined) {
     return;
   }
 
   if (!g_currentGame.done) {
-    done();
+    sendSolution();
   }
 }
 
@@ -917,10 +945,6 @@ function saveGame() {
   g_currentGame = cloned;
 }
 
-function done() {
-  sendSolution();
-}
-
 function setupGame(configurations, file, seed) {
   var board = createBoard(configurations.width, configurations.height);
   var filled = configurations.filled;
@@ -937,7 +961,7 @@ function setupGame(configurations, file, seed) {
     board: board,
     configurations: configurations,
     unit: undefined,
-    score: 0,
+    move_scores: 0,
     ls_old: 0,
     commandHistory: '',
     done: false,
