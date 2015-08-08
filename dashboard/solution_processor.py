@@ -15,17 +15,17 @@ def process_solution(db, solution):
   problem_id = solution['problemId']
   seed = solution['seed']
   tag = solution['tag']
-  query = {'problemId': problem_id, 'seed': seed}
+  task_query = {'problemId': problem_id, 'seed': seed}
   logging.info(
     'Processing solution: problem %s, seed %s, tag %s', problem_id, seed, tag)
   solution['_processed'] = PROCESSOR_VERSION
-  best_solution = db.best_solutions.find_one(query)
+  best_solution = db.best_solutions.find_one(task_query)
   if not best_solution or solution['_score'] > best_solution['_score']:
     logging.info(
       'New record: problem %s, seed %s: score %s',
       problem_id, seed, solution['_score'])
-    db.best_solutions.update(query, solution, upsert=True)
-  db.solutions.update(query, {'$set': {'_processed': PROCESSOR_VERSION}})
+    db.best_solutions.update(task_query, solution, upsert=True)
+  db.solutions.update({'_id': solution['_id']}, {'$set': {'_processed': PROCESSOR_VERSION}})
 
 
 def main(unused_argv):
