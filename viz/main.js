@@ -258,7 +258,7 @@ function drawUnits(units, r, gridMul, topLeft) {
 
     var unitBoundBox = getUnitBoundBox(unit, true);
     var board = createBoard(unitBoundBox.right + 1, unitBoundBox.bottom + 1);
-    placeUnit(board, unit, true);
+    placeUnit(board, unit, true, false, true);
 
     drawBoard(board, r, gridMul, {x: topLeft.x + left, y: topLeft.y + top});
 
@@ -639,7 +639,7 @@ function drawGame(dryUnit) {
   var boardForDisplay = cloneBoard(g_currentGame.board);
 
   if (!dryUnit && g_currentGame.unit) {
-    placeUnit(boardForDisplay, g_currentGame.unit, true);
+    placeUnit(boardForDisplay, g_currentGame.unit, true, false, true);
   }
 
   if (dryUnit) {
@@ -703,7 +703,7 @@ function drawProblem(file) {
   x.send();
 }
 
-function placeUnit(board, unit, placePivot, dryUnit) {
+function placeUnit(board, unit, placePivot, dryUnit, currentUnit) {
   var members = unit.members;
 
   for (var j = 0; j < members.length; ++j) {
@@ -711,7 +711,7 @@ function placeUnit(board, unit, placePivot, dryUnit) {
       continue;
     }
 
-    board[members[j].x][members[j].y] |= 1 << (dryUnit ? 2 : 0);
+    board[members[j].x][members[j].y] |= 1 << (dryUnit ? 2 : 0) << (currentUnit ? 4 : 0);
   }
 
   if (!placePivot) {
@@ -724,7 +724,7 @@ function placeUnit(board, unit, placePivot, dryUnit) {
     return;
   }
 
-  board[pivot.x][pivot.y] |= 2 << (dryUnit ? 2 : 0);
+  board[pivot.x][pivot.y] |= 2 << (dryUnit ? 2 : 0) << (currentUnit ? 4 : 0);
 }
 
 function drawHex(center, r) {
@@ -792,7 +792,14 @@ function drawBoard(board, r, gridMul, topLeft) {
         g_canvasContext.fill();
       }
 
-      if ((data & 2) == 2) {
+      if ((data & 16) == 16) {
+        g_canvasContext.strokeStyle = 'black';
+        g_canvasContext.fillStyle = 'black';
+        drawHex(center, r * 0.7);
+        g_canvasContext.fill();
+      }
+
+      if ((data & 32) == 32) {
         g_canvasContext.strokeStyle = 'gray';
         g_canvasContext.fillStyle = 'gray';
         drawHex(center, r * 0.4);
