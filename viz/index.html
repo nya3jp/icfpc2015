@@ -2,12 +2,24 @@
 <meta charset="UTF-8">
 <script src="main.js"></script>
 <style>
+body {
+  margin: 0;
+}
 #sidebar {
   width: 16ex;
   float: left;
+  height: 100%;
+  background: #efe;
+  padding: 1ex;
 }
 #mainbar {
-  margin-left: 16ex;
+  margin-left: 19ex;
+}
+#logo {
+  font-family: cursive;
+  font-weight: bold;
+  line-height: 1em;
+  font-size: 140%;
 }
 </style>
 <body onload="init()">
@@ -15,11 +27,11 @@
 <div id="sidebar">
 
 <!-- logo -->
-<p style="font-family:fancy; font-weight:bold; line-height:1em;">
-<span style="color:#fa5">Na<br/></span>
-<span style="color:#af5">　　Tsu<br/></span>
-<span style="color:#5ff">　Ba<br/></span>
-<span style="color:#55f">　　　Te!<br/></span>
+<p id="logo">
+<span style="color:#fa5">　Na<br/></span>
+<span style="color:#ce2">　　　Tsu<br/></span>
+<span style="color:#7d5">　　Ba<br/></span>
+<span style="color:#55f">　　　　Te!<br/></span>
 </p>
 
 <!-- problem chooser -->
