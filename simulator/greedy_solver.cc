@@ -15,13 +15,15 @@ public:
 
     std::vector<Game::SearchResult> bfsresult;
     int maxy = -1;
+    int maxx = -1;
     game.ReachableUnits(&bfsresult);
     for(const auto &res: bfsresult) {
       const Unit &u = res.first;
       for(const auto &m: u.members()) {
-        if(m.y() > maxy) {
+        if(m.y() > maxy || (m.y() == maxy && m.x() > maxx)) {
           ret = res.second;
           maxy = m.y();
+          maxx = m.x();
         }
       }
     }
