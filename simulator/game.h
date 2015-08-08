@@ -30,6 +30,8 @@ class Game {
 
   bool Run(Command action);
 
+  bool IsLockable() const;
+
  private:
   int id_;
   std::vector<Unit> units_;
