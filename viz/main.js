@@ -30,10 +30,11 @@ function determineStart(board, unit) {
   var unitBoundBox = getUnitBoundBox(unit, false);
 
   var unitWidth = unitBoundBox.right - unitBoundBox.left + 1;
-  var leftSpace = Math.floor((board.length - unitWidth) / 2);
+  var leftSpace = (board.length - unitWidth) >> 1;
   return {x: unitBoundBox.left - leftSpace, y: unitBoundBox.top};
 }
 
+// Convert |unit| to something comparable with ==.
 function hashUnit(unit) {
   var obj = {
     m: [].concat(unit.members).sort(function(a,b){
