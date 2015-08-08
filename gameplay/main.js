@@ -10,6 +10,15 @@ function hideStartScreen() {
     document.getElementById('startscreen').style.display = 'none';
 }
 
+// TODO: no global.
+var GlobalGameLog = {
+	problemId: null,
+	seed: null,
+	tag: 'handplay',
+	solution: null,
+	_score: 0,
+}
+
 function addMoveLog(cmd) {
     var chr = ''
     switch(cmd) {
@@ -32,7 +41,9 @@ function addMoveLog(cmd) {
         chr = 'k';
         break;
     }
-    document.getElementById('keyseq').textContent = document.getElementById('keyseq').textContent + chr;
+
+	GlobalGameLog.solution += chr;
+    document.getElementById('keyseq').textContent = JSON.stringify([GlobalGameLog]);
 }
 
 
@@ -56,7 +67,7 @@ function onFileChanged() {
             showErrorMessage('JSON Load Error');
             throw e;
         }
-        onJsonLoaded(json);
+        onJsonLoaded(fp.name, json);
     };
     reader.readAsText(fp);
 }
@@ -147,8 +158,14 @@ function readBoard(json) {
 }
 
 // When a JSON object is successfully loaded.
-function onJsonLoaded(json) {
+function onJsonLoaded(jsonFileName, json) {
     hideStartScreen();
+
+	// TODO: not Global.
+	GlobalGameLog.problemId = json.id
+	GlobalGameLog.seed = json.sourceSeeds[0]
+	GlobalGameLog.tag = 'handplay'
+	GlobalGameLog.solution = ''
 
     var gameState = {
         board:       readBoard(json),
