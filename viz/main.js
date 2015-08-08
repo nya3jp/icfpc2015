@@ -2,6 +2,7 @@ var g_canvasContext;
 
 var g_currentGame;
 var g_history;
+var g_redoHistory;
 var g_inDryRun;
 
 function showAlertMessage(msg) {
@@ -346,6 +347,7 @@ function updateInfo() {
 
 function undo() {
   if (g_history.length > 0) {
+    g_redoHistory.push(cloneGame(g_currentGame));
     g_currentGame = g_history.pop();
     showAlertMessage(''); // clear
   }
@@ -354,8 +356,18 @@ function undo() {
 
 function undoAll() {
   if (g_history.length > 1) {
+    g_redoHistory = [];
     g_currentGame = g_history[1];
     g_history = [g_history[0]];
+  }
+  updateInfo();
+}
+
+function redo() {
+  if (g_redoHistory.length > 0) {
+    saveGame();
+    g_currentGame = g_redoHistory.pop();
+    showAlertMessage(''); // clear
   }
   updateInfo();
 }
@@ -365,6 +377,14 @@ function handleKey(e) {
 
   if (keyCode == 'U'.charCodeAt(0)) {
     undo();
+
+    drawGame(undefined);
+    logKey();
+    return;
+  }
+
+  if (keyCode == 'R'.charCodeAt(0)) {
+    redo();
 
     drawGame(undefined);
     logKey();
@@ -488,6 +508,7 @@ function doCommand(command, dryRun) {
     showAlertMessage(''); // clear
   }
 
+  g_redoHistory = [];
   saveGame();
   g_currentGame.currentUnitHistory.push(newUnitHash);
   g_currentGame.commandHistory += command;
@@ -753,6 +774,7 @@ function setupGame(configurations, file, seed) {
     file: file,
   };
   g_history = [];
+  g_redoHistory = [];
   g_dryRun = false;
   saveGame();
 
