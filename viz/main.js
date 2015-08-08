@@ -96,7 +96,7 @@ function isInvalidUnitPlacement(board, unit) {
 }
 
 function rotateClockwise(position) {
-  var xx = position.x - Math.floor(position.y / 2);
+  var xx = position.x - (position.y-(position.y&1))/2;
   var zz = position.y;
   var yy = -xx - zz;
 
@@ -104,12 +104,12 @@ function rotateClockwise(position) {
   xx = -zz;
   zz = -yy;
   yy = -tmp;
-  position.x = xx + Math.floor(zz / 2);
+  position.x = xx + (zz-(zz&1))/2;
   position.y = zz;
 }
 
 function rotateCounterClockwise(position) {
-  var xx = position.x - Math.floor(position.y / 2);
+  var xx = position.x - (position.y-(position.y&1))/2;
   var zz = position.y;
   var yy = -xx - zz;
 
@@ -117,7 +117,7 @@ function rotateCounterClockwise(position) {
   xx = -yy;
   yy = -zz;
   zz = -tmp;
-  position.x = xx + Math.floor(zz / 2);
+  position.x = xx + (zz-(zz&1))/2;
   position.y = zz;
 }
 
