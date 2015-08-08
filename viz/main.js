@@ -3,6 +3,11 @@ var g_canvasContext;
 var g_currentGame;
 var g_history;
 
+function showAlertMessage(msg) {
+  var elem = document.getElementById('message');
+  document.getElementById('message').textContent = msg;
+}
+
 // Move |newOrig| to (0,0), then where |pos| moves to?
 function makeOriginAs(newOrig, pos) {
   var x = pos.x - newOrig.x;
@@ -28,6 +33,17 @@ function determineStart(board, unit) {
   return {x: unitBoundBox.left - leftSpace, y: unitBoundBox.top};
 }
 
+function hashUnit(unit) {
+  var obj = {
+    m: [].concat(unit.members).sort(function(a,b){
+      if(a.x == b.x) return a.y - b.y;
+        return a.x - b.x;
+    }),
+    p: unit.pivot,
+  };
+  return JSON.stringify(obj);
+}
+
 function cloneGame(game) {
   var newGame = {};
   newGame.source = [].concat(game.source);
@@ -38,6 +54,7 @@ function cloneGame(game) {
   newGame.ls_old = game.ls_old;
   newGame.commandHistory = game.commandHistory;
   newGame.done = game.done;
+  newGame.currentUnitHistory = [].concat(game.currentUnitHistory);
   return newGame;
 }
 
@@ -381,7 +398,14 @@ function handleKey(keyCode) {
     return;
   }
 
+  var newUnitHash = hashUnit(newUnit);
+  if (g_currentGame.currentUnitHistory.indexOf(newUnitHash) != -1) {
+    showAlertMessage("loop!");
+    return;
+  }
+
   saveGame();
+  g_currentGame.currentUnitHistory.push(newUnitHash);
   g_currentGame.commandHistory += command;
   logKey();
   if (!isInvalidUnitPlacement(g_currentGame.board, newUnit)) {
@@ -496,6 +520,7 @@ function drawGame() {
 
       if (!isInvalidUnitPlacement(g_currentGame.board, newUnit)) {
         g_currentGame.unit = newUnit;
+        g_currentGame.currentUnitHistory = [hashUnit(newUnit)];
       }
     }
   }
