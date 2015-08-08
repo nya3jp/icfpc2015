@@ -65,14 +65,6 @@ def process_solution(db, solution):
     'Processing solution: problem %s, seed %s, tag %s', problem_id, seed, tag)
   solution['_score'] = compute_score(db, solution)
   solution['_processed'] = PROCESSOR_VERSION
-  best_solution = db.best_solutions.find_one(task_query)
-  if not best_solution or solution['_score'] > best_solution['_score']:
-    logging.info(
-      'New record: problem %s, seed %s: score %s',
-      problem_id, seed, solution['_score'])
-    new_solution = solution.copy()
-    del new_solution['_id']
-    db.best_solutions.update(task_query, new_solution, upsert=True)
   db.solutions.save(solution)
 
 
