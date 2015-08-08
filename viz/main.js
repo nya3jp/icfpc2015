@@ -399,6 +399,15 @@ function drawSelectedProblem() {
   window.location.hash = name;
 }
 
+function extractFromFragment() {
+  for (var i = 0; i < problems.options.length; ++i) {
+    if (problems.options[i].value == window.location.hash.substr(1)) {
+      problems.selectedIndex = i;
+      return;
+    }
+  }
+}
+
 function init() {
   var canvas = document.getElementById('canvassample');
   g_canvasContext = canvas.getContext('2d');
@@ -424,15 +433,11 @@ function init() {
   });
 
   window.addEventListener('hashchange', function () {
-    for (var i = 0; i < problems.options.length; ++i) {
-      if (problems.options[i].value == window.location.hash.substr(1)) {
-        problems.selectedIndex = i;
-        drawSelectedProblem();
-        return;
-      }
-    }
+    extractFromFragment();
+    drawSelectedProblem();
   });
 
+  extractFromFragment();
   drawSelectedProblem();
 
   document.body.addEventListener('keydown', function (e) {
