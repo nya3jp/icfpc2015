@@ -217,8 +217,11 @@ void Game::ReachableUnits(std::vector<SearchResult>* result) const {
     }
   }
 
+  // TODO: Don't copy vector<command> too much. Use dfs instead?
   std::queue<SearchResult> todo;
   todo.push(SearchResult(current_unit_, {}));
+  // TODO: Use set.
+  // TODO: Hold lighter object than Unit for covered detection.
   std::vector<Unit> covered;
   covered.emplace_back(current_unit_);
   while (!todo.empty()) {
