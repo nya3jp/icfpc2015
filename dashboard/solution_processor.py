@@ -15,7 +15,7 @@ FLAGS = gflags.FLAGS
 gflags.DEFINE_string('scorer', None, 'scorer path')
 gflags.MarkFlagAsRequired('scorer')
 
-PROCESSOR_VERSION = 5
+PROCESSOR_VERSION = 6
 
 
 def init_problems(db):
