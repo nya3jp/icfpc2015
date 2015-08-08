@@ -58,6 +58,7 @@ function cloneGame(game) {
   newGame.done = game.done;
   newGame.seed = game.seed;
   newGame.currentUnitHistory = [].concat(game.currentUnitHistory);
+  newGame.file = game.file;
   return newGame;
 }
 
@@ -198,7 +199,7 @@ function drawUnit(unit, topLeft, r, gridMul, context) {
   var unitBoundBox = getUnitBoundBox(unit, true);
   var board = createBoard(unitBoundBox.right + 1, unitBoundBox.bottom + 1);
   placeUnit(board, unit, true, false, true);
-  drawBoard(board, r, gridMul, topLeft, context);
+  drawBoard(board, r, gridMul, topLeft, context, false);
   return coordToPosition({x: 0, y: unitBoundBox.bottom + 1}, r, gridMul).y;
 }
 
@@ -335,7 +336,10 @@ function updateInfo() {
 
   var infoDiv = document.getElementById("info");
   infoDiv.innerText =
+    'Problem ID: ' + g_currentGame.configurations.id + ' / ' +
+    'Seed: ' + g_currentGame.seed + '\n' +
     'Score: ' + g_currentGame.score + '\n' +
+    'ls_old: ' + g_currentGame.ls_old + '\n' +
     'Remaining units: ' + g_currentGame.source.length + '\n' +
     'Command length: ' + g_currentGame.commandHistory.length;
 }
@@ -499,7 +503,7 @@ function doCommand(command, dryRun) {
 
 function drawSelectedProblem() {
   var name = problems.options[problems.selectedIndex].value;
-  drawProblem(name);
+  drawProblem(name, 0, []);
   window.location.hash = name;
 }
 
@@ -510,6 +514,29 @@ function extractFromFragment() {
       return;
     }
   }
+}
+
+function loadBest() {
+  var x = new XMLHttpRequest();
+  x.open('GET', 'http://dashboard.natsubate.nya3.jp/state-of-the-art.json');
+  x.responseType = 'json';
+  x.onload = function () {
+    var json = x.response;
+    for (var i = 0; i < json.length; ++i) {
+      var solution = json[i];
+      if (g_currentGame.configurations.id == solution.problemId &&
+          g_currentGame.seed == solution.seed) {
+        drawProblem(g_currentGame.file, g_currentGame.seed, solution.solution);
+        return;
+      }
+    }
+  }
+  x.send();
+}
+
+function load() {
+  var saveData = JSON.parse(saveList.options[saveList.selectedIndex].value);
+  drawProblem(saveData.file, saveData.seed, saveData.commands);
 }
 
 function init() {
@@ -531,6 +558,11 @@ function init() {
 
   problems.addEventListener('change', function () {
     drawSelectedProblem();
+  });
+
+  var saveList = document.getElementById('saveList');
+  saveList.addEventListener('change', function () {
+    load();
   });
 
   window.addEventListener('hashchange', function () {
@@ -560,11 +592,14 @@ function init() {
   logDiv.addEventListener('change', function () {
     var commands = logDiv.value;
     undoAll();
-    for (var i = 0; i < commands.length; ++i) {
-      console.log(commands[i]);
-      doCommand(commands[i]);
-    }
+    replay(commands)
   });
+}
+
+function replay(commands) {
+  for (var i = 0; i < commands.length; ++i) {
+    doCommand(commands[i]);
+  }
 }
 
 function cloneBoard(board) {
@@ -656,7 +691,7 @@ function drawGame(dryUnit) {
   boardCanvas.width = boardGeometry.x + boardMargin.x * 2;
   boardCanvas.height = boardGeometry.y + boardMargin.y * 2;
   boardContext.clearRect(0, 0, boardCanvas.width, boardCanvas.height);
-  drawBoard(boardForDisplay, r, gridMul, boardMargin, boardContext);
+  drawBoard(boardForDisplay, r, gridMul, boardMargin, boardContext, true);
 
   var nextUnits = [];
   for (var i = 0; i < Math.min(g_currentGame.source.length, 20); ++i) {
@@ -695,7 +730,7 @@ function done() {
   sendSolution();
 }
 
-function setupGame(configurations, seed) {
+function setupGame(configurations, file, seed) {
   var board = createBoard(configurations.width, configurations.height);
   var filled = configurations.filled;
   for (var i = 0; i < filled.length; ++i) {
@@ -715,6 +750,7 @@ function setupGame(configurations, seed) {
     commandHistory: '',
     done: false,
     seed: seed,
+    file: file,
   };
   g_history = [];
   g_dryRun = false;
@@ -725,7 +761,19 @@ function setupGame(configurations, seed) {
   drawGame(undefined);
 }
 
-function drawProblem(file) {
+function save() {
+  var saveList = document.getElementById('saveList');
+  var option = document.createElement('option');
+  var data = {file: g_currentGame.file,
+              seed: g_currentGame.seed,
+              commands: g_currentGame.commandHistory};
+  var saveData = JSON.stringify(data)
+  option.value = saveData;
+  option.innerText = saveData;
+  saveList.appendChild(option);
+}
+
+function drawProblem(file, seed, commands) {
   var x = new XMLHttpRequest();
   x.open('GET', '../problems/' + file);
   x.responseType = 'json';
@@ -743,15 +791,20 @@ function drawProblem(file) {
       option.value = json.sourceSeeds[i];
       option.innerText = json.sourceSeeds[i];
       seeds.appendChild(option);
+      if (json.sourceSeeds[i] == seed) {
+        seeds.selectedIndex = seeds.options.length - 1;
+      }
     }
 
     seeds.addEventListener('change', function () {
-      var seed = parseInt(seeds.options[seeds.selectedIndex].value);
-      console.log(seed);
-      setupGame(json, seed);
+      var selectedSeed = parseInt(seeds.options[seeds.selectedIndex].value);
+      setupGame(json, file, selectedSeed);
     });
 
-    setupGame(json, 0);
+    setupGame(json, file, seed);
+    if (commands) {
+      replay(commands);
+    }
   };
   x.send();
 }
@@ -817,13 +870,28 @@ function sendSolution() {
   x.send(str);
 }
 
-function drawBoard(board, r, gridMul, topLeft, context) {
+function drawBoard(board, r, gridMul, topLeft, context, showNumbers) {
   for (var x = 0; x < board.length; ++x) {
+    context.strokeStyle = 'lightgray';
+    context.fillStyle = 'lightgray';
+    if (showNumbers) {
+      var numPosition = coordToPosition({x: x, y: 0}, r, gridMul);
+      context.fillText(x,
+                       topLeft.x + numPosition.x - 5,
+                       topLeft.y + numPosition.y + 5);
+    }
+
     for (var y = 0; y < board[0].length; ++y) {
       var position = coordToPosition({x: x, y: y}, r, gridMul);
       var center = {x: position.x + topLeft.x, y: position.y + topLeft.y};
       if (y % 2 == 1) {
         center.x += r * Math.sqrt(3) / 2.0 * gridMul;
+      }
+
+      context.strokeStyle = 'lightgray';
+      context.fillStyle = 'lightgray';
+      if (showNumbers && x == 0) {
+        context.fillText(y, center.x - 5, center.y + 5);
       }
 
       context.strokeStyle = 'black';

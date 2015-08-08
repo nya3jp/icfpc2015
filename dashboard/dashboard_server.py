@@ -32,9 +32,11 @@ def init_problems():
 @bottle.get('/')
 def index_handler():
   problem_ids = []
+  problem_seed_sizes = {}
   for problem in db.problems.find(sort=[('id', pymongo.ASCENDING)]):
     problem_id = problem['id']
     problem_ids.append(problem_id)
+    problem_seed_sizes[problem_id] = len(problem['sourceSeeds'])
   best_seed_solution_map = collections.defaultdict(
     lambda: {'tag': 'nop', '_score': 0})
   for solution in db.solutions.find():
@@ -46,11 +48,11 @@ def index_handler():
     lambda: {'_solutions': [], '_avg_score': 0})
   for (problem_id, seed, tag), solution in best_seed_solution_map.iteritems():
     best_problem_solution_map[(problem_id, tag)]['_solutions'].append(solution)
-  for entry in best_problem_solution_map.itervalues():
+  for (problem_id, tag), entry in best_problem_solution_map.iteritems():
     entry['_avg_score'] = (
       0 if not entry['_solutions']
       else
-      float(sum(s['_score'] for s in entry['_solutions'])) / len(entry['_solutions']))
+      float(sum(s['_score'] for s in entry['_solutions'])) / problem_seed_sizes[problem_id])
   total_map = {}
   for tag in tags:
     total_map[tag] = sum(
@@ -64,6 +66,25 @@ def index_handler():
     'total_map': total_map,
   }
   return bottle.template('index.html', **template_values)
+
+
+@bottle.get('/state-of-the-art.json')
+def state_of_the_art_json_handler():
+  best_solution_map = {}
+  for solution in db.solutions.find():
+    key = (solution['problemId'], solution['seed'])
+    if (key not in best_solution_map or
+        solution.get('_score', -1) > best_solution_map[key]['_score']):
+      best_solution_map[key] = solution
+  solutions = list(best_solution_map.values())
+  for solution in solutions:
+    solution.pop('_id', None)
+    solution.pop('_processed', None)
+  bottle.response.content_type = 'application/json'
+  bottle.response.headers['Access-Control-Allow-Origin'] = '*'
+  bottle.response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+  bottle.response.headers['Access-Control-Allow-Headers'] = 'Origin, Accept, X-Requested-With'
+  return json.dumps(solutions)
 
 
 def main(unused_argv):

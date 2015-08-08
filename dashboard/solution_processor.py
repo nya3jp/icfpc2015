@@ -15,7 +15,7 @@ FLAGS = gflags.FLAGS
 gflags.DEFINE_string('scorer', None, 'scorer path')
 gflags.MarkFlagAsRequired('scorer')
 
-PROCESSOR_VERSION = 4
+PROCESSOR_VERSION = 5
 
 
 def init_problems(db):
@@ -61,18 +61,11 @@ def process_solution(db, solution):
   seed = solution['seed']
   tag = solution['tag']
   task_query = {'problemId': problem_id, 'seed': seed}
-  logging.info(
-    'Processing solution: problem %s, seed %s, tag %s', problem_id, seed, tag)
-  solution['_score'] = compute_score(db, solution)
+  score = compute_score(db, solution)
+  solution['_score'] = score
   solution['_processed'] = PROCESSOR_VERSION
-  best_solution = db.best_solutions.find_one(task_query)
-  if not best_solution or solution['_score'] > best_solution['_score']:
-    logging.info(
-      'New record: problem %s, seed %s: score %s',
-      problem_id, seed, solution['_score'])
-    new_solution = solution.copy()
-    del new_solution['_id']
-    db.best_solutions.update(task_query, new_solution, upsert=True)
+  logging.info(
+    'Processed: problem %s, seed %s, tag %s: score %s', problem_id, seed, tag, score)
   db.solutions.save(solution)
 
 
