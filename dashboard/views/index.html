@@ -38,10 +38,16 @@
               <tr>
                 <td>{{ tag }}</td>
                 % for problem_id in problem_ids:
-                <td>{{ best_solution_map[(problem_id, tag)]['_avg_score'] }}</td>
+                <td>{{ solution_map[(problem_id, tag)]['_avg_score'] }}</td>
                 % end
               </tr>
               % end
+              <tr>
+                <td>BEST</td>
+                % for problem_id in problem_ids:
+                <td>{{ best_solution_map[problem_id]['_avg_score'] }}</td>
+                % end
+              </tr>
             </tbody>
           </table>
         </div>
