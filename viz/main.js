@@ -361,6 +361,19 @@ function undo() {
   }
 }
 
+function moreUndo() {
+  undo();
+
+  while (g_history.length > 0) {
+    if (g_currentGame.locks) {
+      break;
+    }
+
+    g_redoHistory.push(cloneGame(g_currentGame));
+    g_currentGame = g_history.pop();
+  }
+}
+
 function undoAll() {
   if (g_history.length > 1) {
     g_redoHistory = [];
@@ -414,7 +427,11 @@ function handleKey(e) {
     return;
   } else {
     if (keyCode == 'U'.charCodeAt(0)) {
-      undo();
+      if (e.shiftKey) {
+        moreUndo();
+      } else {
+        undo();
+      }
 
       spawnNewUnit();
       checkGameOver();
