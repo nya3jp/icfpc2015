@@ -33,8 +33,6 @@ class Board {
   int width_;
   int height_;
   Map cells_;
-
-  DISALLOW_COPY_AND_ASSIGN(Board);
 };
 
 std::ostream& operator<<(std::ostream& os, const Board& board);

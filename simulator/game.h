@@ -40,8 +40,6 @@ class Game {
   std::vector<Unit> history_;
   int score_;
   int prev_cleared_lines_;
-
-  DISALLOW_COPY_AND_ASSIGN(Game);
 };
 
 std::ostream& operator<<(std::ostream& os, const Game& game);
