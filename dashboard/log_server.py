@@ -24,6 +24,9 @@ def log_handler():
     return bottle.abort(400, 'Malformed solutions (top-level not a list)')
   for solution in solutions:
     db.insert(solution)
+  bottle.response.headers['Access-Control-Allow-Origin'] = '*'
+  bottle.response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+  return 'OK'
 
 
 def main(unused_argv):
