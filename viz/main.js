@@ -2,6 +2,7 @@ var g_canvasContext;
 
 var g_currentGame;
 var g_history;
+var g_inDryRun;
 
 function showAlertMessage(msg) {
   var elem = document.getElementById('message');
@@ -471,6 +472,7 @@ function doCommand(command, dryRun) {
   }
 
   if (dryRun) {
+    g_inDryRun = true;
     drawGame(newUnit);
     return;
   }
@@ -546,6 +548,14 @@ function init() {
       return true;
     }
     handleKey(e);
+  });
+  document.body.addEventListener('keyup', function (e) {
+    if (e.target == document.getElementById('log')) {
+      return true;
+    }
+    if (g_inDryRun) {
+      drawGame();
+    }
   });
 
   var logDiv = document.getElementById('log');
@@ -675,6 +685,7 @@ function setupGame(configurations) {
     done: false,
   };
   g_history = [];
+  g_dryRun = false;
   saveGame();
 
   updateScore();
