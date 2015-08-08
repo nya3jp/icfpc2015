@@ -10,7 +10,7 @@
 #include "game.h"
 
 DEFINE_string(problem, "", "problem file");
-DEFINE_string(output, "", "output file");
+DEFINE_string(result, "", "result file");
 
 namespace {
 
@@ -58,6 +58,25 @@ std::ostream& operator<<(std::ostream& os, const CurrentState& state) {
 
 }  // namespace
 
+std::vector<Game::Command> get_greedy_instructions(Game &game)
+{
+  std::vector<Game::Command> ret;
+
+  std::vector<Game::SearchResult> bfsresult;
+  int maxy = -1;
+  game.ReachableUnits(&bfsresult);
+  for(const auto &res: bfsresult) {
+    const Unit &u = res.first;
+    for(const auto &m: u.members()) {
+      if(m.y() > maxy) {
+        ret = res.second;
+        maxy = m.y();
+      }
+    }
+  }
+  return ret;
+}
+
 int main(int argc, char* argv[]) {
   google::InitGoogleLogging(argv[0]);
   google::ParseCommandLineFlags(&argc, &argv, true);
@@ -70,42 +89,41 @@ int main(int argc, char* argv[]) {
     stream >> problem;
     CHECK(stream.good()) << picojson::get_last_error();
   }
-  picojson::value output;
-  {
-    std::ifstream stream(FLAGS_output);
-    stream >> output;
-    CHECK(stream.good()) << picojson::get_last_error();
-  }
+ 
+  int seed_index = 0;
+  LOG(INFO) << "SeedIndex: " << seed_index;
+  Game game;
+  game.Load(problem, seed_index);
+  LOG(INFO) << game;
 
-  for (const auto& entry : output.get<picojson::array>()) {
-    CHECK_EQ(problem.get("id").get<int64_t>(),
-             entry.get("problemId").get<int64_t>());
-    int seed_index = FindIndex(
-        problem.get("sourceSeeds").get<picojson::array>(),
-        entry.get("seed").get<int64_t>());
-    LOG(INFO) << "SeedIndex: " << seed_index;
-    Game game;
-    game.Load(problem, seed_index);
-    LOG(INFO) << game;
-
-    const std::string& solution = entry.get("solution").get<std::string>();
-    bool is_finished = false;
-    bool error = false;
-    int i = 0;
-    for (; i < solution.size(); ++i) {
-      LOG(INFO) << CurrentState(game);
-      Game::Command command = ParseCommand(solution[i]);
-      LOG(INFO) << "Run: " << i << ", " << solution[i] << ", " << command;
+  bool is_finished = false;
+  bool error = false;
+  while(true) {
+    LOG(INFO) << CurrentState(game);
+    // get sequence from AI
+    std::vector<Game::Command> instructions = get_greedy_instructions(game);
+    for(const auto& c: instructions) {
+      std::cerr << c << " ";
+    }
+    std::cerr << std::endl;
+    
+    for(const auto& c: instructions) {
+      if (!game.Run(c)) {
+        is_finished = true;
+      }
+      
       if (is_finished) {
         error = true;
         break;
       }
-      if (!game.Run(command)) {
-        is_finished = true;
-      }
     }
-    LOG(INFO) << "i: " << i << ", " << solution.size();
-    int score = error ? 0 : game.score();
-    std::cout << score << "\n";
+    if(error) {
+      break;
+    }
   }
+  int score = error ? 0 : game.score();
+  std::cout << score << "\n";
+  
+  // TODO: write JSON
+  return 0;
 }
