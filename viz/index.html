@@ -26,10 +26,9 @@
 <select id="problems"></select>
 
 <!-- usage -->
-<pre>
+<pre id="manual" onclick="hideManual()" style="display: none">
 
-(RCCW) W E (RCW)
-
+(RCCW) W E (RCW)   U (Undo)
   (W) A   D (E)
   (SW) Z X (SE)
 
@@ -47,3 +46,27 @@ Shift: dry-run
 <div id="mainbar">
 <canvas id="canvassample" width="4000" height="4000"></canvas>
 </div>
+=======
+<div id="showManualDiv" onclick="showManual()">
+Show manual
+</div>
+<p>
+  Input: <select id="problems"></select><br>
+  Seed: <select id="seeds"></select><br>
+</p>
+<div>
+  <span id="info"></span>
+  <span id="message" style="color:red"></span>
+</div>
+<p>
+  <textarea id="log" rows=1 cols=100></textarea>
+</p>
+
+<table>
+<tr>
+<td valign=top><canvas id="board" width="4000" height="4000"></canvas></td>
+<td valign=top>Units coming<br><canvas id="next" width="0" height="0"></canvas></td>
+<td valign=top>All units<br><canvas id="list" width="0" height="0"></canvas></td>
+</tr>
+</table>
+>>>>>>> Improved UI and added seed selection feature
