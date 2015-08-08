@@ -382,58 +382,88 @@ function redo() {
 function handleKey(e) {
   var keyCode = e.keyCode;
 
-  if (keyCode == 'U'.charCodeAt(0)) {
-    undo();
+  var command;
 
-    spawnNewUnit();
-    checkGameOver();
-    drawGame(undefined);
-    return;
-  }
+  if (document.getElementById("typemode").checked) {
+    if (e.shiftKey && keyCode == '1'.charCodeAt(0)) {
+      command = '!';
+    } else if (keyCode >= 'A'.charCodeAt(0) &&
+               keyCode <= 'Z'.charCodeAt(0)) {
+      command = String.fromCharCode(keyCode + 0x20);
+    } else if (keyCode == 190) {
+      command = '.';
+    } else if (keyCode == 222) {
+      command = "'";
+    } else if (keyCode == 32) {
+      e.preventDefault();
+      command = ' ';
+    } else if (keyCode == 8) {
+      e.preventDefault();
+      undo();
 
-  if (keyCode == 'R'.charCodeAt(0)) {
-    if (redo()) {
       spawnNewUnit();
       checkGameOver();
       drawGame(undefined);
-      logKey();
+      return;
+    } else {
+      command = String.fromCharCode(keyCode);
     }
+    doCommand(command, false);
+
+    drawGame(undefined);
     return;
-  }
+  } else {
+    if (keyCode == 'U'.charCodeAt(0)) {
+      undo();
 
-  var command;
+      spawnNewUnit();
+      checkGameOver();
+      drawGame(undefined);
+      return;
+    }
 
-  switch (keyCode) {
-  case 'W'.charCodeAt(0):
-    command = 'k';
-    break;
+    if (keyCode == 'R'.charCodeAt(0)) {
+      if (redo()) {
+        spawnNewUnit();
+        checkGameOver();
+        drawGame(undefined);
+        logKey();
+      }
+      return;
+    }
 
-  case 'E'.charCodeAt(0):
-    command = 'd';
-    break;
+    switch (keyCode) {
+    case 'W'.charCodeAt(0):
+      command = 'k';
+      break;
 
-  case 'A'.charCodeAt(0):
-    command = 'p';
-    break;
+    case 'E'.charCodeAt(0):
+      command = 'd';
+      break;
 
-  case 'Z'.charCodeAt(0):
-    command = 'a';
-    break;
+    case 'A'.charCodeAt(0):
+      command = 'p';
+      break;
 
-  case 'X'.charCodeAt(0):
-    command = 'l';
-    break;
+    case 'Z'.charCodeAt(0):
+      command = 'a';
+      break;
 
-  case 'D'.charCodeAt(0):
-    command = 'b';
-    break;
+    case 'X'.charCodeAt(0):
+      command = 'l';
+      break;
 
-  case 'S'.charCodeAt(0):
-    command = 'al';
-    break;
+    case 'D'.charCodeAt(0):
+      command = 'b';
+      break;
 
-  default:
-    return;
+    case 'S'.charCodeAt(0):
+      command = 'al';
+      break;
+
+    default:
+      return;
+    }
   }
 
   if (e.shiftKey) {
