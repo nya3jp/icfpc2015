@@ -269,14 +269,17 @@ function createBoard(width, height) {
   return board;
 }
 
-function countCleared(board, unit) {
+function doClear(board, unit) {
   var rowsSet = {};
   for (var i = 0; i < unit.members.length; ++i) {
     rowsSet[unit.members[i].y] = true;
   }
 
+  var newBoard = createBoard(board.length, board[0].length);
+
+  var yy = board[0].length - 1;
   var ls = 0;
-  for (var y = 0; y < board[0].length; ++y) {
+  for (var y = board[0].length - 1; y >= 0; --y) {
     if (rowsSet[y]) {
       var cleared = true;
       for (var x = 0; x < board.length; ++x) {
@@ -287,17 +290,26 @@ function countCleared(board, unit) {
       }
       if (cleared) {
         ls += 1;
+        continue;
       }
     }
+
+    for (var x = 0; x < board.length; ++x) {
+      newBoard[x][yy] = board[x][y];
+    }
+    --yy;
   }
 
-  return ls;
+  return {ls: ls, board: newBoard};
 }
 
-function calculateScore(board, unit) {
+function doLock() {
+  var unit = g_currentGame.unit;
+
   var size = unit.members.length;
 
-  var ls = countCleared(board, unit);
+  var result = doClear(g_currentGame.board, unit);
+  var ls = result.ls;
 
   var points = size + 100 * (1 + ls) * ls / 2;
   var line_bonus = g_currentGame.ls_old > 1 ?
@@ -308,6 +320,8 @@ function calculateScore(board, unit) {
 
   g_currentGame.score += move_score;
   updateScore();
+
+  g_currentGame.board = result.board;
 }
 
 function updateScore() {
@@ -375,7 +389,7 @@ function handleKey(keyCode) {
     g_currentGame.unit = newUnit;
   } else {
     placeUnit(g_currentGame.board, g_currentGame.unit, false);
-    calculateScore(g_currentGame.board, g_currentGame.unit);
+    doLock();
     g_currentGame.unit = undefined;
   }
   drawGame();
