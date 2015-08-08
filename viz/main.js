@@ -219,6 +219,9 @@ function drawUnits(units, r, gridMul, topLeft) {
   g_canvasContext.fillText('Units coming', topLeft.x + left, topLeft.y + top + 10);
   top += 10;
 
+  g_canvasContext.fillText('Remaining: ' + g_currentGame.source.length, topLeft.x + left, topLeft.y + top + 10);
+  top += 10;
+
   for (var i = 0; i < Math.min(g_currentGame.source.length, 5); ++i) {
     top += drawUnit(units[g_currentGame.source[i]],
                     {x: topLeft.x + left, y: topLeft.y + top}, r, gridMul);
@@ -328,7 +331,17 @@ function undo() {
   updateScore();
 }
 
-function handleKey(keyCode) {
+function undoAll() {
+  if (g_history.length > 0) {
+    g_currentGame = g_history[0];
+    g_history = [];
+  }
+  updateScore();
+}
+
+function handleKey(e) {
+  var keyCode = e.keyCode;
+
   if (keyCode == 'U'.charCodeAt(0)) {
     undo();
 
@@ -342,42 +355,104 @@ function handleKey(keyCode) {
     return;
   }
 
-  var newUnit = cloneUnit(g_currentGame.unit);
-
   var command;
 
   switch (keyCode) {
   case 'W'.charCodeAt(0):
-    moveUnit(newUnit, moveCounterClockwise.bind(undefined, newUnit.pivot));
     command = 'k';
     break;
 
   case 'E'.charCodeAt(0):
-    moveUnit(newUnit, moveClockwise.bind(undefined, newUnit.pivot));
     command = 'd';
     break;
 
   case 'A'.charCodeAt(0):
-    moveUnit(newUnit, moveW);
     command = 'p';
     break;
 
   case 'Z'.charCodeAt(0):
-    moveUnit(newUnit, moveSW);
     command = 'a';
     break;
 
   case 'X'.charCodeAt(0):
-    moveUnit(newUnit, moveSE);
     command = 'l';
     break;
 
   case 'D'.charCodeAt(0):
-    moveUnit(newUnit, moveE);
     command = 'b';
     break;
 
   default:
+    return;
+  }
+
+  doCommand(command, e.shiftKey);
+}
+
+function doCommand(command, dryRun) {
+  var newUnit = cloneUnit(g_currentGame.unit);
+
+  switch (command) {
+  case 'k':
+  case 's':
+  case 't':
+  case 'u':
+  case 'w':
+  case 'x':
+    moveUnit(newUnit, moveCounterClockwise.bind(undefined, newUnit.pivot));
+    break;
+
+  case 'd':
+  case 'q':
+  case 'r':
+  case 'v':
+  case 'z':
+  case '1':
+    moveUnit(newUnit, moveClockwise.bind(undefined, newUnit.pivot));
+    break;
+
+  case 'p':
+  case "'":
+  case '!':
+  case '.':
+  case '0':
+  case '3':
+    moveUnit(newUnit, moveW);
+    break;
+
+  case 'a':
+  case 'g':
+  case 'h':
+  case 'i':
+  case 'j':
+  case '4':
+    moveUnit(newUnit, moveSW);
+    break;
+
+  case 'l':
+  case 'm':
+  case 'n':
+  case 'o':
+  case ' ':
+  case '5':
+    moveUnit(newUnit, moveSE);
+    break;
+
+  case 'b':
+  case 'c':
+  case 'e':
+  case 'f':
+  case 'y':
+  case '2':
+    moveUnit(newUnit, moveE);
+    break;
+
+  default:
+    return;
+  }
+
+  if (dryRun) {
+    drawGame(newUnit);
     return;
   }
 
@@ -393,6 +468,7 @@ function handleKey(keyCode) {
   }
   drawGame();
 }
+
 function drawSelectedProblem() {
   var name = problems.options[problems.selectedIndex].value;
   drawProblem(name);
@@ -441,7 +517,14 @@ function init() {
   drawSelectedProblem();
 
   document.body.addEventListener('keydown', function (e) {
-    handleKey(e.keyCode);
+    handleKey(e);
+  });
+
+  var logDiv = document.getElementById('log');
+  logDiv.addEventListener('change', function () {
+    var command = logDiv.value;
+    undoAll();
+    // TODO command();
   });
 }
 
@@ -483,7 +566,7 @@ function calcRandSeq(mod, seed, len) {
   return result;
 }
 
-function drawGame() {
+function drawGame(dryUnit) {
   g_canvasContext.clearRect(0, 0, 4000, 4000);
 
   var r = 15;
@@ -515,6 +598,10 @@ function drawGame() {
 
   if (g_currentGame.unit) {
     placeUnit(boardForDisplay, g_currentGame.unit, true);
+  }
+
+  if (dryUnit) {
+    placeUnit(boardForDisplay, dryUnit, true, true);
   }
 
   var margin = {x: 10, y: 10};
@@ -573,7 +660,7 @@ function drawProblem(file) {
   x.send();
 }
 
-function placeUnit(board, unit, placePivot) {
+function placeUnit(board, unit, placePivot, dryUnit) {
   var members = unit.members;
 
   for (var j = 0; j < members.length; ++j) {
@@ -581,7 +668,7 @@ function placeUnit(board, unit, placePivot) {
       continue;
     }
 
-    board[members[j].x][members[j].y] |= 1;
+    board[members[j].x][members[j].y] |= 1 << (dryUnit ? 2 : 0);
   }
 
   if (!placePivot) {
@@ -594,7 +681,7 @@ function placeUnit(board, unit, placePivot) {
     return;
   }
 
-  board[pivot.x][pivot.y] |= 2;
+  board[pivot.x][pivot.y] |= 2 << (dryUnit ? 2 : 0);
 }
 
 function drawHex(center, r) {
@@ -655,10 +742,24 @@ function drawBoard(board, r, gridMul, topLeft) {
         g_canvasContext.stroke();
       }
 
+      if ((data & 4) == 4) {
+        g_canvasContext.strokeStyle = 'red';
+        g_canvasContext.fillStyle = 'red';
+        drawHex(center, r * 0.8);
+        g_canvasContext.stroke();
+      }
+
       if ((data & 2) == 2) {
         g_canvasContext.strokeStyle = 'gray';
         g_canvasContext.fillStyle = 'gray';
         drawHex(center, r * 0.4);
+        g_canvasContext.fill();
+      }
+
+      if ((data & 8) == 8) {
+        g_canvasContext.strokeStyle = 'red';
+        g_canvasContext.fillStyle = 'red';
+        drawHex(center, r * 0.2);
         g_canvasContext.fill();
       }
     }
