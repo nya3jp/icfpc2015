@@ -58,6 +58,7 @@ function cloneGame(game) {
   newGame.done = game.done;
   newGame.seed = game.seed;
   newGame.currentUnitHistory = [].concat(game.currentUnitHistory);
+  newGame.file = game.file;
   return newGame;
 }
 
@@ -335,7 +336,10 @@ function updateInfo() {
 
   var infoDiv = document.getElementById("info");
   infoDiv.innerText =
+    'Problem ID: ' + g_currentGame.configurations.id + ' / ' +
+    'Seed: ' + g_currentGame.seed + '\n' +
     'Score: ' + g_currentGame.score + '\n' +
+    'ls_old: ' + g_currentGame.ls_old + '\n' +
     'Remaining units: ' + g_currentGame.source.length + '\n' +
     'Command length: ' + g_currentGame.commandHistory.length;
 }
@@ -499,7 +503,7 @@ function doCommand(command, dryRun) {
 
 function drawSelectedProblem() {
   var name = problems.options[problems.selectedIndex].value;
-  drawProblem(name);
+  drawProblem(name, 0, []);
   window.location.hash = name;
 }
 
@@ -533,6 +537,13 @@ function init() {
     drawSelectedProblem();
   });
 
+  var saveList = document.getElementById('saveList');
+  saveList.addEventListener('change', function () {
+    var saveData = JSON.parse(saveList.options[saveList.selectedIndex].value);
+    console.log(saveData);
+    drawProblem(saveData.file, saveData.seed, saveData.commands);
+  });
+
   window.addEventListener('hashchange', function () {
     extractFromFragment();
     drawSelectedProblem();
@@ -560,11 +571,15 @@ function init() {
   logDiv.addEventListener('change', function () {
     var commands = logDiv.value;
     undoAll();
-    for (var i = 0; i < commands.length; ++i) {
-      console.log(commands[i]);
-      doCommand(commands[i]);
-    }
+    replay(commands)
   });
+}
+
+function replay(commands) {
+  for (var i = 0; i < commands.length; ++i) {
+    console.log(commands[i]);
+    doCommand(commands[i]);
+  }
 }
 
 function cloneBoard(board) {
@@ -695,7 +710,7 @@ function done() {
   sendSolution();
 }
 
-function setupGame(configurations, seed) {
+function setupGame(configurations, file, seed) {
   var board = createBoard(configurations.width, configurations.height);
   var filled = configurations.filled;
   for (var i = 0; i < filled.length; ++i) {
@@ -715,6 +730,7 @@ function setupGame(configurations, seed) {
     commandHistory: '',
     done: false,
     seed: seed,
+    file: file,
   };
   g_history = [];
   g_dryRun = false;
@@ -725,7 +741,19 @@ function setupGame(configurations, seed) {
   drawGame(undefined);
 }
 
-function drawProblem(file) {
+function save() {
+  var saveList = document.getElementById('saveList');
+  var option = document.createElement('option');
+  var data = {file: g_currentGame.file,
+              seed: g_currentGame.seed,
+              commands: g_currentGame.commandHistory};
+  var saveData = JSON.stringify(data)
+  option.value = saveData;
+  option.innerText = saveData;
+  saveList.appendChild(option);
+}
+
+function drawProblem(file, seed, commands) {
   var x = new XMLHttpRequest();
   x.open('GET', '../problems/' + file);
   x.responseType = 'json';
@@ -743,15 +771,21 @@ function drawProblem(file) {
       option.value = json.sourceSeeds[i];
       option.innerText = json.sourceSeeds[i];
       seeds.appendChild(option);
+      if (json.sourceSeeds[i] == seed) {
+        seeds.selectedIndex = seeds.options.length - 1;
+      }
     }
 
     seeds.addEventListener('change', function () {
-      var seed = parseInt(seeds.options[seeds.selectedIndex].value);
+      var selectedSeed = parseInt(seeds.options[seeds.selectedIndex].value);
       console.log(seed);
-      setupGame(json, seed);
+      setupGame(json, file, selectedSeed);
     });
 
-    setupGame(json, 0);
+    setupGame(json, file, seed);
+    if (commands) {
+      replay(commands);
+    }
   };
   x.send();
 }
