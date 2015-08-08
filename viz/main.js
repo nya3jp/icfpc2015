@@ -598,22 +598,27 @@ function doCommand(command, dryRun) {
   checkGameOver();
 }
 
-function drawSelectedProblem() {
-  var name = problems.options[problems.selectedIndex].value;
-  fetchAndDrawProblem(name, -1, []);
-  window.location.hash = name;
-}
-
-function extractFromFragment() {
-  for (var i = 0; i < problems.options.length; ++i) {
-    if (problems.options[i].value == window.location.hash.substr(1)) {
-      problems.selectedIndex = i;
-      return;
-    }
+function getSelectedSeed() {
+  var seeds = document.getElementById('seeds');
+  if (seeds.length == 0) {
+    return -1;
   }
+  return parseInt(seeds.options[seeds.selectedIndex].value);
 }
 
-function loadBest() {
+function updateHash() {
+  window.location.hash = g_currentGame.file + '|' + getSelectedSeed();
+}
+
+function getSelectedProblem() {
+  return problems.options[problems.selectedIndex].value;
+}
+
+function parseHash() {
+  return decodeURIComponent(window.location.hash.substr(1)).split('|');
+}
+
+function loadBest(id, seed) {
   var x = new XMLHttpRequest();
   x.open('GET', 'http://dashboard.natsubate.nya3.jp/state-of-the-art.json');
   x.responseType = 'json';
@@ -623,7 +628,9 @@ function loadBest() {
       var solution = json[i];
       if (g_currentGame.configurations.id == solution.problemId &&
           g_currentGame.seed == solution.seed) {
-        fetchAndDrawProblem(g_currentGame.file, g_currentGame.seed, solution.solution);
+        undoAll();
+        replayCommands(solution.solution);
+        drawGame(undefined);
         return;
       }
     }
@@ -654,7 +661,10 @@ function init() {
   }
 
   problems.addEventListener('change', function () {
-    drawSelectedProblem();
+    var file = getSelectedProblem();
+    if (file != g_currentGame.file) {
+      fetchAndDrawProblem(file, -1, []);
+    }
   });
 
   var saveList = document.getElementById('saveList');
@@ -663,23 +673,80 @@ function init() {
   });
 
   window.addEventListener('hashchange', function () {
-    extractFromFragment();
-    drawSelectedProblem();
-  });
+    var params = parseHash();
 
-  extractFromFragment();
-  drawSelectedProblem();
+    if (params.length < 1) {
+      return;
+    }
+
+    var problems = document.getElementById('problems');
+    for (var i = 0; i < problems.options.length; ++i) {
+      if (problems.options[i].value == params[0]) {
+        problems.selectedIndex = i;
+        break;
+      }
+    }
+
+    var file = getSelectedProblem();
+    if (file != g_currentGame.file) {
+      fetchAndDrawProblem(file, params[1], params[2]);
+      return;
+    }
+
+    if (params.length < 2) {
+      return;
+    }
+
+    var seeds = document.getElementById('seeds');
+    for (var i = 0; i < seeds.options.length; ++i) {
+      if (seeds.options[i].value == params[1]) {
+        seeds.selectedIndex = i;
+        break;
+      }
+    }
+
+    var selectedSeed = getSelectedSeed();
+    if (selectedSeed != g_currentGame.seed) {
+      setupGame(g_currentGame.configurations,
+                g_currentGame.file,
+                selectedSeed);
+
+      if (params[2]) {
+        replayCommands(params[2]);
+      }
+
+      drawGame(undefined);
+      return;
+    }
+
+    if (params.length < 3) {
+      return;
+    }
+
+    if (params[2] != g_currentGame.commandHistory) {
+      undoAll();
+      replayCommands(params[2]);
+      drawGame(undefined);
+    }
+  });
 
   document.body.addEventListener('keydown', function (e) {
     if (e.target == document.getElementById('log')) {
-      return true;
+      if (e.keyCode == 13) {
+        replayFromLogIfNeeded();
+        e.preventDefault();
+      }
+
+      return;
     }
+
     handleKey(e);
   });
   document.body.addEventListener('keyup', function (e) {
     if (e.target == document.getElementById('log')) {
-      return true;
+      return;
     }
+
     if (g_inDryRun) {
       spawnNewUnit();
       checkGameOver();
@@ -689,13 +756,22 @@ function init() {
 
   var logDiv = document.getElementById('log');
   logDiv.addEventListener('change', function () {
-    var commands = logDiv.value;
-    undoAll();
-    replayCommands(commands)
-    spawnNewUnit();
-    checkGameOver();
-    drawGame(undefined);
+    replayFromLogIfNeeded();
   });
+
+  var params = parseHash();
+
+  if (params.length >= 1) {
+    var problems = document.getElementById('problems');
+    for (var i = 0; i < problems.options.length; ++i) {
+      if (problems.options[i].value == params[0]) {
+        problems.selectedIndex = i;
+        break;
+      }
+    }
+  }
+
+  fetchAndDrawProblem(getSelectedProblem(), params[1], params[2]);
 }
 
 function replayCommands(commands) {
@@ -875,7 +951,6 @@ function setupGame(configurations, file, seed) {
 
   spawnNewUnit();
   checkGameOver();
-  drawGame(undefined);
 }
 
 function save() {
@@ -916,17 +991,40 @@ function fetchAndDrawProblem(file, seed, commands) {
     }
 
     seeds.addEventListener('change', function () {
-      var selectedSeed = parseInt(seeds.options[seeds.selectedIndex].value);
-      setupGame(configurations, file, selectedSeed);
+      var selectedSeed = getSelectedSeed();
+      if (selectedSeed == g_currentGame.seed) {
+        return;
+      }
+
+      setupGame(g_currentGame.configurations, g_currentGame.file, selectedSeed);
+      updateHash();
+      drawGame(undefined);
     });
 
-    var selectedSeed = parseInt(seeds.options[seeds.selectedIndex].value);
-    setupGame(configurations, file, selectedSeed);
-    if (commands) {
+    setupGame(configurations, file, getSelectedSeed());
+    updateHash();
+
+    if (commands == 'BEST') {
+      loadBest();
+    } else if (commands) {
       replayCommands(commands);
     }
+
+    drawGame(undefined);
   };
   x.send();
+}
+
+function replayFromLogIfNeeded() {
+  var logDiv = document.getElementById('log');
+  var commands = logDiv.value;
+  if (g_currentGame.commandHistory == commands) {
+    return;
+  }
+
+  undoAll();
+  replayCommands(commands);
+  drawGame(undefined);
 }
 
 function placeUnit(board, unit, placePivot, dryUnit, currentUnit) {
