@@ -349,9 +349,9 @@ function undo() {
 }
 
 function undoAll() {
-  if (g_history.length > 0) {
-    g_currentGame = g_history[0];
-    g_history = [];
+  if (g_history.length > 1) {
+    g_currentGame = g_history[1];
+    g_history = [g_history[0]];
   }
   updateScore();
 }
@@ -364,11 +364,6 @@ function handleKey(e) {
 
     drawGame();
     logKey();
-    return;
-  }
-
-  if (g_currentGame === undefined ||
-      g_currentGame.unit === undefined) {
     return;
   }
 
@@ -404,9 +399,16 @@ function handleKey(e) {
   }
 
   doCommand(command, e.shiftKey);
+
+  logKey();
 }
 
 function doCommand(command, dryRun) {
+  if (g_currentGame === undefined ||
+      g_currentGame.unit === undefined) {
+    return;
+  }
+
   var newUnit = cloneUnit(g_currentGame.unit);
 
   switch (command) {
@@ -482,7 +484,6 @@ function doCommand(command, dryRun) {
   saveGame();
   g_currentGame.currentUnitHistory.push(newUnitHash);
   g_currentGame.commandHistory += command;
-  logKey();
   if (!isInvalidUnitPlacement(g_currentGame.board, newUnit)) {
     g_currentGame.unit = newUnit;
   } else {
@@ -541,14 +542,20 @@ function init() {
   drawSelectedProblem();
 
   document.body.addEventListener('keydown', function (e) {
+    if (e.target == document.getElementById('log')) {
+      return true;
+    }
     handleKey(e);
   });
 
   var logDiv = document.getElementById('log');
   logDiv.addEventListener('change', function () {
-    var command = logDiv.value;
+    var commands = logDiv.value;
     undoAll();
-    // TODO command();
+    for (var i = 0; i < commands.length; ++i) {
+      console.log(commands[i]);
+      doCommand(commands[i]);
+    }
   });
 }
 
