@@ -407,6 +407,11 @@ function handleKey(keyCode) {
   }
   drawGame();
 }
+function drawSelectedProblem() {
+  var name = problems.options[problems.selectedIndex].value;
+  drawProblem(name);
+  window.location.hash = name;
+}
 
 function init() {
   var canvas = document.getElementById('canvassample');
@@ -429,10 +434,20 @@ function init() {
   }
 
   problems.addEventListener('change', function () {
-    drawProblem(problems.options[problems.selectedIndex].value);
+    drawSelectedProblem();
   });
 
-  drawProblem(problems.options[problems.selectedIndex].value);
+  window.addEventListener('hashchange', function () {
+    for (var i = 0; i < problems.options.length; ++i) {
+      if (problems.options[i].value == window.location.hash.substr(1)) {
+        problems.selectedIndex = i;
+        drawSelectedProblem();
+        return;
+      }
+    }
+  });
+
+  drawSelectedProblem();
 
   document.body.addEventListener('keydown', function (e) {
     handleKey(e.keyCode);
