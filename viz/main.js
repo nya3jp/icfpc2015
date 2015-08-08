@@ -662,14 +662,14 @@ function cloneBoard(board) {
   var width = board.length;
   var height = board[0].length;
 
-  var newBoard = [];
+  var newBoard = new Array(width);
 
   for (var x = 0; x < width; ++x) {
-    var col = [];
+    var col = new Array(height);
     for (var y = 0; y < height; ++y) {
-      col.push(board[x][y]);
+      col[y] = board[x][y];
     }
-    newBoard.push(col);
+    newBoard[x] = col;
   }
   return newBoard;
 }
