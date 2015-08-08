@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <map>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -9,8 +10,8 @@
 
 #include "game.h"
 
+DEFINE_int64(problemid, -1, "problemId");
 DEFINE_string(problem, "", "problem file");
-DEFINE_string(result, "", "result file");
 
 namespace {
 
@@ -56,6 +57,58 @@ std::ostream& operator<<(std::ostream& os, const CurrentState& state) {
   return os;
 }
 
+std::string encode_command(const std::vector<Game::Command>& commands)
+{
+  std::string ret;
+  for(const auto &c: commands) {
+    switch(c) {
+    case Game::Command::W:
+      ret += '!';
+      break;
+    case Game::Command::E:
+      ret += 'e';
+      break;
+    case Game::Command::SW:
+      ret += 'i';
+      break;
+    case Game::Command::SE:
+      ret += ' ';
+      break;
+    case Game::Command::CW:
+      ret += 'd';
+      break;
+    case Game::Command::CCW:
+      ret += 'k';
+      break;
+    default:
+      LOG(FATAL) << "Unknown command " << c;
+    }
+  }
+  return ret;
+}
+
+void write_json(int problemid,
+                int64_t seed,
+                const std::string& tag,
+                int score,
+                const std::vector<Game::Command>& commands)
+{
+  picojson::object output;
+
+  picojson::value solution(encode_command(commands));
+  output["solution"] = solution;
+  output["problemId"] = picojson::value((int64_t)problemid);
+  output["seed"] = picojson::value((int64_t)seed);
+  output["tag"] = picojson::value(tag);
+  output["_score"] = picojson::value((int64_t)score);
+
+  std::vector<picojson::value> outputs;
+  outputs.emplace_back(picojson::value(output));
+  picojson::value finstr(outputs);
+  std::cout << finstr.serialize();
+}
+
+
 }  // namespace
 
 std::vector<Game::Command> get_greedy_instructions(Game &game)
@@ -89,13 +142,17 @@ int main(int argc, char* argv[]) {
     stream >> problem;
     CHECK(stream.good()) << picojson::get_last_error();
   }
- 
+  
+  CHECK(FLAGS_problemid >= 0);
+
   int seed_index = 0;
-  LOG(INFO) << "SeedIndex: " << seed_index;
+  int64_t seed = problem.get("sourceSeeds").get<picojson::array>()[seed_index].get<int64_t>();
+  LOG(INFO) << "SeedIndex: " << seed_index << " Seed: " << seed;
   Game game;
   game.Load(problem, seed_index);
   LOG(INFO) << game;
 
+  std::vector<Game::Command> final_commands;
   bool is_finished = false;
   bool error = false;
   while(true) {
@@ -108,22 +165,22 @@ int main(int argc, char* argv[]) {
     std::cerr << std::endl;
     
     for(const auto& c: instructions) {
+      final_commands.push_back(c);
       if (!game.Run(c)) {
         is_finished = true;
       }
-      
       if (is_finished) {
-        error = true;
         break;
       }
     }
-    if(error) {
+    if(is_finished || error) {
       break;
     }
   }
   int score = error ? 0 : game.score();
-  std::cout << score << "\n";
+  std::cerr << score << "\n";
   
-  // TODO: write JSON
+  write_json(FLAGS_problemid, seed, __FILE__, score, final_commands);
+  
   return 0;
 }
