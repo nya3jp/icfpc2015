@@ -198,7 +198,7 @@ function drawUnit(unit, topLeft, r, gridMul, context) {
   var unitBoundBox = getUnitBoundBox(unit, true);
   var board = createBoard(unitBoundBox.right + 1, unitBoundBox.bottom + 1);
   placeUnit(board, unit, true, false, true);
-  drawBoard(board, r, gridMul, topLeft, context);
+  drawBoard(board, r, gridMul, topLeft, context, false);
   return coordToPosition({x: 0, y: unitBoundBox.bottom + 1}, r, gridMul).y;
 }
 
@@ -656,7 +656,7 @@ function drawGame(dryUnit) {
   boardCanvas.width = boardGeometry.x + boardMargin.x * 2;
   boardCanvas.height = boardGeometry.y + boardMargin.y * 2;
   boardContext.clearRect(0, 0, boardCanvas.width, boardCanvas.height);
-  drawBoard(boardForDisplay, r, gridMul, boardMargin, boardContext);
+  drawBoard(boardForDisplay, r, gridMul, boardMargin, boardContext, true);
 
   var nextUnits = [];
   for (var i = 0; i < Math.min(g_currentGame.source.length, 20); ++i) {
@@ -817,13 +817,28 @@ function sendSolution() {
   x.send(str);
 }
 
-function drawBoard(board, r, gridMul, topLeft, context) {
+function drawBoard(board, r, gridMul, topLeft, context, showNumbers) {
   for (var x = 0; x < board.length; ++x) {
+    context.strokeStyle = 'lightgray';
+    context.fillStyle = 'lightgray';
+    if (showNumbers) {
+      var numPosition = coordToPosition({x: x, y: 0}, r, gridMul);
+      context.fillText(x,
+                       topLeft.x + numPosition.x - 5,
+                       topLeft.y + numPosition.y + 5);
+    }
+
     for (var y = 0; y < board[0].length; ++y) {
       var position = coordToPosition({x: x, y: y}, r, gridMul);
       var center = {x: position.x + topLeft.x, y: position.y + topLeft.y};
       if (y % 2 == 1) {
         center.x += r * Math.sqrt(3) / 2.0 * gridMul;
+      }
+
+      context.strokeStyle = 'lightgray';
+      context.fillStyle = 'lightgray';
+      if (showNumbers && x == 0) {
+        context.fillText(y, center.x - 5, center.y + 5);
       }
 
       context.strokeStyle = 'black';
