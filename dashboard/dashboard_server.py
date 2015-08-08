@@ -68,6 +68,22 @@ def index_handler():
   return bottle.template('index.html', **template_values)
 
 
+@bottle.get('/state-of-the-art.json')
+def state_of_the_art_json_handler():
+  best_solution_map = {}
+  for solution in db.solutions.find():
+    key = (solution['problemId'], solution['seed'])
+    if (key not in best_solution_map or
+        solution.get('_score', -1) > best_solution_map[key]['_score']):
+      best_solution_map[key] = solution
+  solutions = list(best_solution_map.values())
+  for solution in solutions:
+    solution.pop('_id', None)
+    solution.pop('_processed', None)
+  bottle.response.content_type = 'application/json'
+  return json.dumps(solutions)
+
+
 def main(unused_argv):
   global db
   db = pymongo.MongoClient().natsubate
