@@ -1,6 +1,7 @@
 var g_canvasContext;
 
 var g_currentGame;
+var g_history;
 
 function determineStart(board, unit) {
   var unitBoundBox = getUnitBoundBox(unit, false);
@@ -15,6 +16,17 @@ function determineStart(board, unit) {
   } else {
     return {x: (board.length - unitWidth) / 2, y: -unitBoundBox.top};
   }
+}
+
+function cloneGame(game) {
+  var newGame = {};
+  newGame.source = [].concat(game.source);
+  newGame.board = cloneBoard(game.board);
+  newGame.configurations = game.configurations;
+  newGame.unit = game.unit ? cloneUnit(game.unit) : undefined;
+  newGame.score = game.score;
+  newGame.ls_old = game.ls_old;
+  return newGame;
 }
 
 function cloneUnit(unit) {
@@ -307,12 +319,19 @@ function updateScore() {
   scoreDiv.innerText = g_currentGame.score + ' pts';
 }
 
+function undo() {
+  if (g_history.length > 0) {
+    g_currentGame = g_history.pop();
+  }
+}
+
 function handleKey(keyCode) {
   var newUnit = cloneUnit(g_currentGame.unit);
 
   switch (keyCode) {
   case 'W'.charCodeAt(0):
     moveUnit(newUnit, moveCounterClockwise.bind(undefined, newUnit.pivot));
+    saveGame();
     logKey('rotate counter-clockwise');
     break;
 
@@ -341,10 +360,17 @@ function handleKey(keyCode) {
     logKey('move E');
     break;
 
+  case 'U'.charCodeAt(0):
+    undo();
+    logKey('undo');
+    drawGame();
+    return;
+
   default:
     return;
   }
 
+  saveGame();
   if (!isInvalidUnitPlacement(g_currentGame.board, newUnit)) {
     g_currentGame.unit = newUnit;
   } else {
@@ -459,6 +485,10 @@ function drawGame() {
   drawUnits(g_currentGame.configurations.units, r, gridMul, position);
 }
 
+function saveGame() {
+  g_history.push(cloneGame(g_currentGame));
+}
+
 function setupGame(configurations) {
   var board = createBoard(configurations.width, configurations.height);
   var filled = configurations.filled;
@@ -477,6 +507,8 @@ function setupGame(configurations) {
     score: 0,
     ls_old: 0,
   };
+  g_history = [];
+  saveGame();
 
   updateScore();
 
