@@ -35,13 +35,15 @@ body {
 </p>
 
 <!-- problem chooser -->
-<select id="problems"></select>
+<p>
+  Input: <select id="problems"></select><br>
+  Seed: <select id="seeds"></select><br>
+</p>
 
 <!-- usage -->
-<pre>
+<pre id="manual" onclick="hideManual()" style="display: none">
 
-(RCCW) W E (RCW)
-
+(RCCW) W E (RCW)   U (Undo)
   (W) A   D (E)
   (SW) Z X (SE)
 
@@ -50,12 +52,28 @@ Shift: dry-run
 
 </pre>
 
-<!-- state description -->
-<div id="info"></div>
-<textarea id="log" rows=8 cols=15></textarea>
-<div id="message" style="color:red"></div>
+<div id="showManualDiv" onclick="showManual()">
+Show manual
 </div>
 
+</div>
+
+<!-- state description -->
+
 <div id="mainbar">
-<canvas id="canvassample" width="4000" height="4000"></canvas>
+
+<div id="info"></div>
+<div id="message" style="color:red"></div>
+<p>
+  <textarea id="log" rows=1 cols=100></textarea>
+</p>
+
+<table>
+<tr>
+<td valign=top><canvas id="board" width="4000" height="4000"></canvas></td>
+<td valign=top>Units coming<br><canvas id="next" width="0" height="0"></canvas></td>
+<td valign=top>All units<br><canvas id="list" width="0" height="0"></canvas></td>
+</tr>
+</table>
+
 </div>

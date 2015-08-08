@@ -12,7 +12,7 @@ CFLAGS=-O2 -DPICOJSON_USE_INT64 --std=c++11 $(INCLUDE)
 
 .PHONY: clean
 
-all: simulator scorer hexpoint_test bfs
+all: simulator scorer hexpoint_test bfs greedy_ai
 
 scorer: scorer.o board.o game.o
 	g++ -Wl,-rpath=$(PWD)/../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
@@ -21,6 +21,9 @@ simulator: main.o board.o game.o
 	g++ -Wl,-rpath=$(PWD)/../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 
 bfs: bfs_main.o board.o game.o
+	g++ -Wl,-rpath=$(PWD)/../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
+
+greedy_ai: greedy_ai.o board.o game.o
 	g++ -Wl,-rpath=$(PWD)/../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 
 %_test: %_test.cc

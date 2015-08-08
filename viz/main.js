@@ -193,19 +193,17 @@ function getUnitBoundBox(unit, includePivot) {
   return {top: top, right: right, left: left, bottom: bottom};
 }
 
-function drawUnit(unit, topLeft, r, gridMul) {
+function drawUnit(unit, topLeft, r, gridMul, context) {
   var unitBoundBox = getUnitBoundBox(unit, true);
   var board = createBoard(unitBoundBox.right + 1, unitBoundBox.bottom + 1);
   placeUnit(board, unit, true, false, true);
-  drawBoard(board, r, gridMul, topLeft);
+  drawBoard(board, r, gridMul, topLeft, context);
   return coordToPosition({x: 0, y: unitBoundBox.bottom + 1}, r, gridMul).y;
 }
 
-function drawUnits(units, r, gridMul, topLeft) {
-  var margin = {x: 20, y: 20};
-
+function getDrawUnitsBoundBox(units, r, gridMul, margin) {
   var totalWidth = 0;
-  var totalHeight = 0;
+  var totalHeight = margin.y * 2;
 
   for (var i = 0; i < units.length; ++i) {
     var members = units[i].members;
@@ -232,33 +230,23 @@ function drawUnits(units, r, gridMul, topLeft) {
     totalHeight += unitSize.y + 10;
   }
 
+  return {width: totalWidth + margin.x * 2, height: totalHeight};
+}
+
+function drawUnits(units, r, gridMul, topLeft, margin, context) {
   var top = margin.x;
   var left = margin.y;
-
-  g_canvasContext.fillText('Units coming',
-                           topLeft.x + left, topLeft.y + top + 10);
-  top += 10;
-
-  for (var i = 0; i < Math.min(g_currentGame.source.length, 5); ++i) {
-    top += drawUnit(units[g_currentGame.source[i]],
-                    {x: topLeft.x + left, y: topLeft.y + top}, r, gridMul);
-  }
-
-  g_canvasContext.fillText('=============',
-                           topLeft.x + left, topLeft.y + top + 10);
-  top += 10;
-  g_canvasContext.fillText('All units',
-                           topLeft.x + left, topLeft.y + top + 10);
-  top += 10;
 
   for (var i = 0; i < units.length; ++i) {
     var unit = units[i];
 
-    g_canvasContext.fillText(i,
-                             topLeft.x + left, topLeft.y + top + 10);
+    context.fillText(i,
+                     topLeft.x + left, topLeft.y + top + 10);
     top += 10;
 
-    top += drawUnit(unit, {x: topLeft.x + left, y: topLeft.y + top}, r, gridMul);
+    top += drawUnit(unit,
+                    {x: topLeft.x + left, y: topLeft.y + top}, r, gridMul,
+                    context);
   }
 }
 
@@ -329,6 +317,16 @@ function doLock() {
   g_currentGame.board = result.board;
 }
 
+function showManual() {
+  document.getElementById('manual').style.display = "block";
+  document.getElementById('showManualDiv').style.display = "none";
+}
+
+function hideManual() {
+  document.getElementById('manual').style.display = "none";
+  document.getElementById('showManualDiv').style.display = "block";
+}
+
 function updateInfo() {
   if (g_currentGame === undefined) {
     return;
@@ -336,8 +334,8 @@ function updateInfo() {
 
   var infoDiv = document.getElementById("info");
   infoDiv.innerText =
-    g_currentGame.score + ' pts\n' +
-    'Remaining: ' + g_currentGame.source.length;
+    'Score: ' + g_currentGame.score + '\n' +
+    'Remaining units: ' + g_currentGame.source.length;
 }
 
 function undo() {
@@ -362,7 +360,7 @@ function handleKey(e) {
   if (keyCode == 'U'.charCodeAt(0)) {
     undo();
 
-    drawGame();
+    drawGame(undefined);
     logKey();
     return;
   }
@@ -494,7 +492,7 @@ function doCommand(command, dryRun) {
     doLock();
     g_currentGame.unit = undefined;
   }
-  drawGame();
+  drawGame(undefined);
 }
 
 function drawSelectedProblem() {
@@ -513,9 +511,6 @@ function extractFromFragment() {
 }
 
 function init() {
-  var canvas = document.getElementById('canvassample');
-  g_canvasContext = canvas.getContext('2d');
-
   var problems = document.getElementById('problems');
   for (var i = 0; i < 24; ++i) {
     var file = 'problem_' + i + '.json';
@@ -555,7 +550,7 @@ function init() {
       return true;
     }
     if (g_inDryRun) {
-      drawGame();
+      drawGame(undefined);
     }
   });
 
@@ -609,11 +604,6 @@ function calcRandSeq(mod, seed, len) {
 }
 
 function drawGame(dryUnit) {
-  g_canvasContext.clearRect(0, 0, 4000, 4000);
-
-  var r = 15;
-  var gridMul = 1.1;
-
   if (g_currentGame.unit === undefined) {
     if (g_currentGame.source.length > 0) {
       var newUnit = cloneUnit(g_currentGame.configurations.units[g_currentGame.source.shift()]);
@@ -647,14 +637,46 @@ function drawGame(dryUnit) {
     placeUnit(boardForDisplay, dryUnit, true, true);
   }
 
-  var margin = {x: 10, y: 10};
-  var position = margin;
+  var r = 12;
+  var gridMul = 1.05;
 
-  drawBoard(boardForDisplay, r, gridMul, position);
+  var boardMargin = {x: 10, y: 10};
 
-  position.x += coordToPosition(
-    {x: g_currentGame.configurations.width, y: 0}, r, gridMul).x + 20;
-  drawUnits(g_currentGame.configurations.units, r, gridMul, position);
+  var boardCanvas = document.getElementById('board');
+  boardContext = boardCanvas.getContext('2d');
+  var boardGeometry = coordToPosition(
+    {x: g_currentGame.configurations.width,
+     y: g_currentGame.configurations.height}, r, gridMul);
+  boardCanvas.width = boardGeometry.x + boardMargin.x * 2;
+  boardCanvas.height = boardGeometry.y + boardMargin.y * 2;
+  boardContext.clearRect(0, 0, boardCanvas.width, boardCanvas.height);
+  drawBoard(boardForDisplay, r, gridMul, boardMargin, boardContext);
+
+  var nextUnits = [];
+  for (var i = 0; i < Math.min(g_currentGame.source.length, 20); ++i) {
+    nextUnits.push(g_currentGame.configurations.units[g_currentGame.source[i]]);
+  }
+
+  var nextCanvas = document.getElementById('next');
+  var nextContext = nextCanvas.getContext('2d');
+  var nextMargin = {x: 20, y: 20};
+  var nextBoundBox =
+    getDrawUnitsBoundBox(nextUnits, r, gridMul, nextMargin);
+  nextCanvas.width = nextBoundBox.width;
+  nextCanvas.height = nextBoundBox.height;
+  nextContext.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+  drawUnits(nextUnits, r, gridMul, {x: 0, y: 0}, nextMargin, nextContext);
+
+  var listCanvas = document.getElementById('list');
+  var listContext = listCanvas.getContext('2d');
+  var listMargin = {x: 20, y: 20};
+  var listBoundBox =
+    getDrawUnitsBoundBox(g_currentGame.configurations.units, r, gridMul, listMargin);
+  listCanvas.width = listBoundBox.width;
+  listCanvas.height = listBoundBox.height;
+  listContext.clearRect(0, 0, listCanvas.width, listCanvas.height);
+  drawUnits(g_currentGame.configurations.units, r, gridMul, {x: 0, y: 0}, listMargin,
+            listContext);
 
   updateInfo();
 }
@@ -667,7 +689,7 @@ function done() {
   sendSolution();
 }
 
-function setupGame(configurations) {
+function setupGame(configurations, seed) {
   var board = createBoard(configurations.width, configurations.height);
   var filled = configurations.filled;
   for (var i = 0; i < filled.length; ++i) {
@@ -677,7 +699,7 @@ function setupGame(configurations) {
 
   g_currentGame = {
     source: calcRandSeq(configurations.units.length,
-                        configurations.sourceSeeds[0],
+                        seed,
                         configurations.sourceLength),
     board: board,
     configurations: configurations,
@@ -686,6 +708,7 @@ function setupGame(configurations) {
     ls_old: 0,
     commandHistory: '',
     done: false,
+    seed: seed,
   };
   g_history = [];
   g_dryRun = false;
@@ -693,7 +716,7 @@ function setupGame(configurations) {
 
   updateInfo();
 
-  drawGame();
+  drawGame(undefined);
 }
 
 function drawProblem(file) {
@@ -701,7 +724,28 @@ function drawProblem(file) {
   x.open('GET', '../problems/' + file);
   x.responseType = 'json';
   x.onload = function () {
-    setupGame(x.response);
+    var seeds = document.getElementById('seeds');
+
+    while (seeds.firstChild) {
+      seeds.removeChild(seeds.firstChild);
+    }
+
+    var json = x.response;
+
+    for (var i = 0; i < json.sourceSeeds.length; ++i) {
+      var option = document.createElement('option');
+      option.value = json.sourceSeeds[i];
+      option.innerText = json.sourceSeeds[i];
+      seeds.appendChild(option);
+    }
+
+    seeds.addEventListener('change', function () {
+      var seed = parseInt(seeds.options[seeds.selectedIndex].value);
+      console.log(seed);
+      setupGame(json, seed);
+    });
+
+    setupGame(json, 0);
   };
   x.send();
 }
@@ -730,13 +774,13 @@ function placeUnit(board, unit, placePivot, dryUnit, currentUnit) {
   board[pivot.x][pivot.y] |= 2 << (dryUnit ? 2 : 0) << (currentUnit ? 4 : 0);
 }
 
-function drawHex(center, r) {
-  g_canvasContext.beginPath();
+function drawHex(center, r, context) {
+  context.beginPath();
   for (var i = 0; i < 6; ++i) {
     var d = Math.PI / 6.0 + Math.PI * i / 3.0;
-    g_canvasContext.lineTo(center.x + r * Math.cos(d), center.y + r * Math.sin(d));
+    context.lineTo(center.x + r * Math.cos(d), center.y + r * Math.sin(d));
   }
-  g_canvasContext.closePath();
+  context.closePath();
 }
 
 function coordToPosition(p, r, gridMul) {
@@ -751,7 +795,7 @@ function logKey() {
 
 function sendSolution() {
   var str = JSON.stringify([{problemId: g_currentGame.configurations.id,
-                             seed: g_currentGame.configurations.sourceSeeds[0],
+                             seed: g_currentGame.seed,
                              tag: 'handplay_viz',
                              solution: g_currentGame.commandHistory}]);
   console.log(str);
@@ -767,7 +811,7 @@ function sendSolution() {
   x.send(str);
 }
 
-function drawBoard(board, r, gridMul, topLeft) {
+function drawBoard(board, r, gridMul, topLeft, context) {
   for (var x = 0; x < board.length; ++x) {
     for (var y = 0; y < board[0].length; ++y) {
       var position = coordToPosition({x: x, y: y}, r, gridMul);
@@ -776,44 +820,44 @@ function drawBoard(board, r, gridMul, topLeft) {
         center.x += r * Math.sqrt(3) / 2.0 * gridMul;
       }
 
-      g_canvasContext.strokeStyle = 'black';
-      g_canvasContext.fillStyle = 'black';
+      context.strokeStyle = 'black';
+      context.fillStyle = 'black';
 
-      drawHex(center, r);
+      drawHex(center, r, context);
 
       var data = board[x][y];
       if ((data & 1) == 1) {
-        g_canvasContext.fill();
+        context.fill();
       } else {
-        g_canvasContext.stroke();
+        context.stroke();
       }
 
       if ((data & 4) == 4) {
-        g_canvasContext.strokeStyle = 'red';
-        g_canvasContext.fillStyle = 'red';
-        drawHex(center, r * 0.7);
-        g_canvasContext.fill();
+        context.strokeStyle = 'red';
+        context.fillStyle = 'red';
+        drawHex(center, r * 0.7, context);
+        context.fill();
       }
 
       if ((data & 16) == 16) {
-        g_canvasContext.strokeStyle = 'black';
-        g_canvasContext.fillStyle = 'black';
-        drawHex(center, r * 0.7);
-        g_canvasContext.fill();
+        context.strokeStyle = 'black';
+        context.fillStyle = 'black';
+        drawHex(center, r * 0.7, context);
+        context.fill();
       }
 
       if ((data & 32) == 32) {
-        g_canvasContext.strokeStyle = 'gray';
-        g_canvasContext.fillStyle = 'gray';
-        drawHex(center, r * 0.4);
-        g_canvasContext.fill();
+        context.strokeStyle = 'gray';
+        context.fillStyle = 'gray';
+        drawHex(center, r * 0.4, context);
+        context.fill();
       }
 
       if ((data & 8) == 8) {
-        g_canvasContext.strokeStyle = 'pink';
-        g_canvasContext.fillStyle = 'pink';
-        drawHex(center, r * 0.4);
-        g_canvasContext.fill();
+        context.strokeStyle = 'pink';
+        context.fillStyle = 'pink';
+        drawHex(center, r * 0.4, context);
+        context.fill();
       }
     }
   }
