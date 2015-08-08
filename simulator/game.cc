@@ -191,6 +191,16 @@ bool Game::Run(Command command) {
   return true;
 }
 
+bool Game::IsLockable() const {
+  for (Command c = Command::E; c != Command::IGNORED; c=(Command)((int)c+1)) {
+    Unit new_unit = Game::NextUnit(current_unit_, c);
+    if (board_.IsConflicting(new_unit)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void Game::Dump(std::ostream* os) const {
   *os << "ID: " << id_ << "\n";
   *os << "Units: \n";
