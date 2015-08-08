@@ -26,6 +26,8 @@ class Game {
     E, W, SE, SW, CW, CCW, IGNORED,
   };
 
+  static Unit NextUnit(const Unit& prev_unit, Command command);
+
   bool Run(Command action);
 
  private:
