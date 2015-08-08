@@ -516,6 +516,12 @@ function extractFromFragment() {
   }
 }
 
+function load() {
+  var saveData = JSON.parse(saveList.options[saveList.selectedIndex].value);
+  console.log(saveData);
+  drawProblem(saveData.file, saveData.seed, saveData.commands);
+}
+
 function init() {
   var problems = document.getElementById('problems');
   for (var i = 0; i < 24; ++i) {
@@ -539,9 +545,7 @@ function init() {
 
   var saveList = document.getElementById('saveList');
   saveList.addEventListener('change', function () {
-    var saveData = JSON.parse(saveList.options[saveList.selectedIndex].value);
-    console.log(saveData);
-    drawProblem(saveData.file, saveData.seed, saveData.commands);
+    load();
   });
 
   window.addEventListener('hashchange', function () {
@@ -577,7 +581,6 @@ function init() {
 
 function replay(commands) {
   for (var i = 0; i < commands.length; ++i) {
-    console.log(commands[i]);
     doCommand(commands[i]);
   }
 }
