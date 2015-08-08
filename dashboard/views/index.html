@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Natsubate! Dashboard</title>
+
+    <link href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" rel="stylesheet">
+    <link href="standings.css" rel="stylesheet">
+
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+      <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+
+    <div class="container">
+      <div class="page-header">
+        <h1>なつばて! ダッシュボード</h1>
+      </div>
+
+      <div class="row">
+        <div class="col-xs-12">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Tag</th>
+                <th>Total</th>
+                % for problem_id in problem_ids:
+                <th>{{ problem_id }}</th>
+                % end
+              </tr>
+            </thead>
+            <tbody>
+              % for tag in tags:
+              <tr>
+                <td>{{ tag }}</td>
+                <td>{{ total_map[tag] }}</td>
+                % for problem_id in problem_ids:
+                <td>{{ best_solution_map[(problem_id, tag)]['_avg_score'] }}</td>
+                % end
+              </tr>
+              % end
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+    </script>
+  </body>
+</html>
