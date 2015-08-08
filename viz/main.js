@@ -27,6 +27,7 @@ function cloneGame(game) {
   newGame.score = game.score;
   newGame.ls_old = game.ls_old;
   newGame.commandHistory = game.commandHistory;
+  newGame.done = game.done;
   return newGame;
 }
 
@@ -341,6 +342,19 @@ function undo() {
 }
 
 function handleKey(keyCode) {
+  if (keyCode == 'U'.charCodeAt(0)) {
+    undo();
+
+    drawGame();
+    logKey();
+    return;
+  }
+
+  if (g_currentGame === undefined ||
+      g_currentGame.unit === undefined) {
+    return;
+  }
+
   var newUnit = cloneUnit(g_currentGame.unit);
 
   var command;
@@ -375,13 +389,6 @@ function handleKey(keyCode) {
     moveUnit(newUnit, moveE);
     command = 'b';
     break;
-
-  case 'U'.charCodeAt(0):
-    undo();
-
-    drawGame();
-    logKey();
-    return;
 
   default:
     return;
@@ -427,11 +434,6 @@ function init() {
   drawProblem(problems.options[problems.selectedIndex].value);
 
   document.body.addEventListener('keydown', function (e) {
-    if (g_currentGame === undefined ||
-        g_currentGame.unit === undefined) {
-      return;
-    }
-
     handleKey(e.keyCode);
   });
 }
@@ -495,6 +497,12 @@ function drawGame() {
     }
   }
 
+  if (g_currentGame.unit === undefined) {
+    if (!g_currentGame.done) {
+      done();
+    }
+  }
+
   var boardForDisplay = cloneBoard(g_currentGame.board);
 
   if (g_currentGame.unit) {
@@ -515,6 +523,10 @@ function saveGame() {
   g_history.push(cloneGame(g_currentGame));
 }
 
+function done() {
+  sendSolution();
+}
+
 function setupGame(configurations) {
   var board = createBoard(configurations.width, configurations.height);
   var filled = configurations.filled;
@@ -533,6 +545,7 @@ function setupGame(configurations) {
     score: 0,
     ls_old: 0,
     commandHistory: '',
+    done: false,
   };
   g_history = [];
   saveGame();
@@ -600,6 +613,7 @@ function sendSolution() {
                              seed: g_currentGame.configurations.sourceSeeds[0],
                              tag: 'handplay_viz',
                              solution: g_currentGame.commandHistory}]);
+  console.log(str);
 
   var x = new XMLHttpRequest();
   x.onreadystatechange = function() {
