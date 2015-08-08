@@ -524,7 +524,6 @@ function loadBest() {
     var json = x.response;
     for (var i = 0; i < json.length; ++i) {
       var solution = json[i];
-      console.log(solution);
       if (g_currentGame.configurations.id == solution.problemId &&
           g_currentGame.seed == solution.seed) {
         drawProblem(g_currentGame.file, g_currentGame.seed, solution.solution);
@@ -537,7 +536,6 @@ function loadBest() {
 
 function load() {
   var saveData = JSON.parse(saveList.options[saveList.selectedIndex].value);
-  console.log(saveData);
   drawProblem(saveData.file, saveData.seed, saveData.commands);
 }
 
@@ -800,7 +798,6 @@ function drawProblem(file, seed, commands) {
 
     seeds.addEventListener('change', function () {
       var selectedSeed = parseInt(seeds.options[seeds.selectedIndex].value);
-      console.log(seed);
       setupGame(json, file, selectedSeed);
     });
 
