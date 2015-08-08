@@ -36,7 +36,7 @@ def main(unused_argv):
   while True:
     solution = db.solutions.find_one({'_processed': None})
     if not solution:
-      solution = db.solutions.find_one({'$lt': PROCESSOR_VERSION})
+      solution = db.solutions.find_one({'_processed': {'$lt': PROCESSOR_VERSION}})
     if not solution:
       time.sleep(3)
       continue
