@@ -21,6 +21,9 @@ body {
   line-height: 1em;
   font-size: 140%;
 }
+#problems {
+  max-width: 18ex;
+}
 </style>
 <body onload="init()">
 
@@ -43,18 +46,18 @@ body {
 <!-- usage -->
 <pre id="manual" onclick="hideManual()" style="display: none">
 
-(RCCW) W E (RCW)   U (Undo)
+(RCCW) W E (RCW)
   (W) A   D (E)
   (SW) Z X (SE)
 
 U: Undo
 Shift: dry-run
-
 </pre>
 
 <div id="showManualDiv" onclick="showManual()">
 Show manual
 </div>
+<div id="message" style="color:red"></div>
 
 </div>
 
@@ -63,7 +66,6 @@ Show manual
 <div id="mainbar">
 
 <div id="info"></div>
-<div id="message" style="color:red"></div>
 <p>
   <textarea id="log" rows=1 cols=100></textarea>
 </p>
