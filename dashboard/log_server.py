@@ -10,6 +10,12 @@ gflags.DEFINE_integer('port', None, 'port')
 gflags.MarkFlagAsRequired('port')
 
 
+def set_cors_headers():
+  bottle.response.headers['Access-Control-Allow-Origin'] = '*'
+  bottle.response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+  bottle.response.headers['Access-Control-Allow-Headers'] = 'Origin, Accept, Content-Type, X-Requested-With'
+
+
 @bottle.get('/')
 def index_handler():
   return 'This is a solution logging server.'
@@ -24,15 +30,13 @@ def log_handler():
     return bottle.abort(400, 'Malformed solutions (top-level not a list)')
   for solution in solutions:
     db.insert(solution)
-  bottle.response.headers['Access-Control-Allow-Origin'] = '*'
-  bottle.response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+  set_cors_headers()
   return 'OK'
 
 
 @bottle.route('/log', method='OPTIONS')
 def log_options_handler():
-  bottle.response.headers['Access-Control-Allow-Origin'] = '*'
-  bottle.response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+  set_cors_headers()
 
 
 def main(unused_argv):
