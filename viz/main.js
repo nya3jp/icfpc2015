@@ -516,6 +516,25 @@ function extractFromFragment() {
   }
 }
 
+function loadBest() {
+  var x = new XMLHttpRequest();
+  x.open('GET', 'http://dashboard.natsubate.nya3.jp/state-of-the-art.json');
+  x.responseType = 'json';
+  x.onload = function () {
+    var json = x.response;
+    for (var i = 0; i < json.length; ++i) {
+      var solution = json[i];
+      console.log(solution);
+      if (g_currentGame.configurations.id == solution.problemId &&
+          g_currentGame.seed == solution.seed) {
+        drawProblem(g_currentGame.file, g_currentGame.seed, solution.solution);
+        return;
+      }
+    }
+  }
+  x.send();
+}
+
 function load() {
   var saveData = JSON.parse(saveList.options[saveList.selectedIndex].value);
   console.log(saveData);
