@@ -590,7 +590,7 @@ function load() {
 
 function init() {
   var problems = document.getElementById('problems');
-  for (var i = 0; i < 24; ++i) {
+  for (var i = 0; i < 25; ++i) {
     var file = 'problem_' + i + '.json';
     var option = document.createElement('option');
     option.value = file;
