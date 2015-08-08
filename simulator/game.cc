@@ -128,11 +128,12 @@ bool Game::SpawnNewUnit() {
   return true;
 }
 
-bool Game::Run(Command command) {
+Unit Game::NextUnit(const Unit& prev_unit, Command command) {
+  // This won't happen.
   if (command == Command::IGNORED) {
-    return true;
+    return prev_unit;
   }
-  Unit new_unit = current_unit_;
+  Unit new_unit = prev_unit;
   switch (command) {
     case Command::E: {
       new_unit.MoveEast();
@@ -159,6 +160,14 @@ bool Game::Run(Command command) {
       break;
     }
   }
+  return new_unit;
+}
+
+bool Game::Run(Command command) {
+  if (command == Command::IGNORED) {
+    return true;
+  }
+  Unit new_unit = Game::NextUnit(current_unit_, command);
 
   if (Contains(history_, new_unit)) {
     // Error.
