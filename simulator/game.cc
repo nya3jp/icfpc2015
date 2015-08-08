@@ -72,7 +72,7 @@ void Game::Load(const picojson::value& parsed, int seed_index) {
   current_unit_ = Unit();
   current_index_ = 0;
   score_ = 0;
-  total_cleared_lines_ = 0;
+  prev_cleared_lines_ = 0;
   SpawnNewUnit();
 }
 
@@ -152,9 +152,9 @@ bool Game::Run(Command command) {
     int num_cleard_lines = board_.Lock(current_unit_);
     int points = current_unit_.members().size()
         + 100 * (1 + num_cleard_lines) * num_cleard_lines / 2;
-    int line_bonus = total_cleared_lines_ > 0 ?
-        (total_cleared_lines_ - 1) * points / 10 : 0;
-    total_cleared_lines_ += num_cleard_lines;
+    int line_bonus = prev_cleared_lines_ > 0 ?
+        (prev_cleared_lines_ - 1) * points / 10 : 0;
+    prev_cleared_lines_ = num_cleard_lines;
     score_ += (points + line_bonus);
     return SpawnNewUnit();
   }

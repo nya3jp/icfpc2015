@@ -39,7 +39,7 @@ class Game {
   int current_index_;
   std::vector<Unit> history_;
   int score_;
-  int total_cleared_lines_;
+  int prev_cleared_lines_;
 
   DISALLOW_COPY_AND_ASSIGN(Game);
 };

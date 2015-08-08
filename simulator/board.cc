@@ -49,13 +49,20 @@ int Board::Lock(const Unit& unit) {
 
   // Clears for each row if necessary.
   int num_cleared_lines = 0;
-  for (auto& row : cells_) {
+  for (int y = height_ - 1; y >= 0; --y) {
+    std::vector<int>& row = cells_[y];
     if (std::all_of(std::begin(row), std::end(row),
                     [](int cell) { return cell; })) {
-      std::fill(std::begin(row), std::end(row), 0);
       ++num_cleared_lines;
+    } else if (num_cleared_lines) {
+      cells_[y + num_cleared_lines] = row;
     }
   }
+  for (int y = 0; y < num_cleared_lines; ++y) {
+    std::vector<int>& row = cells_[y];
+    std::fill(std::begin(row), std::end(row), 0);
+  }
+
   return num_cleared_lines;
 }
 
