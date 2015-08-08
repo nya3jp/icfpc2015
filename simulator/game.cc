@@ -87,24 +87,42 @@ bool Game::SpawnNewUnit() {
   }
 
   current_unit_ = units_[rand_.current() % units_.size()];
-  int left = board_.width();
-  int right = -1;
-  for (const auto& p : current_unit_.members()) {
-    if (left > p.x()) {
-      left = p.x();
+  // Move to top.
+  {
+    HexPoint origin = current_unit_.members()[0];
+    for (const auto& member : current_unit_.members()) {
+      if (member.y() < origin.y()) {
+        origin = member;
+      }
     }
-    if (right < p.x()) {
-      right = p.x();
+    for (auto& member : *current_unit_.mutable_members()) {
+      member = member.TranslateToOrigin(origin);
     }
   }
-  right = board_.width() - right - 1;
 
-  current_unit_.Shift((right - left) / 2);
+  // Center it.
+  {
+    int left = board_.width();
+    int right = -1;
+    for (const auto& p : current_unit_.members()) {
+      if (left > p.x()) {
+        left = p.x();
+      }
+      if (right < p.x()) {
+        right = p.x();
+      }
+    }
+    right = board_.width() - right - 1;
+    current_unit_.Shift((right - left) / 2);
+  }
+
+  // Check if it is put to the available space.
   if (board_.IsConflicting(current_unit_)) {
     // No space left.
     return false;
   }
 
+  // Clear the history.
   history_.clear();
   history_.push_back(current_unit_);
   return true;

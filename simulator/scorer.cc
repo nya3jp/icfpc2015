@@ -44,11 +44,25 @@ Game::Command ParseCommand(char c) {
   }
 }
 
+struct CurrentState {
+  CurrentState(const Game& game) : game_(game) {
+  }
+
+  const Game& game_;
+};
+
+std::ostream& operator<<(std::ostream& os, const CurrentState& state) {
+  state.game_.DumpCurrent(&os);
+  return os;
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
   google::InitGoogleLogging(argv[0]);
   google::ParseCommandLineFlags(&argc, &argv, true);
+
+  FLAGS_logtostderr = true;
 
   picojson::value problem;
   {
@@ -69,20 +83,19 @@ int main(int argc, char* argv[]) {
     int seed_index = FindIndex(
         problem.get("sourceSeeds").get<picojson::array>(),
         entry.get("seed").get<int64_t>());
-    LOG(ERROR) << "SeedIndex: " << seed_index;
+    LOG(INFO) << "SeedIndex: " << seed_index;
     Game game;
     game.Load(problem, seed_index);
-    LOG(ERROR) << game;
+    LOG(INFO) << game;
 
     const std::string& solution = entry.get("solution").get<std::string>();
     bool is_finished = false;
     bool error = false;
     int i = 0;
     for (; i < solution.size(); ++i) {
-      game.DumpCurrent(&std::cerr);
-      std::cerr << "\n";
+      LOG(INFO) << CurrentState(game);
       Game::Command command = ParseCommand(solution[i]);
-      LOG(ERROR) << "Run: " << i << ", " << solution[i] << ", " << command;
+      LOG(INFO) << "Run: " << i << ", " << solution[i] << ", " << command;
       if (is_finished) {
         error = true;
         break;
@@ -91,7 +104,7 @@ int main(int argc, char* argv[]) {
         is_finished = true;
       }
     }
-    LOG(ERROR) << "i: " << i << ", " << solution.size();
+    LOG(INFO) << "i: " << i << ", " << solution.size();
     int score = error ? 0 : game.score();
     std::cout << score << "\n";
   }

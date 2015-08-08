@@ -15,6 +15,8 @@ class Unit {
   const HexPoint& pivot() const { return pivot_; }
   const std::vector<HexPoint>& members() const { return members_; }
 
+  std::vector<HexPoint>* mutable_members() { return &members_; }
+
   bool operator==(const Unit& other) const {
     if (pivot_ != other.pivot_) {
       return false;
@@ -68,15 +70,23 @@ class Unit {
     for (auto& member : members_) {
       member = member.RotateClockwise(pivot_);
     }
+    std::sort(members_.begin(), members_.end(), HexPointLess());
   }
 
   void RotateCounterClockwise() {
     for (auto& member : members_) {
       member = member.RotateCounterClockwise(pivot_);
     }
+    std::sort(members_.begin(), members_.end(), HexPointLess());
   }
 
  private:
+  struct HexPointLess {
+    bool operator()(const HexPoint& p1, const HexPoint& p2) const {
+      return p1.y() != p2.y() ? p1.y() < p2.y() : p1.x() < p2.x();
+    }
+  };
+
   HexPoint pivot_;
   std::vector<HexPoint> members_;
 };
