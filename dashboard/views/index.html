@@ -43,9 +43,21 @@
               </tr>
               % end
               <tr>
-                <td>BEST</td>
+                <td>Best</td>
                 % for problem_id in problem_ids:
                 <td>{{ best_solution_map[problem_id]['_avg_score'] }}</td>
+                % end
+              </tr>
+              <tr>
+                <td>Live</td>
+                % for problem_id in problem_ids:
+                <td>{{ live_solution_map[problem_id] }}</td>
+                % end
+              </tr>
+              <tr>
+                <td>Rank <b>{{ total_rank }}</b></td>
+                % for problem_id in problem_ids:
+                <td>{{ rank_solution_map[problem_id] }}</td>
                 % end
               </tr>
             </tbody>
