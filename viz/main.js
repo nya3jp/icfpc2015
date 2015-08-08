@@ -342,6 +342,7 @@ function updateInfo() {
 function undo() {
   if (g_history.length > 0) {
     g_currentGame = g_history.pop();
+    showAlertMessage(''); // clear
   }
   updateInfo();
 }
@@ -476,8 +477,10 @@ function doCommand(command, dryRun) {
 
   var newUnitHash = hashUnit(newUnit);
   if (g_currentGame.currentUnitHistory.indexOf(newUnitHash) != -1) {
-    showAlertMessage("loop!");
+    showAlertMessage("ALREADY VISITED!!");
     return;
+  } else {
+    showAlertMessage(''); // clear
   }
 
   saveGame();
