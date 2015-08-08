@@ -727,7 +727,13 @@ function init() {
 
     if (params[2] != g_currentGame.commandHistory) {
       undoAll();
-      replayCommands(params[2]);
+
+      if (params[2] == 'BEST') {
+        loadBest();
+      } else {
+        replayCommands(params[2]);
+      }
+
       drawGame(undefined);
     }
   });
