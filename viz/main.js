@@ -49,8 +49,9 @@ function hashUnit(unit) {
 
 function cloneGame(game) {
   var newGame = {};
-  newGame.source = [].concat(game.source);
-  newGame.board = cloneBoard(game.board);
+  newGame.source = game.source;
+  newGame.sourceIndex = game.sourceIndex;
+  newGame.board = game.locks ? cloneBoard(game.board) : game.board;
   newGame.configurations = game.configurations;
   newGame.unit = game.unit ? cloneUnit(game.unit) : undefined;
   newGame.score = game.score;
@@ -340,7 +341,7 @@ function updateInfo() {
     'Seed: ' + g_currentGame.seed + '\n' +
     'Score: ' + g_currentGame.score + '\n' +
     'ls_old: ' + g_currentGame.ls_old + '\n' +
-    'Remaining units: ' + g_currentGame.source.length + '\n' +
+    'Remaining units: ' + (g_currentGame.source.length - g_currentGame.sourceIndex) + '\n' +
     'Command length: ' + g_currentGame.commandHistory.length;
 
   var log = document.getElementById('log');
@@ -348,6 +349,11 @@ function updateInfo() {
 }
 
 function undo() {
+  // var commands = g_currentGame.commandHistory;
+  // undoAll();
+  // replayCommands(commands.slice(0, commands.length - 1));
+  // return;
+
   if (g_history.length > 0) {
     g_redoHistory.push(cloneGame(g_currentGame));
     g_currentGame = g_history.pop();
@@ -378,6 +384,8 @@ function handleKey(e) {
   if (keyCode == 'U'.charCodeAt(0)) {
     undo();
 
+    spawnNewUnit();
+    checkGameOver();
     drawGame(undefined);
     return;
   }
@@ -385,6 +393,8 @@ function handleKey(e) {
   if (keyCode == 'R'.charCodeAt(0)) {
     redo();
 
+    spawnNewUnit();
+    checkGameOver();
     drawGame(undefined);
     logKey();
     return;
@@ -425,8 +435,16 @@ function handleKey(e) {
     return;
   }
 
-  for (var i = 0; i < command.length; ++i) {
-    doCommand(command[i], e.shiftKey);
+  if (e.shiftKey) {
+    for (var i = 0; i < command.length; ++i) {
+      doCommand(command[i], true);
+    }
+  } else {
+    for (var i = 0; i < command.length; ++i) {
+      doCommand(command[i], false);
+    }
+
+    drawGame(undefined);
   }
 }
 
@@ -499,6 +517,8 @@ function doCommand(command, dryRun) {
 
   if (dryRun) {
     g_inDryRun = true;
+    spawnNewUnit();
+    checkGameOver();
     drawGame(newUnit);
     return;
   }
@@ -512,17 +532,22 @@ function doCommand(command, dryRun) {
   }
 
   g_redoHistory = [];
-  saveGame();
+  var locks = isInvalidUnitPlacement(g_currentGame.board, newUnit);
+  //if (g_history.length < 2) {
+  g_currentGame.locks = locks;
+    saveGame();
+  //}
   g_currentGame.currentUnitHistory.push(newUnitHash);
   g_currentGame.commandHistory += command;
-  if (!isInvalidUnitPlacement(g_currentGame.board, newUnit)) {
+  if (!locks) {
     g_currentGame.unit = newUnit;
   } else {
     placeUnit(g_currentGame.board, g_currentGame.unit, false);
     doLock();
     g_currentGame.unit = undefined;
   }
-  drawGame(undefined);
+  spawnNewUnit();
+  checkGameOver();
 }
 
 function drawSelectedProblem() {
@@ -608,6 +633,8 @@ function init() {
       return true;
     }
     if (g_inDryRun) {
+      spawnNewUnit();
+      checkGameOver();
       drawGame(undefined);
     }
   });
@@ -617,6 +644,8 @@ function init() {
     var commands = logDiv.value;
     undoAll();
     replayCommands(commands)
+    spawnNewUnit();
+    checkGameOver();
     drawGame(undefined);
   });
 }
@@ -625,6 +654,8 @@ function replayCommands(commands) {
   for (var i = 0; i < commands.length; ++i) {
     doCommand(commands[i]);
   }
+
+  drawGame(undefined);
 }
 
 function cloneBoard(board) {
@@ -665,34 +696,43 @@ function calcRandSeq(mod, seed, len) {
   return result;
 }
 
-function drawGame(dryUnit) {
-  if (g_currentGame.unit === undefined) {
-    if (g_currentGame.source.length > 0) {
-      var newUnit = cloneUnit(g_currentGame.configurations.units[g_currentGame.source.shift()]);
-      var newOrigin = determineStart(g_currentGame.board, newUnit);
-      moveUnit(newUnit, function (position) {
-        var newp = makeOriginAs(newOrigin, position);
-        position.x = newp.x;
-        position.y = newp.y;
-      });
+function spawnNewUnit() {
+  if (g_currentGame.unit !== undefined) {
+    return;
+  }
 
-      if (!isInvalidUnitPlacement(g_currentGame.board, newUnit)) {
-        g_currentGame.unit = newUnit;
-        g_currentGame.currentUnitHistory = [hashUnit(newUnit)];
-      } else {
-        showAlertMessage('CONFLICT!')
-      }
+  if (g_currentGame.source.length > g_currentGame.sourceIndex) {
+    var newUnit = cloneUnit(g_currentGame.configurations.units[g_currentGame.source[g_currentGame.sourceIndex]]);
+    ++g_currentGame.sourceIndex;
+    var newOrigin = determineStart(g_currentGame.board, newUnit);
+    moveUnit(newUnit, function (position) {
+      var newp = makeOriginAs(newOrigin, position);
+      position.x = newp.x;
+      position.y = newp.y;
+    });
+
+    if (!isInvalidUnitPlacement(g_currentGame.board, newUnit)) {
+      g_currentGame.unit = newUnit;
+      g_currentGame.currentUnitHistory = [hashUnit(newUnit)];
     } else {
-      showAlertMessage('GAME CLEAR!')
+      showAlertMessage('CONFLICT!')
     }
+  } else {
+    showAlertMessage('GAME CLEAR!')
+  }
+}
+
+function checkGameOver() {
+  if (g_currentGame.unit !== undefined) {
+    return;
   }
 
-  if (g_currentGame.unit === undefined) {
-    if (!g_currentGame.done) {
-      done();
-    }
+  if (!g_currentGame.done) {
+    done();
   }
+}
 
+function drawGame(dryUnit) {
   var boardForDisplay = cloneBoard(g_currentGame.board);
 
   if (!dryUnit && g_currentGame.unit) {
@@ -719,8 +759,8 @@ function drawGame(dryUnit) {
   drawBoard(boardForDisplay, r, gridMul, boardMargin, boardContext, true);
 
   var nextUnits = [];
-  for (var i = 0; i < Math.min(g_currentGame.source.length, 20); ++i) {
-    nextUnits.push(g_currentGame.configurations.units[g_currentGame.source[i]]);
+  for (var i = 0; i < Math.min((g_currentGame.source.length - g_currentGame.sourceIndex), 20); ++i) {
+    nextUnits.push(g_currentGame.configurations.units[g_currentGame.source[g_currentGame.sourceIndex + i]]);
   }
 
   var nextCanvas = document.getElementById('next');
@@ -748,7 +788,9 @@ function drawGame(dryUnit) {
 }
 
 function saveGame() {
-  g_history.push(cloneGame(g_currentGame));
+  var cloned = cloneGame(g_currentGame);
+  g_history.push(g_currentGame);
+  g_currentGame = cloned;
 }
 
 function done() {
@@ -767,6 +809,7 @@ function setupGame(configurations, file, seed) {
     source: calcRandSeq(configurations.units.length,
                         seed,
                         configurations.sourceLength),
+    sourceIndex: 0,
     board: board,
     configurations: configurations,
     unit: undefined,
@@ -782,6 +825,8 @@ function setupGame(configurations, file, seed) {
   g_dryRun = false;
   saveGame();
 
+  spawnNewUnit();
+  checkGameOver();
   drawGame(undefined);
 }
 
