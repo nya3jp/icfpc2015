@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <queue>
+#include <set>
 #include <glog/logging.h>
 
 #include "game.h"
@@ -208,6 +209,21 @@ bool Game::IsLockable(const Unit& current) const {
   return GetLockCommand(current) != Command::IGNORED;
 }
 
+struct UnitLocation {
+  HexPoint pivot;
+  int angle;
+  UnitLocation() {}
+  UnitLocation(const HexPoint& pivot, int angle) : pivot(pivot), angle(angle) {}
+  bool operator<(const UnitLocation& other) const {
+    return pivot.x() != other.pivot.x() ? pivot.x() < other.pivot.x() :
+      pivot.y() != other.pivot.y() ? pivot.y() < other.pivot.y() :
+      angle < other.angle;
+  }
+  UnitLocation(const Unit& unit)
+    : pivot(unit.pivot()), angle(unit.angle()) {}
+};
+
+
 void Game::ReachableUnits(std::vector<SearchResult>* result) const {
   result->clear();
   {
@@ -220,10 +236,8 @@ void Game::ReachableUnits(std::vector<SearchResult>* result) const {
   // TODO: Don't copy vector<command> too much. Use dfs instead?
   std::queue<SearchResult> todo;
   todo.push(SearchResult(current_unit_, {}));
-  // TODO: Use set.
-  // TODO: Hold lighter object than Unit for covered detection.
-  std::vector<Unit> covered;
-  covered.emplace_back(current_unit_);
+  std::set<UnitLocation> covered;
+  covered.insert(UnitLocation(current_unit_));
   while (!todo.empty()) {
     Unit current = todo.front().first;
     std::vector<Command> moves = todo.front().second;
@@ -231,7 +245,7 @@ void Game::ReachableUnits(std::vector<SearchResult>* result) const {
     for (Command c = Command::E; c != Command::IGNORED; ++c) {
       Unit next = Game::NextUnit(current, c);
       // TODO: performance improvement using set and such.
-      if (Contains(covered, next)) {
+      if (covered.count(UnitLocation(next))) {
         continue;
       }
       if (board_.IsConflicting(next)) {
@@ -239,7 +253,7 @@ void Game::ReachableUnits(std::vector<SearchResult>* result) const {
       }
       moves.emplace_back(c);
       todo.push(SearchResult(next, moves));
-      covered.emplace_back(next);
+      covered.insert(UnitLocation(next));
       Command lock_command = GetLockCommand(next);
       if (lock_command != Command::IGNORED) {
         moves.emplace_back(lock_command);
