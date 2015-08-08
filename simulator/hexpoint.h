@@ -14,9 +14,6 @@ class HexPoint {
   int x() const { return x_; }
   int y() const { return y_; }
 
-  void RotClockwise();
-  void RotCounterClockwize();
-
   HexPoint operator+(const HexPoint& other) const {
     return HexPoint(x_ + other.x_, y_ + other.y_);
   }
@@ -43,6 +40,7 @@ class HexPoint {
     return !(*this == other);
   }
 
+  // Rotate 60 degrees in clockwise centering (0, 0).
   HexPoint RotateClockwise() const {
     int xx = x_ - (y_ - (y_ & 1)) / 2;
     int zz = y_;
@@ -56,6 +54,7 @@ class HexPoint {
     return HexPoint(xx + (zz - (zz & 1)) / 2, zz);
   }
 
+  // Rotate 60 degrees in counter-clockwise centering (0, 0).
   HexPoint RotateCounterClockwise() const {
     int xx = x_ - (y_ - (y_ & 1)) / 2;
     int zz = y_;
@@ -69,34 +68,32 @@ class HexPoint {
     return HexPoint(xx + (zz - (zz & 1)) / 2, zz);
   }
 
-  HexPoint RotateClockwise(const HexPoint& origin) const {
-    // Move origin to 0, 0.
-    HexPoint moved = *this - origin;
-    if ((origin.y() & 1) && !(y() & 1)) {
-      moved -= HexPoint(1, 0);
-    }
-    moved = moved.RotateClockwise();
-    // Move 0, 0 back to the origin.
-    moved += origin;
-    if ((origin.y() & 1) && !(moved.y() & 1)) {
-      moved += HexPoint(1, 0);
-    }
+  // Translate this point as if |pivot| moves to (0, 0).
+  HexPoint TranslateToOrigin(const HexPoint& pivot) const {
+    HexPoint moved = *this - pivot;
+    moved.x_ -= (pivot.y() & moved.y()) & 1;
     return moved;
   }
 
-  HexPoint RotateCounterClockwise(const HexPoint& origin) const {
-    // Move origin to 0, 0.
-    HexPoint moved = *this - origin;
-    if ((origin.y() & 1) && !(y() & 1)) {
-      moved -= HexPoint(1, 0);
-    }
-    moved = moved.RotateCounterClockwise();
-    // Move 0, 0 back to the origin.
-    moved += origin;
-    if ((origin.y() & 1) && !(moved.y() & 1)) {
-      moved += HexPoint(1, 0);
-    }
+  // Translate this point as if (0, 0) moves to |pivot|.
+  HexPoint TranslateFromOrigin(const HexPoint& pivot) const {
+    HexPoint moved = *this + pivot;
+    moved.x_ += (pivot.y() & y()) & 1;
     return moved;
+  }
+
+  // Rotate 60 degrees in clockwise, centering pivot.
+  HexPoint RotateClockwise(const HexPoint& pivot) const {
+    return TranslateToOrigin(pivot)
+        .RotateClockwise()
+        .TranslateFromOrigin(pivot);
+  }
+
+  // Rotate 60 degrees in counter-clockwise, centering pivot.
+  HexPoint RotateCounterClockwise(const HexPoint& pivot) const {
+    return TranslateToOrigin(pivot)
+        .RotateCounterClockwise()
+        .TranslateFromOrigin(pivot);
   }
 
  private:

@@ -39,7 +39,7 @@ def index_handler():
     lambda: {'tag': 'nop', '_score': 0})
   for solution in db.solutions.find():
     key = (solution['problemId'], solution['seed'], solution['tag'])
-    if solution['_score'] > best_seed_solution_map[key]['_score']:
+    if solution.get('_score', -1) > best_seed_solution_map[key]['_score']:
       best_seed_solution_map[key] = solution
   tags = sorted(set(tag for (_, _, tag) in best_seed_solution_map.iterkeys()))
   best_problem_solution_map = collections.defaultdict(
