@@ -617,7 +617,11 @@ function drawGame(dryUnit) {
       if (!isInvalidUnitPlacement(g_currentGame.board, newUnit)) {
         g_currentGame.unit = newUnit;
         g_currentGame.currentUnitHistory = [hashUnit(newUnit)];
+      } else {
+        showAlertMessage('CONFLICT!')
       }
+    } else {
+      showAlertMessage('GAME CLEAR!')
     }
   }
 
