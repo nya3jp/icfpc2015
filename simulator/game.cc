@@ -75,6 +75,7 @@ void Game::Load(const picojson::value& parsed, int seed_index) {
   current_index_ = 0;
   score_ = 0;
   prev_cleared_lines_ = 0;
+  error_ = false;
   SpawnNewUnit();
 }
 
@@ -175,6 +176,7 @@ bool Game::Run(Command command) {
 
   if (Contains(history_, new_unit)) {
     // Error.
+    error_ = true;
     score_ = 0;
     return false;
   }

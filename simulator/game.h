@@ -15,6 +15,7 @@ class Game {
   ~Game();
 
   int score() const { return score_; }
+  bool error() const { return error_; }
 
   void Load(const picojson::value& parsed, int seed_index);
   void Dump(std::ostream* os) const;
@@ -49,6 +50,7 @@ class Game {
   std::vector<Unit> history_;
   int score_;
   int prev_cleared_lines_;
+  bool error_;
 };
 
 inline Game::Command operator++( Game::Command& x ) {

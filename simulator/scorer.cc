@@ -129,8 +129,9 @@ int main(int argc, char* argv[]) {
       }
     }
     LOG(INFO) << "i: " << i << ", " << solution.size();
+    error |= game.error();
     int score = error ? 0 : game.score();
-    if (FLAGS_enable_phrase_score && score) {
+    if (!error && FLAGS_enable_phrase_score) {
       score += PhraseScore(solution);
     }
     std::cout << score << "\n";
