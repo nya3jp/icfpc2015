@@ -2,6 +2,7 @@
 #define GAME_H_
 
 #include <iostream>
+#include <glog/logging.h>
 
 #include "board.h"
 #include "common.h"
