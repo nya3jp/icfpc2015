@@ -12,6 +12,8 @@
 DEFINE_string(problem, "", "problem file");
 DEFINE_string(output, "", "output file");
 
+DEFINE_bool(enable_phrase_score, false, "Enables the phrase scoring.");
+
 namespace {
 
 int FindIndex(const picojson::array& source_seeds, int64_t seed) {
@@ -55,6 +57,28 @@ std::ostream& operator<<(std::ostream& os, const CurrentState& state) {
   state.game_.DumpCurrent(&os);
   return os;
 }
+
+const char* kPhraseList[] = {
+  "ei!",
+};
+
+int PhraseScore(const std::string& s) {
+  int score = 0;
+  for (int i = 0; i < sizeof(kPhraseList) / sizeof(kPhraseList[0]); ++i) {
+    const char* phrase = kPhraseList[i];
+    int reps = 0;
+    size_t pos = 0;
+    while ((pos = s.find(phrase, pos)) != std::string::npos) {
+      ++reps;
+      ++pos;
+    }
+    if (reps) {
+      score += 2 * strlen(phrase) * reps + 300;
+    }
+  }
+  return score;
+}
+
 
 }  // namespace
 
@@ -106,6 +130,9 @@ int main(int argc, char* argv[]) {
     }
     LOG(INFO) << "i: " << i << ", " << solution.size();
     int score = error ? 0 : game.score();
+    if (FLAGS_enable_phrase_score && score) {
+      score += PhraseScore(solution);
+    }
     std::cout << score << "\n";
   }
 }
