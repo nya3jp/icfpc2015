@@ -46,4 +46,33 @@ class Game {
 
 std::ostream& operator<<(std::ostream& os, const Game& game);
 
+inline std::ostream& operator<<(std::ostream& os, Game::Command command) {
+  switch (command) {
+    case Game::Command::W:
+      os << "W";
+      break;
+    case Game::Command::E:
+      os << "E";
+      break;
+    case Game::Command::SW:
+      os << "SW";
+      break;
+    case Game::Command::SE:
+      os << "SE";
+      break;
+    case Game::Command::CW:
+      os << "CW";
+      break;
+    case Game::Command::CCW:
+      os << "CCW";
+      break;
+    case Game::Command::IGNORED:
+      os << "IGNORED";
+      break;
+    default:
+      LOG(FATAL) << "Unknown command";
+  }
+  return os;
+}
+
 #endif  // GAME_H_

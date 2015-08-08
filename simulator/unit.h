@@ -39,16 +39,16 @@ class Unit {
   }
 
   void MoveEast() {
-    Shift(-1);
-  }
-
-  void MoveWest() {
     Shift(1);
   }
 
+  void MoveWest() {
+    Shift(-1);
+  }
+
   void MoveSouthEast() {
-    const HexPoint odd_movement(0, 1);
-    const HexPoint even_movement(-1, 1);
+    const HexPoint odd_movement(1, 1);
+    const HexPoint even_movement(0, 1);
     pivot_ += (pivot_.y() & 1 ? odd_movement : even_movement);
     for (auto& member : members_) {
       member += (member.y() & 1 ? odd_movement : even_movement);
@@ -56,8 +56,8 @@ class Unit {
   }
 
   void MoveSouthWest() {
-    const HexPoint odd_movement(1, 1);
-    const HexPoint even_movement(0, 1);
+    const HexPoint odd_movement(0, 1);
+    const HexPoint even_movement(-1, 1);
     pivot_ += (pivot_.y() & 1 ? odd_movement : even_movement);
     for (auto& member : members_) {
       member += (member.y() & 1 ? odd_movement : even_movement);

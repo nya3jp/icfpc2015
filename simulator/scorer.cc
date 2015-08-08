@@ -75,17 +75,24 @@ int main(int argc, char* argv[]) {
     LOG(ERROR) << game;
 
     const std::string& solution = entry.get("solution").get<std::string>();
+    bool is_finished = false;
+    bool error = false;
     int i = 0;
     for (; i < solution.size(); ++i) {
       game.DumpCurrent(&std::cerr);
       std::cerr << "\n";
       Game::Command command = ParseCommand(solution[i]);
-      if (!game.Run(command)) {
+      LOG(ERROR) << "Run: " << i << ", " << solution[i] << ", " << command;
+      if (is_finished) {
+        error = true;
         break;
       }
+      if (!game.Run(command)) {
+        is_finished = true;
+      }
     }
-
-    int score = (i < solution.size()) ? 0 : game.score();
+    LOG(ERROR) << "i: " << i << ", " << solution.size();
+    int score = error ? 0 : game.score();
     std::cout << score << "\n";
   }
 }

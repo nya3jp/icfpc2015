@@ -179,6 +179,7 @@ void Game::Dump(std::ostream* os) const {
 void Game::DumpCurrent(std::ostream* os) const {
   *os << "current_index: " << current_index_ << "\n";
   *os << "Rand: " << rand_.current() << "\n";
+  *os << "Score: " << score_ << "\n";
 
   *os << "Map:";
   {
