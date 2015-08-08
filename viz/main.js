@@ -596,7 +596,7 @@ function drawGame(dryUnit) {
 
   var boardForDisplay = cloneBoard(g_currentGame.board);
 
-  if (g_currentGame.unit) {
+  if (!dryUnit && g_currentGame.unit) {
     placeUnit(boardForDisplay, g_currentGame.unit, true);
   }
 
@@ -745,8 +745,8 @@ function drawBoard(board, r, gridMul, topLeft) {
       if ((data & 4) == 4) {
         g_canvasContext.strokeStyle = 'red';
         g_canvasContext.fillStyle = 'red';
-        drawHex(center, r * 0.8);
-        g_canvasContext.stroke();
+        drawHex(center, r * 0.7);
+        g_canvasContext.fill();
       }
 
       if ((data & 2) == 2) {
@@ -757,9 +757,9 @@ function drawBoard(board, r, gridMul, topLeft) {
       }
 
       if ((data & 8) == 8) {
-        g_canvasContext.strokeStyle = 'red';
-        g_canvasContext.fillStyle = 'red';
-        drawHex(center, r * 0.2);
+        g_canvasContext.strokeStyle = 'pink';
+        g_canvasContext.fillStyle = 'pink';
+        drawHex(center, r * 0.4);
         g_canvasContext.fill();
       }
     }
