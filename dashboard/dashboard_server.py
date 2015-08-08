@@ -53,17 +53,10 @@ def index_handler():
       0 if not entry['_solutions']
       else
       float(sum(s['_score'] for s in entry['_solutions'])) / problem_seed_sizes[problem_id])
-  total_map = {}
-  for tag in tags:
-    total_map[tag] = sum(
-      best_problem_solution_map[(problem_id, tag)]['_avg_score']
-      for problem_id in problem_ids)
-  tags.sort(key=lambda tag: total_map[tag], reverse=True)
   template_values = {
     'problem_ids': problem_ids,
     'tags': tags,
     'best_solution_map': best_problem_solution_map,
-    'total_map': total_map,
   }
   return bottle.template('index.html', **template_values)
 
