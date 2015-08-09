@@ -10,6 +10,7 @@ import time
 import logging_util
 import gflags
 import pymongo
+import requests
 import ujson as json
 
 FLAGS = gflags.FLAGS
