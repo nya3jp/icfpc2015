@@ -66,6 +66,11 @@ class Game {
 
   const UnitLocation& current_unit() const { return current_unit_; }
 
+  UnitLocation GetUnitAtSpawnPosition(size_t index) const {
+    return UnitLocation(&units_[index], spawn_position_[index]);
+  }
+  size_t GetNumberOfUnits() const { return units_.size(); }
+
  private:
   int id_;
   // TODO: do not copy units_.

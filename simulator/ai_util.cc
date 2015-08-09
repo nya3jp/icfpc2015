@@ -3,6 +3,7 @@
 #include <vector>
 #include <stack>
 #include <utility>
+#include <set>
 
 #include "game.h"
 
@@ -82,4 +83,40 @@ int64_t GetDotReachabilityFromTop(const Game& game)
   }
 
   return ret;
+}
+
+void GetReachabilityMapByAnyHands(const Game& game, Board *ret_board)
+{
+  *ret_board = game.GetBoard(); // copy
+  for(int h = 0; h < ret_board->height(); ++h) {
+    for(int w = 0; w < ret_board->width(); ++w) {
+      ret_board->Set(w, h, false);
+    }
+  }
+
+  for(size_t index = 0; index < game.GetNumberOfUnits(); ++index) {
+    const UnitLocation &u = game.GetUnitAtSpawnPosition(index);
+    std::stack<UnitLocation> todo;
+    todo.push(u);
+    std::set<UnitLocation, UnitLocationLess> covered;
+    while (!todo.empty()) {
+      UnitLocation current = todo.top();
+      todo.pop();
+      covered.insert(UnitLocation(current));
+      for(const auto& p: current.members()) {
+        ret_board->Set(p, true);
+      }
+      for (Game::Command c = Game::Command::E; c != Game::Command::IGNORED; ++c) {
+        UnitLocation next = Game::NextUnit(current, c);
+        if (covered.count(next)) {
+          continue;
+        }
+        if (game.GetBoard().IsConflicting(next)) {
+          continue;
+        }
+        todo.push(next);
+        covered.insert(UnitLocation(next));
+      }
+    }
+  }
 }

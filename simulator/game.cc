@@ -119,8 +119,7 @@ bool Game::SpawnNewUnit() {
   }
 
   int next_index = rand_.current() % units_.size();
-  current_unit_ = UnitLocation(
-      &units_[next_index], spawn_position_[next_index]);
+  current_unit_ = GetUnitAtSpawnPosition(next_index);
 
   // Check if it is put to the available space.
   if (board_.IsConflicting(current_unit_)) {
