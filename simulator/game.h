@@ -16,6 +16,7 @@ class Game {
 
   int score() const { return score_; }
   bool error() const { return error_; }
+  int current_index() const { return current_index_; }
 
   void Load(const picojson::value& parsed, int seed_index);
   void Dump(std::ostream* os) const;
