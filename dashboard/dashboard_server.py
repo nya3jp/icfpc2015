@@ -141,6 +141,16 @@ def state_of_the_art_without_rewrite_json_handler():
   return json.dumps(solutions)
 
 
+@bottle.get('/all-solutions.json')
+def all_solutions_json_handler():
+  solutions = list(db.solutions.find())
+  for solution in solutions:
+    solution.pop('_id', None)
+    solution.pop('_processed', None)
+  bottle.response.content_type = 'application/json'
+  return json.dumps(solutions)
+
+
 def main(unused_argv):
   global db
   db = pymongo.MongoClient().natsubate
