@@ -31,6 +31,10 @@ public:
   }
 };
 
+// Usage:
+// ../../supervisors/simple.py -f problem.json ./greedy_solver
+// or
+// ../../supervisors/simple.py -f problem.json --show_scores ./greedy_solver
 int main(int argc, char* argv[]) {
   google::InitGoogleLogging(argv[0]);
   google::ParseCommandLineFlags(&argc, &argv, true);
