@@ -57,18 +57,19 @@ int score(const std::string& cmd, const std::vector<std::string>& phrases) {
 }
 
 const char* g_cmds[] = {
-  "p'!.03",
-  "bcefy2",
-  "aghij4",
-  "lmno 5",
-  "dqrvz1",
-  "kstuwx",
+  "p'!.03", // W
+  "bcefy2", // E
+  "aghij4", // SW
+  "lmno 5", // SE
+  "dqrvz1", // RC
+  "kstuwx", // RCC
 };
 std::mt19937 g_rand;
 
 std::vector<std::string> random_default_moves() {
-  std::vector<int> idx = {0,1,2,3,4,5};
-  std::shuffle(idx.begin(), idx.end(), g_rand); 
+  //Better not to fall down to try many passes.
+  std::vector<int> idx = {4,5,0,1,2,3};
+  //std::shuffle(idx.begin(), idx.end(), g_rand); 
 
   std::vector<std::string> result;
   for (int i=0; i<6; ++i) {
@@ -214,7 +215,7 @@ std::string generate_powerful_sequence(
   }
 
   // Solve over the graph.
-  LOG(INFO) << "  Graph Generated (" << graph.size() << " nodes)";
+  VLOG(1) << "  Graph Generated (" << graph.size() << " nodes)";
   if (HURRY_UP_MODE)
     return hint;
   return solve_on_graph(hint, graph, S, G, phrases);
@@ -265,7 +266,7 @@ void rewrite_main(
       Unit u = game.current_unit();
       if (game.IsLockableBy(u,cmd) || i+1==before.size()) {
         // If this is the last move for this unit, proceed to subproblem.
-        LOG(INFO) << "[" << before.substr(s, i-s)
+        VLOG(1) << "[" << before.substr(s, i-s)
             << "][" << before[i] << "]" << std::endl;
         // (Reinitialize RNG, for reproducibility.)
         g_rand = std::mt19937(178116);
@@ -284,8 +285,8 @@ void rewrite_main(
   // Output metadata.
   int beforescore = score(before, phrases);
   int afterscore = score(after, phrases);
-  LOG(INFO) << "Before: " << beforescore;
-  LOG(INFO) << "After: " << afterscore;
+  LOG(INFO) << "Before: " << oldscore + beforescore;
+  LOG(INFO) << "After: " << oldscore + afterscore << "(+" << afterscore << ")";
   output_entry->get("solution") = picojson::value(after);
   output_entry->get("tag") = picojson::value("rewrakkuma");
   output_entry->get("_score") = picojson::value(oldscore + afterscore - beforescore);
