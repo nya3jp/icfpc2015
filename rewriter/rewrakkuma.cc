@@ -90,13 +90,37 @@ typedef std::pair<Game::Command, Vert> Edge;
 typedef std::vector<Edge> Edges;
 typedef std::vector<Edges> Graph;
 
+std::vector<bool> calc_goal_reachability(const Graph& g, Vert goal) {
+  Graph r(g.size());
+  for (int v=0; v<g.size(); ++v)
+    for (auto& cu: g[v])
+      r[cu.second].emplace_back(cu.first, v);
+
+  std::vector<bool> visited(g.size()); visited[goal]=true;
+  std::queue<Vert> Q; Q.push(goal);
+  while (!Q.empty()) {
+    Vert v = Q.front(); Q.pop();
+    for (auto& cu: r[v]) {
+      Vert u = cu.second;
+      if (!visited[u]) {
+         visited[u] = true;
+         Q.push(u);
+      }
+    }
+  }
+  return visited;
+}
+
 std::string solve_on_graph(
     const std::string& hint,
     const Graph& Graph,
+    const std::vector<int>& depth,
     Vert Start,
     Vert Goal,
     std::vector<std::string> phrases) {
   std::string result;
+
+  const std::vector<bool> reachable_to_goal = calc_goal_reachability(Graph, Goal);
 
   std::vector<bool> visited(Graph.size());
   Vert cur = Start;
@@ -112,6 +136,8 @@ std::string solve_on_graph(
           return false;
         Vert v = Q.front(); Q.pop();
         if (v == Goal)
+          return true;
+        if (depth[cur]<depth[v] && reachable_to_goal[v])
           return true;
         for (auto cmd_next: Graph[v]) {
           Vert u = cmd_next.second;
@@ -214,11 +240,15 @@ std::string generate_powerful_sequence(
     }
   }
 
+  std::vector<int> depth(graph.size());
+  for (int v=0; v<graph.size(); ++v)
+    depth[v] = known_unit[v].pivot().y();
+
   // Solve over the graph.
   VLOG(1) << "  Graph Generated (" << graph.size() << " nodes)";
   if (HURRY_UP_MODE)
     return hint;
-  return solve_on_graph(hint, graph, S, G, phrases);
+  return solve_on_graph(hint, graph, depth, S, G, phrases);
 }
 
 void rewrite_main(
