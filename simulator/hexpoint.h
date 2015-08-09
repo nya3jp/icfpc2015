@@ -53,6 +53,12 @@ class HexPoint {
     Shift(-1);
   }
 
+  void MoveNorthEast() {
+    const HexPoint odd_movement(1, -1);
+    const HexPoint even_movement(0, -1);
+    *this += (y() & 1 ? odd_movement : even_movement);
+  }
+
   void MoveNorthWest() {
     const HexPoint odd_movement(0, -1);
     const HexPoint even_movement(-1, -1);

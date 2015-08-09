@@ -1,5 +1,7 @@
 #include <algorithm>
 #include <limits>
+#include <queue>
+#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -22,6 +24,135 @@ public:
     return tetris_point;
   }
 
+  static int GetEmptyLocationID(const Board& board,
+                                const std::vector<HexPoint>& members,
+                                const HexPoint& p) {
+    if (p.x() < 0 || p.x() >= board.width() || p.y() < 0 || p.y() >= board.height())
+      return -1;
+    if (board(p.x(), p.y()))
+      return -1;
+
+    for (const auto& member : members) {
+      if (p.x() == member.x() && p.y() == member.y())
+        return -1;
+    }
+
+    return p.x() + p.y() * board.width();
+  }
+
+  int CountSections(const Board& board, const std::vector<HexPoint>& members) {
+    std::queue<int> todo;
+    std::set<int> covered;
+
+    int result = 0;
+
+    while (true) {
+      bool found = false;
+      int x = 0;
+      int y = 0;
+      for (; x < board.width(); ++x) {
+        for (y = 0; y < board.height(); ++y) {
+          if (board(x, y))
+            continue;
+
+          if (covered.count(y * board.width() + x))
+            continue;
+
+          bool hit = false;
+          for (const auto& member : members) {
+            if (x == member.x() && y == member.y()) {
+              hit = true;
+              break;
+            }
+          }
+          if (!hit) {
+            found = true;
+            break;
+          }
+        }
+        if (found)
+          break;
+      }
+
+      if (!found)
+        break;
+
+      ++result;
+      int id = y * board.width() + x;
+      todo.push(id);
+      covered.insert(id);
+      while (!todo.empty()) {
+        int current = todo.front();
+        todo.pop();
+
+        int xx = current % board.width();
+        int yy = current / board.width();
+
+        {
+          HexPoint p(xx, yy);
+          p.MoveEast();
+          int movedId = GetEmptyLocationID(board, members, p);
+          if (movedId != -1 && covered.count(movedId) == 0) {
+            todo.push(movedId);
+            covered.insert(movedId);
+          }
+        }
+
+        {
+          HexPoint p(xx, yy);
+          p.MoveWest();
+          int movedId = GetEmptyLocationID(board, members, p);
+          if (movedId != -1 && covered.count(movedId) == 0) {
+            todo.push(movedId);
+            covered.insert(movedId);
+          }
+        }
+
+        {
+          HexPoint p(xx, yy);
+          p.MoveNorthEast();
+          int movedId = GetEmptyLocationID(board, members, p);
+          if (movedId != -1 && covered.count(movedId) == 0) {
+            todo.push(movedId);
+            covered.insert(movedId);
+          }
+        }
+
+        {
+          HexPoint p(xx, yy);
+          p.MoveNorthWest();
+          int movedId = GetEmptyLocationID(board, members, p);
+          if (movedId != -1 && covered.count(movedId) == 0) {
+            todo.push(movedId);
+            covered.insert(movedId);
+          }
+        }
+
+        {
+          HexPoint p(xx, yy);
+          p.MoveSouthEast();
+          int movedId = GetEmptyLocationID(board, members, p);
+          if (movedId != -1 && covered.count(movedId) == 0) {
+            todo.push(movedId);
+            covered.insert(movedId);
+          }
+        }
+
+        {
+          HexPoint p(xx, yy);
+          p.MoveSouthWest();
+          int movedId = GetEmptyLocationID(board, members, p);
+          if (movedId != -1 && covered.count(movedId) == 0) {
+            todo.push(movedId);
+            covered.insert(movedId);
+          }
+        }
+      }
+    }
+
+    return result;
+  }
+
   std::string Tetris(const Game& game,
                      const std::vector<Game::SearchResult>& bfsresult) {
     std::vector<Game::Command> ret;
@@ -38,12 +169,21 @@ public:
       }
     }
 
+    if (max_cleared <= 0) {
+      return SouthWest(game, bfsresult);
+    }
+
     return Game::Commands2SimpleString(ret);
   }
 
   virtual std::string NextCommands(const Game& game) {
     std::vector<Game::SearchResult> bfsresult;
     game.ReachableUnits(&bfsresult);
+
+    if (game.current_unit().GetBottom() != game.current_unit().GetTop()) {
+      return Tetris(game, bfsresult);
+      //return SouthWest(game, bfsresult);
+    }
 
     const Board& board = game.GetBoard();
     for (size_t yy = 0; yy < board.height(); ++yy) {
@@ -74,8 +214,6 @@ public:
                  tetris_point.x() < left)) {
               return Game::Commands2SimpleString(res.second);
             }
-          } else {
-            return SouthWest(game, bfsresult);
           }
         }
       }
@@ -91,16 +229,36 @@ public:
 
     int candidate_bottom = 0;
     int candidate_left = std::numeric_limits<int>::max();
+    int candidate_increase = std::numeric_limits<int>::max();
+
     for (const auto &res: bfsresult) {
       int bottom = res.first.GetBottom();
       int left = res.first.GetLeft();
 
-      if (bottom > candidate_bottom ||
-          (bottom == candidate_bottom && left < candidate_left)) {
-        candidate_bottom = bottom;
-        candidate_left = left;
-        ret = res.second;
+      // std::vector<HexPoint> empty;
+      // int before = CountSections(game.GetBoard(), empty);
+      // int after = CountSections(game.GetBoard(), res.first.members());
+      // int increase = after - before;
+      int increase = std::numeric_limits<int>::max();
+
+      if (increase > candidate_increase)
+        continue;
+
+      if (increase == candidate_increase) {
+        if (bottom < candidate_bottom)
+          continue;
+
+        if (bottom == candidate_bottom) {
+          if (left >= candidate_left)
+            continue;
+        }
       }
+
+      candidate_bottom = bottom;
+      candidate_left = left;
+      candidate_increase = increase;
+
+      ret = res.second;
     }
 
     return Game::Commands2SimpleString(ret);
