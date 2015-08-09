@@ -13,6 +13,8 @@ DEFINE_string(problem, "", "problem file");
 DEFINE_string(output, "", "output file");
 
 DEFINE_bool(enable_phrase_score, false, "Enables the phrase scoring.");
+DEFINE_bool(report_error, false,
+            "Returns non-zero status code if an error is found in any case.");
 
 namespace {
 
@@ -101,6 +103,7 @@ int main(int argc, char* argv[]) {
     CHECK(stream.good()) << picojson::get_last_error();
   }
 
+  int error_report = 0;
   for (const auto& entry : output.get<picojson::array>()) {
     CHECK_EQ(problem.get("id").get<int64_t>(),
              entry.get("problemId").get<int64_t>());
@@ -134,6 +137,9 @@ int main(int argc, char* argv[]) {
     if (!error && FLAGS_enable_phrase_score) {
       score += PhraseScore(solution);
     }
+    error_report |= error;
     std::cout << score << "\n";
   }
+
+  return FLAGS_report_error && error_report;
 }

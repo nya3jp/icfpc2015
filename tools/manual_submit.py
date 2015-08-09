@@ -25,17 +25,29 @@ def _local_score(problem, seed, tag, solution):
             subprocess.check_call([
                 './simulator/scorer',
                 '--problem', 'problems/problem_%d.json' % problem,
-                '--output', stream.name])
+                '--output', stream.name,
+                '--report_error'])
         finally:
             os.unlink(stream.name)
 
 
-def _submit(problem, seed, tag, solution):
-    subprocess.check_call([
+def _submit(problem, seed, tag, solution, dry_run):
+    command = [
         'curl', '--user', ':5HCRz0UOZSsseufyW36DvmeWJKUS9mMPf1qXaAuGM9g=',
         '--header', 'Content-Type: application/json',
         '--data', _encode_json(problem, seed, tag, solution),
-        'https://davar.icfpcontest.org/teams/116/solutions'])
+        'https://davar.icfpcontest.org/teams/116/solutions']
+    if dry_run:
+        command = ['echo'] + command
+    subprocess.check_call(command)
+    print
+
+
+def run(parsed_args):
+    _local_score(parsed_args.problem, parsed_args.seed,
+                 parsed_args.tag, parsed_args.solution)
+    _submit(parsed_args.problem, parsed_args.seed,
+            parsed_args.tag, parsed_args.solution, parsed_args.dry_run)
 
 
 def _parse_args():
@@ -45,16 +57,13 @@ def _parse_args():
     parser.add_argument('--tag', required=True)
     parser.add_argument('--solution', required=True)
 
+    parser.add_argument('--dry-run', action='store_true')
     return parser.parse_args()
 
 
 def main():
     parsed_args = _parse_args()
-    _local_score(parsed_args.problem, parsed_args.seed,
-                 parsed_args.tag, parsed_args.solution)
-    _submit(parsed_args.problem, parsed_args.seed,
-            parsed_args.tag, parsed_args.solution)
-
+    run(parsed_args)
 
 if __name__ == '__main__':
     main()
