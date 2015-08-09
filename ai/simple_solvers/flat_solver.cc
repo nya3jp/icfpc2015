@@ -1,12 +1,23 @@
 #include <algorithm>
+#include <limits>
+#include <sstream>
 #include <string>
 #include <vector>
+#include <glog/logging.h>
 
 #include "../../simulator/board.h"
 #include "../../simulator/game.h"
 #include "../../simulator/solver.h"
 #include "../../simulator/unit.h"
 
+template<typename T>
+std::string DumpV(const std::vector<T>& seq) {
+  std::ostringstream ofs;
+  for (const auto& e : seq) {
+    ofs << e << ", ";
+  }
+  return ofs.str();
+}
 
 class FlatSolver : public Solver {
 public:
@@ -35,29 +46,40 @@ public:
         map_height[i] = board.height();
       }
     }
+    VLOG(1) << "map_height:" << DumpV(map_height);
 
     std::vector<Game::SearchResult> bfsresult;
     game.ReachableUnits(&bfsresult);
-    int min_score = board.height() * board.height() * board.width();
+    int min_score = std::numeric_limits<int>::max();
     for(const auto &res: bfsresult) {
       const Unit &u = res.first;
       std::vector<int> height(map_height);
       std::vector<int> hole(map_hole);
       for(const auto &m: u.members()) {
-        if (height[m.x()] < m.y()) {
+        if (height[m.x()] < m.y()) {  // Hole filled.
           --hole[m.x()];
         } else {
+          // Maybe a new hole.
           hole[m.x()] += height[m.x()] - m.y() - 1;
+          height[m.x()] = m.y();
         }
       }
-      int score = 0;
+      int height_score = 0;
       for (int i = 0; i < board.width() - 1; ++i) {
-        score += (height[i] - height[i + 1]) * (height[i] - height[i + 1]);
+        const auto& diff = height[i + 1] - height[i];
+        height_score += diff * diff;
       }
+      int hole_score = 0;
       for (int i = 0; i < board.width(); ++i) {
-        score += hole[i] * hole[i];
+        hole_score += hole[i] * hole[i];
       }
+      int score = height_score + hole_score * 20;
       if (score < min_score) {
+        VLOG(1) << "@" << u.pivot() << "-" << u.angle()
+                  << " :" << DumpV(height)
+                  << " :" << DumpV(hole)
+                  << " score:" << min_score << " -> " << score
+                  << "(" << height_score << "," << hole_score << ")";
           ret = res.second;
           min_score = score;
       }
@@ -71,5 +93,5 @@ int main(int argc, char* argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
 
   FLAGS_logtostderr = true;
-  return RunSolver(new FlatSolver(), "FlatSolver");
+  return RunSolver(new FlatSolver(), "Flat");
 }
