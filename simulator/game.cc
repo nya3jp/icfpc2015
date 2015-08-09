@@ -133,6 +133,31 @@ bool Game::SpawnNewUnit() {
   return true;
 }
 
+const char Game::command_char_map_[7][7] = {
+  "bcefy2",  // E
+  "p'!.03",  // W
+  "lmno 5",  // SE
+  "aghij4",  // SW
+  "dqrvz1",  // CW
+  "kstuwx",  // CCW
+  "\t\n\r\t\n\r"  // ignored
+};
+
+Game::Command Game::Char2Command(char code) {
+  for (Command com = Command::E; com != Command::IGNORED; ++com) {
+    if (strchr(Game::command_char_map_[(int)com], code)) {
+      return com;
+    }
+  }
+  CHECK(strchr(Game::command_char_map_[(int)Command::IGNORED], code))
+    << "Unknown code '" << code << "' (" << ((int)code) << ")";
+  return Command::IGNORED;
+}
+
+const char* Game::Command2Chars(Command com) {
+  return Game::command_char_map_[(int)com];
+}
+
 Unit Game::NextUnit(const Unit& prev_unit, Command command) {
   // This won't happen.
   if (command == Command::IGNORED) {

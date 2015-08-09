@@ -33,28 +33,7 @@ std::string encode_command(const std::vector<Game::Command>& commands)
 {
   std::string ret;
   for(const auto &c: commands) {
-    switch(c) {
-    case Game::Command::W:
-      ret += '!';
-      break;
-    case Game::Command::E:
-      ret += 'e';
-      break;
-    case Game::Command::SW:
-      ret += 'i';
-      break;
-    case Game::Command::SE:
-      ret += ' ';
-      break;
-    case Game::Command::CW:
-      ret += 'd';
-      break;
-    case Game::Command::CCW:
-      ret += 'k';
-      break;
-    default:
-      LOG(FATAL) << "Unknown command " << c;
-    }
+    ret += Game::Command2Chars(c)[0];
   }
   return ret;
 }

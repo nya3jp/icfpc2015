@@ -28,6 +28,11 @@ class Game {
     E, W, SE, SW, CW, CCW, IGNORED,
   };
 
+  static const char command_char_map_[7][7];
+
+  static Command Char2Command(char code);
+  static const char* Command2Chars(Command com);
+
   static Unit NextUnit(const Unit& prev_unit, Command command);
 
   bool Run(Command action);
