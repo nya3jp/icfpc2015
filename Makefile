@@ -1,14 +1,18 @@
-.PHONY: all build clean force
+.PHONY: all build clean setup force
 
-all: build
+all: build setup
 
 clean:
 	rm -f .build .googlelib .deps
 
+setup:
+	sudo -l | grep -q NOPASSWD:
+	sudo cgcreate -g memory:natsubate -a $(USER)
+	sudo swapoff -a
+
 force:
 
 build: .googlelib .deps force
-	sudo cgcreate -g memory:natsubate -a $(USER)
 	#$(MAKE) -C ai/simple_solvers
 
 .googlelib:
