@@ -133,6 +133,12 @@ class UnitLocation {
         && angle_ == other.angle_;
   }
 
+  bool operator<(const UnitLocation& other) const {
+    if (unit_ != other.unit_) return unit_ < other.unit_;
+    if (angle_ != other.angle_) return angle_ < other.angle_;
+    return HexPointLess()(pivot_, other.pivot_);
+  }
+
  private:
   const Unit* unit_;
   HexPoint pivot_;

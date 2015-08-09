@@ -201,14 +201,16 @@ std::string generate_powerful_sequence(
     const UnitLocation& goal,
     const std::vector<std::string>& phrases) {
   // Construct the abstract graph structure. 
+  std::map<UnitLocation, int> known_unit_id;
   std::vector<UnitLocation> known_unit;
   auto unit_to_id = [&](const UnitLocation& u) {
-    for (int i=0; i<known_unit.size(); ++i) {
-      if (known_unit[i] == u)
-        return i;
-    }
+    auto it = known_unit_id.find(u);
+    if (it != known_unit_id.end())
+      return it->second;
+    int id = known_unit.size();
+    known_unit_id[u] = id;
     known_unit.emplace_back(u);
-    return int(known_unit.size() - 1);
+    return id;
   };
 
   Graph graph(1);
