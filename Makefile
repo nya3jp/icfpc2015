@@ -1,10 +1,13 @@
-all: play_icfp2015 ai/master/play_icfp2015 ai/nop/play_icfp2015
+.PHONY: all clean
 
-play_icfp2015:
+all: play_icfp2015
+
+clean:
+	rm -f .deps
+
+play_icfp2015: .deps
 	touch $@
 
-ai/master/play_icfp2015:
-	$(MAKE) -C ai/master play_icfp2015
-
-ai/nop/play_icfp2015:
-	$(MAKE) -C ai/nop play_icfp2015
+.deps: install_deps.sh
+	./install_deps.sh
+	touch $@

@@ -1,4 +1,4 @@
-#!tools/python.sh
+#!/usr/bin/python
 
 """Simple Supervisor that just executes given AI without limits.
 

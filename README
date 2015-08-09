@@ -5,5 +5,5 @@ Build Environment
 -----------------
 
 - Ubuntu 14.04.2
-- Required Packages: build-essential, cmake, g++, automake, libunwind8-dev
+- To install dependencies, run ./install_deps.sh
 
