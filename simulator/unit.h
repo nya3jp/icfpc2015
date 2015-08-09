@@ -10,6 +10,7 @@ class Unit {
 
   Unit(const HexPoint& pivot, std::vector<HexPoint>&& members)
       : pivot_(pivot), members_(std::move(members)), angle_(0) {
+    std::sort(members_.begin(), members_.end(), HexPointLess());
   }
 
   const HexPoint& pivot() const { return pivot_; }
