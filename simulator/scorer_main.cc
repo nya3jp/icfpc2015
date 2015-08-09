@@ -14,7 +14,7 @@
 DEFINE_string(problem, "", "problem file");
 DEFINE_string(output, "", "output file");
 
-DEFINE_string(p, "ei!,r'lyeh,yuggoth,ia! ia!,necronomicon",
+DEFINE_string(p, "ei!,r'lyeh,yuggoth,ia! ia!,necronomicon,yogsothoth",
               "Power phrase");
 DEFINE_bool(enable_phrase_score, false, "Enables the phrase scoring.");
 DEFINE_bool(report_error, false,
