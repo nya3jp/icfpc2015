@@ -211,7 +211,8 @@ std::string generate_powerful_sequence(
     }
   }
 
-  // Solve genericly.
+  if (HURRY_UP_MODE)
+    return hint;
   return solve_on_graph(hint, graph, S, G, phrases);
 }
 
