@@ -24,7 +24,7 @@ public:
   FlatSolver() {}
   virtual ~FlatSolver() {}
 
-  int Score(const Game& game) const {
+  static int Score(const Game& game, std::ostream& os) {
     const Board& board(game.board());
     std::vector<int> height(board.width(), -1);
     std::vector<int> hole(board.width());
@@ -54,6 +54,9 @@ public:
     for (int i = 0; i < board.width(); ++i) {
       hole_score += hole[i];
     }
+    os << "height:" << DumpV(height) << "(score:" << height_score
+       << ") hole:" << DumpV(hole) << "(score:" << hole_score
+       << ")";
     return game.score() - height_score * 100 - hole_score * 2000;
   }
 
@@ -67,14 +70,16 @@ public:
     for(const auto &res: bfsresult) {
       Game ng(game);
       int score = 0;
+      std::ostringstream os;
       if (ng.RunSequence(res.second)) {
-        score = Score(ng);
+        score = Score(ng, os);
       } else {
         score = ng.score() - 100 * 10000;
       }
       if (score > max_score) {
         VLOG(1) << "@" << res.first.pivot() << "-" << res.first.angle()
                 << " score:" << max_score << " -> " << score;
+        VLOG(1) << "scorer:" << os.str();
         ret = res.second;
         max_score = score;
       }
