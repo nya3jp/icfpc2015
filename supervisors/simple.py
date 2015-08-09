@@ -33,6 +33,7 @@ def main(argv):
   solver_args = [solver_path]
   for p in FLAGS.powerphrase:
     solver_args.extend(['-p', p])
+  solver_args.extend(solver_extra_args)
 
   if FLAGS.cores:
     logging.warning('Ignoring CPU cores specified by -c')
