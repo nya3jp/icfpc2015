@@ -34,17 +34,24 @@ class Game {
 
   static Command Char2Command(char code);
   static const char* Command2Chars(Command com);
+  // Converts command sequence to string, ignoring power phrase stuff.
   static std::string Commands2SimpleString(
       const std::vector<Command>& commands);
 
+  // Given the current position and the op command, returns the next position.
   static Unit NextUnit(const Unit& prev_unit, Command command);
 
   bool Run(Command action);
 
+  // Given the current unit position, returns a command to lock the unit
+  // at the position, or returns IGNORED if it's impossible to lock it.
   Command GetLockCommand(const Unit& current) const;
+  // Returns whether the unit is lockable at the given position.
   bool IsLockable(const Unit& current) const;
 
   typedef std::pair<Unit, std::vector<Command>> SearchResult;
+  // Does BFS search from current_unit_ to return the list of lockable locations
+  // with the command sequence to reach there.
   void ReachableUnits(std::vector<SearchResult>* result) const;
   const Board& board() const { return board_; }
 
