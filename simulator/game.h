@@ -49,12 +49,16 @@ class Game {
   Command GetLockCommand(const Unit& current) const;
   // Returns whether the unit is lockable at the given position.
   bool IsLockable(const Unit& current) const;
+  // Returns whether it is lockable by the given command.
+  bool IsLockableBy(const Unit& current, Command cmd) const;
 
   typedef std::pair<Unit, std::vector<Command>> SearchResult;
   // Does BFS search from current_unit_ to return the list of lockable locations
   // with the command sequence to reach there.
   void ReachableUnits(std::vector<SearchResult>* result) const;
   const Board& board() const { return board_; }
+
+  const Unit& current_unit() const { return current_unit_; }
 
  private:
   int id_;
