@@ -43,10 +43,10 @@ int64_t GetDotReachabilityFromTop(const Game& game)
   int width = game.GetBoard().width();
   int height = game.GetBoard().height();
 
-  int movepattern[] = { 0, -1, 
+  int movepattern[] = { -1, 0,
                         1, 0,
-                        0, 1,
-                        -1, 0 };
+                        -1, 1,
+                        0, 1};
 
   std::vector<bool> visited(width * height, false);
   const Board::Map& cells = game.GetBoard().cells();
@@ -70,6 +70,9 @@ int64_t GetDotReachabilityFromTop(const Game& game)
     for(int i = 0; i < 8; i += 2) {
       int newx = x + movepattern[i];
       int newy = y + movepattern[i + 1];
+      if(movepattern[i + 1] == 1) {
+        newx += (y & 1);
+      }
       
       if((newx < 0) || (newx >= width) || 
          (newy < 0) || (newy >= height)) {
