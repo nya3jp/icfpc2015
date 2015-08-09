@@ -229,6 +229,8 @@ std::string generate_powerful_sequence(
       if (HURRY_UP_MODE)
         return hint;
       UnitLocation uu = Game::NextUnit(known_unit[v], c);
+      if (uu.pivot().y() > goal.pivot().y())
+        continue;
       if (game.GetBoard().IsConflicting(uu))
         continue;
       Vert u = unit_to_id(uu);
@@ -300,7 +302,7 @@ void rewrite_main(
       UnitLocation u = game.current_unit();
       if (game.IsLockableBy(u,cmd) || i+1==before.size()) {
         // If this is the last move for this unit, proceed to subproblem.
-        VLOG(1) << "[" << before.substr(s, i-s)
+        VLOG(1) << (s*100/before.size()) << "% [" << before.substr(s, i-s)
             << "][" << before[i] << "]" << std::endl;
         // (Reinitialize RNG, for reproducibility.)
         g_rand = std::mt19937(178116);
