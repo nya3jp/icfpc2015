@@ -84,7 +84,6 @@ int RunSolver(Solver* solver, std::string solver_tag) {
   std::string final_commands;
   bool is_finished = false;
   bool error = false;
-  int max_score = 0;
   while(true) {
     VLOG(1) << CurrentState(game);
     // get sequence from AI
@@ -103,11 +102,11 @@ int RunSolver(Solver* solver, std::string solver_tag) {
     }
     const int score = game.score();
     if (sig_sig_ == 2) {
-      LOG(INFO) << "Shutting down:" << seed << ", " << score;
+      VLOG(1) << "Shutting down:" << seed << ", " << score;
       break;
     }
     if (sig_sig_ == 1) {
-      LOG(INFO) << "Dump Result:" << seed << ", " << score;
+      VLOG(1) << "Dump Result:" << seed << ", " << score;
       WriteOneJsonResult(problem.get("id").get<int64_t>(), solver_tag,
                          seed, score, final_commands);
       sig_sig_ = 0;
