@@ -148,6 +148,15 @@ function moveW(position) {
   position.x -= 1;
 }
 
+function moveNW(position) {
+  if (position.y % 2 == 0) {
+    position.x -= 1;
+    position.y -= 1;
+  } else {
+    position.y -= 1;
+  }
+}
+
 function moveSW(position) {
   if (position.y % 2 == 0) {
     position.x -= 1;
@@ -351,47 +360,60 @@ function updateInfo() {
 }
 
 function undo() {
-  // var commands = g_currentGame.commandHistory;
-  // undoAll();
-  // replayCommands(commands.slice(0, commands.length - 1));
-  // return;
+  if (g_history.length == 0)
+    return;
 
-  if (g_history.length > 0) {
-    g_redoHistory.push(cloneGame(g_currentGame));
-    g_currentGame = g_history.pop();
-    showAlertMessage(''); // clear
-  }
+  g_redoHistory.push(cloneGame(g_currentGame));
+  g_currentGame = g_history.pop();
+
+  showAlertMessage(''); // clear
 }
 
 function moreUndo() {
   undo();
 
   while (g_history.length > 0) {
-    if (g_currentGame.locks) {
+    if (g_currentGame.locks)
       break;
-    }
 
     g_redoHistory.push(cloneGame(g_currentGame));
     g_currentGame = g_history.pop();
   }
+
+  showAlertMessage(''); // clear
+}
+
+function undoAllSavingRedo() {
+  while (g_history.length > 1) {
+    g_redoHistory.push(cloneGame(g_currentGame));
+    g_currentGame = g_history.pop();
+  }
+
+  showAlertMessage(''); // clear
 }
 
 function undoAll() {
-  if (g_history.length > 1) {
-    g_redoHistory = [];
-    g_currentGame = g_history[1];
-    g_history = [g_history[0]];
-  }
+  if (g_history.length <= 1)
+    return;
+
+  g_redoHistory = [];
+  g_currentGame = g_history[1];
+  g_history = [g_history[0]];
+
+  showAlertMessage(''); // clear
 }
 
 function redo() {
   if (g_redoHistory.length == 0)
-    return false;
+    return;
 
   saveGame();
   g_currentGame = g_redoHistory.pop();
   showAlertMessage(''); // clear
-  return true;
+  spawnNewUnit();
+  checkGameOver();
+  drawGame(undefined);
+  logKey();
 }
 
 function handleKey(e) {
@@ -442,12 +464,7 @@ function handleKey(e) {
     }
 
     if (keyCode == 'R'.charCodeAt(0)) {
-      if (redo()) {
-        spawnNewUnit();
-        checkGameOver();
-        drawGame(undefined);
-        logKey();
-      }
+      redo();
       return;
     }
 
@@ -496,6 +513,12 @@ function handleKey(e) {
 
     drawGame(undefined);
   }
+}
+
+function canMove(board, unit, op) {
+  var moved = cloneUnit(unit);
+  moveUnit(moved, op);
+  return !isInvalidUnitPlacement(board, moved);
 }
 
 function doCommand(command, dryRun) {
@@ -583,10 +606,8 @@ function doCommand(command, dryRun) {
 
   g_redoHistory = [];
   var locks = isInvalidUnitPlacement(g_currentGame.board, newUnit);
-  //if (g_history.length < 2) {
   g_currentGame.locks = locks;
-    saveGame();
-  //}
+  saveGame();
   g_currentGame.currentUnitHistory.push(newUnitHash);
   g_currentGame.commandHistory += command;
   if (!locks) {
@@ -620,7 +641,7 @@ function parseHash() {
   return decodeURIComponent(window.location.hash.substr(1)).split('|');
 }
 
-function loadBest(id, seed) {
+function loadBest(run) {
   var x = new XMLHttpRequest();
   x.open('GET', 'http://dashboard.natsubate.nya3.jp/state-of-the-art.json');
   x.responseType = 'json';
@@ -632,6 +653,8 @@ function loadBest(id, seed) {
           g_currentGame.seed == solution.seed) {
         undoAll();
         replayCommands(solution.solution);
+        if (!run)
+          undoAllSavingRedo();
         drawGame(undefined);
         return;
       }
@@ -729,7 +752,7 @@ function init() {
       undoAll();
 
       if (params[2] == 'BEST') {
-        loadBest();
+        loadBest(true);
       } else {
         replayCommands(params[2]);
       }
@@ -780,6 +803,190 @@ function init() {
   }
 
   fetchAndDrawProblem(getSelectedProblem(), params[1], params[2]);
+}
+
+function goE() {
+  doCommand('b');
+}
+function goW() {
+  doCommand('p');
+}
+function goSW() {
+  doCommand('a');
+}
+function goSE() {
+  doCommand('l');
+}
+function goCC() {
+  doCommand('k');
+}
+function goC() {
+  doCommand('d');
+}
+function goDown(y) {
+  if (y % 2 == 0) {
+    goSE();
+  } else {
+    goSW();
+  }
+}
+
+function goConflict(board, x, y) {
+  var width = board.length;
+  var height = board[0].length;
+
+  if (x == 0) {
+    goW();
+  } else if (board[x - 1][y] == 1) {
+    goW();
+  } else if (x == width - 1) {
+    goE();
+  } else if (board[x + 1][y] == 1) {
+    goE();
+  } else if (y == height - 1) {
+    goSW();
+  } else if (y % 2 == 0 && board[x][y + 1] == 1) {
+    goSE();
+  } else if (y % 2 == 0 && board[x - 1][y + 1] == 1) {
+    goSW();
+  } else if (y % 2 == 1 && board[x][y + 1] == 1) {
+    goSW();
+  } else if (y % 2 == 1 && board[x + 1][y + 1] == 1) {
+    goSE();
+  } else {
+    goDown(y);
+  }
+}
+
+function aiStep() {
+  var board = g_currentGame.board;
+  var width = board.length;
+  var height = board[0].length;
+
+  var bb = getUnitBoundBox(g_currentGame.unit);
+
+  var size = g_currentGame.unit.members.length;
+
+  for (var y = height - 1; y >= 0; --y) {
+    if (y <= 1)
+      return true;
+
+    var tetris_position = getTetrisPosition(board, y);
+    for (var x = 0; x < width; ++x) {
+      if (x == tetris_position.x) {
+        continue;
+      }
+
+      var vacant = true;
+      for (var offset = 0; offset < size; ++offset) {
+        var position = {x: x + offset, y: y};
+        if (isBlocked(board, position) || position.x == tetris_position.x) {
+          vacant = false;
+          break;
+        }
+        moveSE(position);
+        if (!isBlocked(board, position)) {
+          vacant = false;
+          break;
+        }
+      }
+      if (vacant) {
+        if (bb.left < x) {
+          goE();
+        } else if (bb.left > x) {
+          goW();
+        } else if (bb.top == y) {
+          goConflict(board, x, y);
+        } else {
+          goDown(bb.top);
+        }
+        return;
+      }
+    }
+  }
+  if (bb.left > 0) {
+    goW();
+  } else {
+    goDown(bb.top);
+  }
+}
+
+function ai() {
+  while (g_currentGame.unit !== undefined) {
+    if (aiStep())
+      break;
+  }
+  drawGame(undefined);
+}
+
+function getTetrisPosition(board, y) {
+  var board = g_currentGame.board;
+  var width = board.length;
+  var height = board[0].length;
+
+  var tetris_position = {x: width - 1, y: height - 1};
+  for (var i = 0; i < height - 1 - y; ++i) {
+    moveNW(tetris_position);
+  }
+  return tetris_position;
+}
+
+function isBlocked(board, position) {
+  return !inBoard(board, position) ||
+    board[position.x][position.y] == 1;
+}
+
+function tetrisStep() {
+  var board = g_currentGame.board;
+  var width = board.length;
+  var height = board[0].length;
+
+  var unit = g_currentGame.unit;
+  var bb = getUnitBoundBox(unit);
+
+  var size = g_currentGame.unit.members.length;
+
+  var tetris_position = getTetrisPosition(board, unit.pivot.y);
+  if (tetris_position.x < unit.pivot.x) {
+    if (canMove(board, unit, moveW)) {
+      goW();
+    } else {
+      return true;
+    }
+  } else if (tetris_position.x > unit.pivot.x) {
+    if (canMove(board, unit, moveE)) {
+      goE();
+    } else {
+      return true;
+    }
+  } else if (size != 1 && unit.pivot.y == bb.top) {
+    if (unit.pivot.x - bb.left > unit.pivot.y) {
+      if (canMove(board, unit, moveSE)) {
+        goSE();
+      } else {
+        return true;
+      }
+    } else if (canMove(board, unit, moveClockwise.bind(undefined, unit.pivot))) {
+      goC();
+    } else {
+      return true;
+    }
+  } else if (canMove(board, unit, moveSE)) {
+    goSE();
+  } else if (bb.right == width - 1 && bb.bottom == height - 1) {
+    goSE();
+    return true;
+  } else {
+    return true;
+  }
+}
+
+function tetris() {
+  while (g_currentGame.unit !== undefined) {
+    if (tetrisStep())
+      break;
+  }
+  drawGame(undefined);
 }
 
 function replayCommands(commands) {
@@ -1035,7 +1242,7 @@ function fetchAndDrawProblem(file, seed, commands) {
     updateHash();
 
     if (commands == 'BEST') {
-      loadBest();
+      loadBest(true);
     } else if (commands) {
       replayCommands(commands);
     }

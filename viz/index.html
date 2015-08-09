@@ -52,7 +52,13 @@ body {
 <p>
   Input: <select id="problems"></select><br>
   Seed: <select id="seeds"></select><br>
-  <input type="button" value="Load best" onclick="loadBest()">
+  <input type="button" value="Load best" onclick="loadBest(false)"><br>
+  <input type="button" value="Load best and run" onclick="loadBest(true)">
+</p>
+
+<p>
+  <input type="button" value="Wanna tetris" onclick="ai()">
+  <input type="button" value="Tetris" onclick="tetris()">
 </p>
 
 <p>
