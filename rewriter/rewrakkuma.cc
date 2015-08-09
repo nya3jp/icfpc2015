@@ -171,12 +171,12 @@ std::string solve_on_graph(
 std::string generate_powerful_sequence(
     const std::string& hint,
     Game& game,
-    const Unit& start,
-    const Unit& goal,
+    const UnitLocation& start,
+    const UnitLocation& goal,
     const std::vector<std::string>& phrases) {
   // Construct the abstract graph structure. 
-  std::vector<Unit> known_unit;
-  auto unit_to_id = [&](const Unit& u) {
+  std::vector<UnitLocation> known_unit;
+  auto unit_to_id = [&](const UnitLocation& u) {
     for (int i=0; i<known_unit.size(); ++i) {
       if (known_unit[i] == u)
         return i;
@@ -200,7 +200,7 @@ std::string generate_powerful_sequence(
     for (Game::Command c = Game::Command::E; c != Game::Command::IGNORED; ++c) {
       if (HURRY_UP_MODE)
         return hint;
-      Unit uu = Game::NextUnit(known_unit[v], c);
+      UnitLocation uu = Game::NextUnit(known_unit[v], c);
       if (game.GetBoard().IsConflicting(uu))
         continue;
       Vert u = unit_to_id(uu);
@@ -258,12 +258,12 @@ void rewrite_main(
       break;
     }
     // New unit spawned.
-    Unit start = game.current_unit();
+    UnitLocation start = game.current_unit();
     for (int i=s;; ++i) {
       if (HURRY_UP_MODE)
         break;
       auto cmd = Game::Char2Command(before[i]);
-      Unit u = game.current_unit();
+      UnitLocation u = game.current_unit();
       if (game.IsLockableBy(u,cmd) || i+1==before.size()) {
         // If this is the last move for this unit, proceed to subproblem.
         VLOG(1) << "[" << before.substr(s, i-s)

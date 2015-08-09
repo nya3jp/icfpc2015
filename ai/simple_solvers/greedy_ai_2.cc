@@ -18,7 +18,7 @@ public:
     int maxy = -1;
     game.ReachableUnits(&bfsresult);
     for(const auto &res: bfsresult) {
-      const Unit &u = res.first;
+      const UnitLocation &u = res.first;
       for(const auto &m: u.members()) {
         int dx = std::min(m.x(), game.GetBoard().width() - 1 - m.x());
         if(m.y() > maxy || (m.y() == maxy && dx < distx)) {

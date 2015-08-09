@@ -12,6 +12,41 @@
 #include "../../simulator/solver.h"
 #include "../../simulator/unit.h"
 
+namespace {
+int GetTop(const UnitLocation& unit) {
+  int top = std::numeric_limits<int>::max();
+  for (const auto& member : unit.members()) {
+    top = std::min(top, member.y());
+  }
+  return top;
+}
+
+int GetBottom(const UnitLocation& unit) {
+  int bottom = -1;
+  for (const auto& member : unit.members()) {
+    bottom = std::max(bottom, member.y());
+  }
+  return bottom;
+}
+
+int GetLeft(const UnitLocation& unit) {
+  int left = std::numeric_limits<int>::max();
+  for (const auto& member : unit.members()) {
+    left = std::min(left, member.x());
+  }
+  return left;
+}
+
+int GetRight(const UnitLocation& unit) {
+  int right = -1;
+  for (const auto& member : unit.members()) {
+    right = std::max(right, member.x());
+  }
+  return right;
+}
+
+}
+
 class TrivialSolver : public Solver {
 public:
   TrivialSolver() {}
@@ -162,9 +197,9 @@ public:
     for (const auto &res: bfsresult) {
       int cleared = game.GetBoard().LockPreview(res.first);
       if (cleared > max_cleared ||
-          (cleared == max_cleared && res.first.GetTop() < candidate_top)) {
+          (cleared == max_cleared && GetTop(res.first) < candidate_top)) {
         max_cleared = cleared;
-        candidate_top = res.first.GetTop();
+        candidate_top = GetTop(res.first);
         ret = res.second;
       }
     }
@@ -180,7 +215,7 @@ public:
     std::vector<Game::SearchResult> bfsresult;
     game.ReachableUnits(&bfsresult);
 
-    if (game.current_unit().GetBottom() != game.current_unit().GetTop()) {
+    if (GetBottom(game.current_unit()) != GetTop(game.current_unit())) {
       return Tetris(game, bfsresult);
       //return SouthWest(game, bfsresult);
     }
@@ -203,10 +238,10 @@ public:
           continue;
 
         for (const auto &res: bfsresult) {
-          int top = res.first.GetTop();
-          int right = res.first.GetRight();
-          int bottom = res.first.GetBottom();
-          int left = res.first.GetLeft();
+          int top = GetTop(res.first);
+          int right = GetRight(res.first);
+          int bottom = GetBottom(res.first);
+          int left = GetLeft(res.first);
 
           if (bottom == y && top == y) {
             if (left == x &&
@@ -232,8 +267,8 @@ public:
     int candidate_increase = std::numeric_limits<int>::max();
 
     for (const auto &res: bfsresult) {
-      int bottom = res.first.GetBottom();
-      int left = res.first.GetLeft();
+      int bottom = GetBottom(res.first);
+      int left = GetLeft(res.first);
 
       // std::vector<HexPoint> empty;
       // int before = CountSections(game.GetBoard(), empty);

@@ -22,9 +22,9 @@ class Board {
 
   void Load(const picojson::value& parsed);
 
-  bool IsConflicting(const Unit& unit) const;
-  int Lock(const Unit& unit);
-  int LockPreview(const Unit& unit) const;
+  bool IsConflicting(const UnitLocation& unit) const;
+  int Lock(const UnitLocation& unit);
+  int LockPreview(const UnitLocation& unit) const;
 
   void Dump(std::ostream* os) const;
 

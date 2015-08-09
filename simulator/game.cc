@@ -35,6 +35,33 @@ bool Contains(const Container& container, const T& value) {
       std::end(container);
 }
 
+// Find Spawn position.
+HexPoint GetSpawnPosition(const Unit& unit, int width) {
+  // First, find the top most position.
+  HexPoint top = unit.members()[0];
+  {
+    for (const auto& member : unit.members()) {
+      if (member.y() < top.y()) {
+        top = member;
+      }
+    }
+  }
+
+  // Move as if top moves to the origin.
+  UnitLocation location(&unit, HexPoint(0, 0).TranslateToOrigin(top));
+
+  // Then adjust horizontal position.
+  int left = width;
+  int right = -1;
+  for (const auto& member : location.members()) {
+    left = std::min(left, member.x());
+    right = std::max(right, member.x());
+  }
+  location.Shift(((width - right - 1) - left) / 2);
+
+  return location.pivot();
+}
+
 }
 
 Game::Game()
@@ -48,6 +75,9 @@ void Game::Load(const picojson::value& parsed, int seed_index) {
   // Parse id.
   id_ = parsed.get("id").get<int64_t>();
 
+  // Parse width, height and filled.
+  board_.Load(parsed);
+
   // Parse units.
   units_.clear();
   for (const picojson::value& value :
@@ -59,10 +89,8 @@ void Game::Load(const picojson::value& parsed, int seed_index) {
       members.push_back(ParseHexPoint(m));
     }
     units_.emplace_back(pivot, std::move(members));
+    spawn_position_.push_back(GetSpawnPosition(units_.back(), board_.width()));
   }
-
-  // Parse width, height and filled.
-  board_.Load(parsed);
 
   // Parse sourceLength.
   source_length_ = parsed.get("sourceLength").get<int64_t>();
@@ -72,7 +100,7 @@ void Game::Load(const picojson::value& parsed, int seed_index) {
       parsed.get("sourceSeeds").get(seed_index).get<int64_t>()));
 
   // Reset the current status.
-  current_unit_ = Unit();
+  current_unit_ = UnitLocation();
   current_index_ = 0;
   score_ = 0;
   prev_cleared_lines_ = 0;
@@ -90,37 +118,9 @@ bool Game::SpawnNewUnit() {
     return false;
   }
 
-  current_unit_ = units_[rand_.current() % units_.size()];
-  // Move to top.
-  {
-    HexPoint origin = current_unit_.members()[0];
-    for (const auto& member : current_unit_.members()) {
-      if (member.y() < origin.y()) {
-        origin = member;
-      }
-    }
-    for (auto& member : *current_unit_.mutable_members()) {
-      member = member.TranslateToOrigin(origin);
-    }
-    *current_unit_.mutable_pivot() =
-        current_unit_.pivot().TranslateToOrigin(origin);
-  }
-
-  // Center it.
-  {
-    int left = board_.width();
-    int right = -1;
-    for (const auto& p : current_unit_.members()) {
-      if (left > p.x()) {
-        left = p.x();
-      }
-      if (right < p.x()) {
-        right = p.x();
-      }
-    }
-    right = board_.width() - right - 1;
-    current_unit_.Shift((right - left) / 2);
-  }
+  int next_index = rand_.current() % units_.size();
+  current_unit_ = UnitLocation(
+      &units_[next_index], spawn_position_[next_index]);
 
   // Check if it is put to the available space.
   if (board_.IsConflicting(current_unit_)) {
@@ -158,12 +158,12 @@ std::string Game::Commands2SimpleString(const std::vector<Command>& commands) {
 }
 
 
-Unit Game::NextUnit(const Unit& prev_unit, Command command) {
+UnitLocation Game::NextUnit(const UnitLocation& prev_unit, Command command) {
   // This won't happen.
   if (command == Command::IGNORED) {
     return prev_unit;
   }
-  Unit new_unit = prev_unit;
+  UnitLocation new_unit = prev_unit;
   switch (command) {
     case Command::E: {
       new_unit.MoveEast();
@@ -208,7 +208,7 @@ bool Game::Run(Command command) {
   if (command == Command::IGNORED) {
     return true;
   }
-  Unit new_unit = Game::NextUnit(current_unit_, command);
+  UnitLocation new_unit = Game::NextUnit(current_unit_, command);
 
   if (Contains(history_, new_unit)) {
     // Error.
@@ -238,12 +238,12 @@ bool Game::RunSequence(const std::vector<Command>& commands) {
   return true;
 }
 
-bool Game::IsLockableBy(const Unit& current, Command cmd) const {
-  Unit new_unit = Game::NextUnit(current, cmd);
+bool Game::IsLockableBy(const UnitLocation& current, Command cmd) const {
+  UnitLocation new_unit = Game::NextUnit(current, cmd);
   return board_.IsConflicting(new_unit);
 }
 
-Game::Command Game::GetLockCommand(const Unit& current) const {
+Game::Command Game::GetLockCommand(const UnitLocation& current) const {
   for (Command c = Command::E; c != Command::IGNORED; ++c) {
     if (IsLockableBy(current, c))
       return c;
@@ -251,10 +251,11 @@ Game::Command Game::GetLockCommand(const Unit& current) const {
   return Command::IGNORED;
 }
 
-bool Game::IsLockable(const Unit& current) const {
+bool Game::IsLockable(const UnitLocation& current) const {
   return GetLockCommand(current) != Command::IGNORED;
 }
 
+#if 0
 struct UnitLocation {
   HexPoint pivot;
   int angle;
@@ -268,7 +269,7 @@ struct UnitLocation {
   UnitLocation(const Unit& unit)
     : pivot(unit.pivot()), angle(unit.angle()) {}
 };
-
+#endif
 
 void Game::ReachableUnits(std::vector<SearchResult>* result) const {
   result->clear();
@@ -282,14 +283,14 @@ void Game::ReachableUnits(std::vector<SearchResult>* result) const {
   // TODO: Don't copy vector<command> too much. Use dfs instead?
   std::queue<SearchResult> todo;
   todo.push(SearchResult(current_unit_, {}));
-  std::set<UnitLocation> covered;
-  covered.insert(UnitLocation(current_unit_));
+  std::set<UnitLocation, UnitLocationLess> covered;
+  covered.insert(current_unit_);
   while (!todo.empty()) {
-    Unit current = todo.front().first;
+    UnitLocation current = todo.front().first;
     std::vector<Command> moves = todo.front().second;
     todo.pop();
     for (Command c = Command::E; c != Command::IGNORED; ++c) {
-      Unit next = Game::NextUnit(current, c);
+      UnitLocation next = Game::NextUnit(current, c);
       // TODO: performance improvement using set and such.
       if (covered.count(UnitLocation(next))) {
         continue;
@@ -316,9 +317,11 @@ void Game::Dump(std::ostream* os) const {
   *os << "ID: " << id_ << "\n";
   *os << "Units: \n";
   for (size_t i = 0; i < units_.size(); ++i) {
-    *os << " [" << i << "]: " << units_[i].pivot() << ", "
-        << units_[i].members() << "\n";
+    *os << " [" << i << "]: " << units_[i].members() << ", "
+        << units_[i].order() << ", "
+        << spawn_position_[i] << "\n";
   }
+
   *os << "Board: \n" << board_ << "\n";
   *os << "SourceLength: " << source_length_ << "\n";
   *os << "RandSeed: " << rand_.seed();

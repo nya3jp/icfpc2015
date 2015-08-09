@@ -31,7 +31,7 @@ public:
       // Go greedily erase line if possible
       for(const auto &res: bfsresult) {
         std::vector<int> nfill_copy(nfill);
-        const Unit &u = res.first;
+        const UnitLocation &u = res.first;
         for(const auto &m: u.members()) {
           nfill_copy[m.y()]++;
           if(nfill_copy[m.y()] == board.width())
@@ -51,7 +51,7 @@ public:
       if(targety > 0) {
         int distx = 1 << 30;
         for(const auto &res: bfsresult) {
-          const Unit &u = res.first;
+          const UnitLocation &u = res.first;
           for(const auto &m: u.members()) {
             int dx = std::min(m.x(), game.GetBoard().width() - 1 - m.x());
             if(m.y() == targety && dx < distx) {
@@ -67,7 +67,7 @@ public:
     int distx = 1 << 30;
     int maxy = -1;
     for(const auto &res: bfsresult) {
-      const Unit &u = res.first;
+      const UnitLocation &u = res.first;
       for(const auto &m: u.members()) {
         int dx = std::min(m.x(), game.GetBoard().width() - 1 - m.x());
         if(m.y() > maxy || (m.y() == maxy && dx < distx)) {

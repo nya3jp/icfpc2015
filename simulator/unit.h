@@ -1,78 +1,106 @@
 #ifndef UNIT_H_
 #define UNIT_H_
 
+#include <vector>
+#include <glog/logging.h>
+
 #include "hexpoint.h"
+
 
 class Unit {
  public:
-  Unit() : pivot_(-1, -1) {
+  Unit(const HexPoint& pivot, std::vector<HexPoint>&& members);
+
+  const std::vector<HexPoint>& members() const { return members_; }
+  int order() const { return order_; }
+
+ private:
+  std::vector<HexPoint> members_;
+  int order_;
+};
+
+class UnitLocation {
+ public:
+  class ConstMemberIter : public std::iterator<std::forward_iterator_tag,
+                                               HexPoint> {
+   public:
+    ConstMemberIter(std::vector<HexPoint>::const_iterator iter,
+                    HexPoint pivot,
+                    int angle)
+        : iter_(iter), pivot_(pivot), angle_(angle) {
+    }
+
+    HexPoint operator*() const {
+      return iter_->RotateCounterClockwise(angle_).TranslateFromOrigin(pivot_);
+    }
+
+    bool operator==(const ConstMemberIter& other) const {
+      DCHECK(pivot_ == other.pivot_);
+      DCHECK(angle_ == other.angle_);
+      return iter_ == other.iter_;
+    }
+
+    bool operator!=(const ConstMemberIter& other) const {
+      return !(*this == other);
+    }
+
+    ConstMemberIter& operator++() {
+      ++iter_;
+      return *this;
+    }
+
+    ConstMemberIter operator++(int) {
+      ConstMemberIter result(*this);
+      ++iter_;
+      return result;
+    }
+
+   private:
+    std::vector<HexPoint>::const_iterator iter_;
+    HexPoint pivot_;
+    int angle_;
+  };
+
+  class Members {
+   public:
+    Members(const UnitLocation* unit) : unit_(unit) {
+    }
+
+    ConstMemberIter begin() const {
+      return ConstMemberIter(unit_->unit_->members().begin(),
+                             unit_->pivot_, unit_->angle_);
+    }
+
+    ConstMemberIter end() const {
+      return ConstMemberIter(unit_->unit_->members().end(),
+                             unit_->pivot_, unit_->angle_);
+    }
+
+    size_t size() const {
+      return unit_->unit_->members().size();
+    }
+   private:
+    const UnitLocation* unit_;
+  };
+
+  // Invalid data for convenience.
+  UnitLocation() : unit_(nullptr), pivot_(0, 0), angle_(0) {
   }
 
-  Unit(const HexPoint& pivot, std::vector<HexPoint>&& members)
-      : pivot_(pivot), members_(std::move(members)), angle_(0) {
-    std::sort(members_.begin(), members_.end(), HexPointLess());
+  UnitLocation(const Unit* unit, const HexPoint& pivot)
+      : unit_(unit), pivot_(pivot), angle_(0) {
+  }
+
+  UnitLocation(const Unit* unit, const HexPoint& pivot, int angle)
+      : unit_(unit), pivot_(pivot), angle_(angle % unit->order()) {
   }
 
   const HexPoint& pivot() const { return pivot_; }
-  const std::vector<HexPoint>& members() const { return members_; }
   int angle() const { return angle_; }
-
-  HexPoint* mutable_pivot() { return &pivot_; }
-  std::vector<HexPoint>* mutable_members() { return &members_; }
-
-  bool operator==(const Unit& other) const {
-    if (pivot_ != other.pivot_) {
-      return false;
-    }
-    if (members_.size() != other.members_.size()) {
-      return false;
-    }
-    for (size_t i = 0; i < members_.size(); ++i) {
-      if (members_[i] != other.members_[i]) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  int GetTop() const {
-    int top = std::numeric_limits<int>::max();
-    for (auto& member : members_) {
-      top = std::min(top, member.y());
-    }
-    return top;
-  }
-
-  int GetRight() const {
-    int right = 0;
-    for (auto& member : members_) {
-      right = std::max(right, member.x());
-    }
-    return right;
-  }
-
-  int GetBottom() const {
-    int bottom = 0;
-    for (auto& member : members_) {
-      bottom = std::max(bottom, member.y());
-    }
-    return bottom;
-  }
-
-  int GetLeft() const {
-    int left = std::numeric_limits<int>::max();
-    for (auto& member : members_) {
-      left = std::min(left, member.x());
-    }
-    return left;
-  }
+  Members members() const { return Members(this); }
 
   void Shift(int x) {
-    const HexPoint movement(x, 0);
-    pivot_ += movement;
-    for (auto& member : members_) {
-      member += movement;
-    }
+    pivot_ += HexPoint(x, 0);
   }
 
   void MoveEast() {
@@ -84,51 +112,43 @@ class Unit {
   }
 
   void MoveSouthEast() {
-    const HexPoint odd_movement(1, 1);
-    const HexPoint even_movement(0, 1);
-    pivot_ += (pivot_.y() & 1 ? odd_movement : even_movement);
-    for (auto& member : members_) {
-      member += (member.y() & 1 ? odd_movement : even_movement);
-    }
+    pivot_ += HexPoint(pivot_.y() & 1, 1);
   }
 
   void MoveSouthWest() {
-    const HexPoint odd_movement(0, 1);
-    const HexPoint even_movement(-1, 1);
-    pivot_ += (pivot_.y() & 1 ? odd_movement : even_movement);
-    for (auto& member : members_) {
-      member += (member.y() & 1 ? odd_movement : even_movement);
-    }
+    pivot_ += HexPoint((pivot_.y() & 1) - 1, 1);
   }
 
   void RotateClockwise() {
-    angle_ += 5;
-    angle_ %= 6;
-    for (auto& member : members_) {
-      member = member.RotateClockwise(pivot_);
-    }
-    std::sort(members_.begin(), members_.end(), HexPointLess());
+    angle_ = (angle_ + 5) % unit_->order();
   }
 
   void RotateCounterClockwise() {
-    angle_ ++;
-    angle_ %= 6;
-    for (auto& member : members_) {
-      member = member.RotateCounterClockwise(pivot_);
-    }
-    std::sort(members_.begin(), members_.end(), HexPointLess());
+    angle_ = (angle_ + 1) % unit_->order();
+  }
+
+  bool operator==(const UnitLocation& other) const {
+    return unit_ == other.unit_
+        && pivot_ == other.pivot_
+        && angle_ == other.angle_;
   }
 
  private:
-  struct HexPointLess {
-    bool operator()(const HexPoint& p1, const HexPoint& p2) const {
-      return p1.y() != p2.y() ? p1.y() < p2.y() : p1.x() < p2.x();
-    }
-  };
-
+  const Unit* unit_;
   HexPoint pivot_;
-  std::vector<HexPoint> members_;
   int angle_;
+};
+
+// Note: unit_ must be same.
+struct UnitLocationLess {
+  bool operator()(const UnitLocation& u1, const UnitLocation& u2) const {
+    const HexPoint& p1 = u1.pivot();
+    const HexPoint& p2 = u2.pivot();
+    if (p1 != p2) {
+      return HexPointLess()(p1, p2);
+    }
+    return u1.angle() < u2.angle();
+  }
 };
 
 #endif  // UNIT_H_

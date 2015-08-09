@@ -14,7 +14,7 @@ CXXFLAGS=-O2 -DPICOJSON_USE_INT64 --std=c++11 $(INCLUDE)
 
 all: duralmin
 
-duralmin: duralmin.o board.o game.o solver.o scorer.o ai_util.o
+duralmin: duralmin.o board.o game.o solver.o scorer.o ai_util.o unit.o
 	g++ -Wl,-rpath=$(PWD)/../../googlelib/glog/.libs $(CXXFLAGS) -o $@ $^ $(LIBS)
 
 ai_util.o: ../../simulator/ai_util.cc
@@ -30,6 +30,9 @@ scorer.o: ../../simulator/scorer.cc
 	g++ $(CXXFLAGS) -c -o $@ $<
 
 solver.o: ../../simulator/solver.cc
+	g++ $(CXXFLAGS) -c -o $@ $<
+
+unit.o: ../../simulator/unit.cc
 	g++ $(CXXFLAGS) -c -o $@ $<
 
 %_test: %_test.cc

@@ -15,10 +15,10 @@ CFLAGS=-O2 -DPICOJSON_USE_INT64 -g --std=c++11 $(INCLUDE)
 
 all: rewrakkuma rewriter01
 
-rewrakkuma: rewrakkuma.o board.o game.o scorer.o
+rewrakkuma: rewrakkuma.o board.o game.o scorer.o unit.o
 	g++ -Wl,-rpath=$(PWD)/../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 
-rewriter01: rewriter01.o board.o game.o scorer.o
+rewriter01: rewriter01.o board.o game.o scorer.o unit.o
 	g++ -Wl,-rpath=$(PWD)/../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 board.o: ../simulator/board.cc
 	g++ $(CFLAGS) -c -o $@ $<
@@ -28,6 +28,10 @@ game.o: ../simulator/game.cc
 
 scorer.o: ../simulator/scorer.cc
 	g++ $(CFLAGS) -c -o $@ $<
+
+unit.o: ../simulator/unit.cc
+	g++ $(CFLAGS) -c -o $@ $<
+
 
 %_test: %_test.cc
 	g++ -Wl,-rpath=$(PWD)/../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(TEST_LIBS) $(LIBS)

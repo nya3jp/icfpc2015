@@ -14,13 +14,13 @@ CFLAGS=-O2 -DPICOJSON_USE_INT64 --std=c++11 $(INCLUDE)
 
 all: simulator scorer hexpoint_test bfs
 
-scorer: scorer_main.o scorer.o board.o game.o scorer.o
+scorer: scorer_main.o scorer.o board.o game.o scorer.o unit.o
 	g++ -Wl,-rpath=$(PWD)/../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 
-simulator: main.o board.o game.o scorer.o
+simulator: main.o board.o game.o scorer.o unit.o
 	g++ -Wl,-rpath=$(PWD)/../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 
-bfs: bfs_main.o board.o game.o scorer.o
+bfs: bfs_main.o board.o game.o scorer.o unit.o
 	g++ -Wl,-rpath=$(PWD)/../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 
 %_test: %_test.cc

@@ -105,6 +105,21 @@ class HexPoint {
     return HexPoint(xx + (zz - (zz & 1)) / 2, zz);
   }
 
+  HexPoint RotateCounterClockwise(int n) const {
+    int xx = x_ - (y_ - (y_ & 1)) / 2;
+    int zz = y_;
+    int yy = -xx - zz;
+
+    for (int i = 0; i < n; ++i) {
+      int tmp = xx;
+      xx = -yy;
+      yy = -zz;
+      zz = -tmp;
+    }
+
+    return HexPoint(xx + (zz - (zz & 1)) / 2, zz);
+  }
+
   // Translate this point as if |pivot| moves to (0, 0).
   HexPoint TranslateToOrigin(const HexPoint& pivot) const {
     HexPoint moved = *this - pivot;
@@ -133,9 +148,23 @@ class HexPoint {
         .TranslateFromOrigin(pivot);
   }
 
+#if 0
+  Hexpoint RotateCounterClockwise(const HexPoint& pivot, int n) const {
+    return TranslateToOrigin(pivot)
+        .RotateCounterClockwise(n)
+        .TranslateFromOrigin(pivot);
+  }
+#endif
+
  private:
   int x_;
   int y_;
+};
+
+struct HexPointLess {
+  bool operator()(const HexPoint& p1, const HexPoint& p2) const {
+    return p1.y() != p2.y() ? p1.y() < p2.y() : p1.x() < p2.x();
+  }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const HexPoint& p) {

@@ -11,7 +11,7 @@ Board::~Board() {
 void Board::Load(const picojson::value& parsed) {
   width_ = parsed.get("width").get<int64_t>();
   height_ = parsed.get("height").get<int64_t>();
-  cells_ = Map(width_ * height_);
+  cells_ = Map(width_ * height_, false);
 
   // Fill the board.
   const picojson::array& filled = parsed.get("filled").get<picojson::array>();
@@ -22,7 +22,7 @@ void Board::Load(const picojson::value& parsed) {
   }
 }
 
-bool Board::IsConflicting(const Unit& unit) const {
+bool Board::IsConflicting(const UnitLocation& unit) const {
   for (const auto& member : unit.members()) {
     // Hack.
     if (member.y() < 0 || height_ <= member.y() ||
@@ -36,7 +36,7 @@ bool Board::IsConflicting(const Unit& unit) const {
   return false;
 }
 
-int Board::Lock(const Unit& unit) {
+int Board::Lock(const UnitLocation& unit) {
   for (const auto& member: unit.members()) {
     cells_[member.y() * width_ + member.x()] = true;
   }
@@ -65,7 +65,7 @@ int Board::Lock(const Unit& unit) {
   return num_cleared_lines;
 }
 
-int Board::LockPreview(const Unit& unit) const {
+int Board::LockPreview(const UnitLocation& unit) const {
   int num_cleared_lines = 0;
   for (int y = height_ - 1; y >= 0; --y) {
     bool ok = true;
@@ -77,6 +77,7 @@ int Board::LockPreview(const Unit& unit) const {
       for (const auto& member: unit.members()) {
         if (y == member.y() && x == member.x()) {
           hit = true;
+          break;
         }
       }
       if (hit)
@@ -98,7 +99,7 @@ void Board::Dump(std::ostream* os) const {
       *os << ' ';
     }
     for (size_t x = 0; x < width_; ++x) {
-      *os << (cells_[y * width_ + x] ? '.' : '*');
+      *os << (cells_[y * width_ + x] ? '*' : '.');
       if (x + 1 < width_) {
         *os << ' ';
       }

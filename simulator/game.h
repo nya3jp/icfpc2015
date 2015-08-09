@@ -44,37 +44,40 @@ class Game {
       const std::vector<Command>& commands);
 
   // Given the current position and the op command, returns the next position.
-  static Unit NextUnit(const Unit& prev_unit, Command command);
+  static UnitLocation NextUnit(const UnitLocation& prev_unit,
+                               Command command);
 
   bool Run(Command action);
   bool RunSequence(const std::vector<Command>& actions);
 
   // Given the current unit position, returns a command to lock the unit
   // at the position, or returns IGNORED if it's impossible to lock it.
-  Command GetLockCommand(const Unit& current) const;
+  Command GetLockCommand(const UnitLocation& current) const;
   // Returns whether the unit is lockable at the given position.
-  bool IsLockable(const Unit& current) const;
+  bool IsLockable(const UnitLocation& current) const;
   // Returns whether it is lockable by the given command.
-  bool IsLockableBy(const Unit& current, Command cmd) const;
+  bool IsLockableBy(const UnitLocation& current, Command cmd) const;
 
-  typedef std::pair<Unit, std::vector<Command>> SearchResult;
+  typedef std::pair<UnitLocation, std::vector<Command>> SearchResult;
   // Does BFS search from current_unit_ to return the list of lockable locations
   // with the command sequence to reach there.
   void ReachableUnits(std::vector<SearchResult>* result) const;
   const Board& board() const { return board_; }
 
-  const Unit& current_unit() const { return current_unit_; }
+  const UnitLocation& current_unit() const { return current_unit_; }
 
  private:
   int id_;
+  // TODO: do not copy units_.
   std::vector<Unit> units_;
+  std::vector<HexPoint> spawn_position_;
   Board board_;
   int source_length_;
   RandGenerator rand_;
 
-  Unit current_unit_;
+  UnitLocation current_unit_;
   int current_index_;
-  std::vector<Unit> history_;
+  std::vector<UnitLocation> history_;
   int score_;
   int prev_cleared_lines_;
   bool error_;
