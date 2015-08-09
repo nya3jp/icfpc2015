@@ -4,6 +4,7 @@
 #include <glog/logging.h>
 
 #include "game.h"
+#include "scorer.h"
 
 namespace {
 // TODO refactor.
@@ -217,13 +218,10 @@ bool Game::Run(Command command) {
   }
 
   if (board_.IsConflicting(new_unit)) {
-    int num_cleard_lines = board_.Lock(current_unit_);
-    int points = current_unit_.members().size()
-        + 100 * (1 + num_cleard_lines) * num_cleard_lines / 2;
-    int line_bonus = prev_cleared_lines_ > 0 ?
-        (prev_cleared_lines_ - 1) * points / 10 : 0;
-    prev_cleared_lines_ = num_cleard_lines;
-    score_ += (points + line_bonus);
+    int num_cleared_lines = board_.Lock(current_unit_);
+    score_ += MoveScore(current_unit_.members().size(),
+                        num_cleared_lines, prev_cleared_lines_);
+    prev_cleared_lines_ = num_cleared_lines;
     return SpawnNewUnit();
   }
 

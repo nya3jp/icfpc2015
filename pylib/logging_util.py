@@ -47,7 +47,7 @@ def setup():
   if FLAGS.logtostderr != 'none':
     handler = logging.StreamHandler(sys.stderr)
     formatter = ExtendedFormatter(
-        fmt='%(asctime)-15s ' + _LOG_BASE_FORMAT,
+        fmt='%(asctime)s.%(msecs)03d ' + _LOG_BASE_FORMAT,
         datefmt=_DATE_FORMAT,
         appname=appname)
     handler.setFormatter(formatter)
