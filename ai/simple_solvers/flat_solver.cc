@@ -2,10 +2,10 @@
 #include <string>
 #include <vector>
 
-#include "board.h"
-#include "game.h"
-#include "solver.h"
-#include "unit.h"
+#include "../../simulator/board.h"
+#include "../../simulator/game.h"
+#include "../../simulator/solver.h"
+#include "../../simulator/unit.h"
 
 
 class FlatSolver : public Solver {

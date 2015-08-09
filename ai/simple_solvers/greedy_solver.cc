@@ -1,8 +1,8 @@
 #include <vector>
 
-#include "game.h"
-#include "solver.h"
-#include "unit.h"
+#include "../../simulator/game.h"
+#include "../../simulator/solver.h"
+#include "../../simulator/unit.h"
 
 
 class GreedySolver : public Solver {
