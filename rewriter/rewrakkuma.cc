@@ -123,6 +123,8 @@ std::string solve_on_graph(
   const std::vector<bool> reachable_to_goal = calc_goal_reachability(Graph, Goal);
 
   std::vector<bool> visited(Graph.size());
+  for (Vert v=0; v<visited.size(); ++ v)
+    visited[v] = !reachable_to_goal[v];
   Vert cur = Start;
   visited[cur] = true;
   while (cur != Goal) {
