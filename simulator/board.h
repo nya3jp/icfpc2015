@@ -19,6 +19,16 @@ class Board {
   bool operator()(int x, int y) const {
     return cells_[y * width_ + x];
   }
+  bool operator()(const HexPoint &h) const {
+    return this->operator()(h.x(), h.y());
+  }
+
+  void Set(int x, int y, bool value) {
+    cells_[y * width_ + x] = value;
+  }
+  void Set(const HexPoint &h, bool value) {
+    this->Set(h.x(), h.y(), value);
+  }
 
   void Load(const picojson::value& parsed);
 

@@ -83,3 +83,40 @@ int64_t GetDotReachabilityFromTop(const Game& game)
 
   return ret;
 }
+
+
+void GetReachabilityMapByAnyHands(const Game& game, Board *ret_board)
+{
+  *ret_board = game.GetBoard();
+  for(int h = 0; h < *ret_board.height(); ++h) {
+    for(int w = 0; w < *ret_board.width(); ++w) {
+      *ret_board.Set(w, h, false);
+    }
+  }
+
+  for(size_t index = 0; index < game.GetUnits().size(); ++index) {
+    const Unit &u = game.GetUnits()[index];
+    std::stack<UnitLocation> todo;
+    todo.push(SearchResult(u, {}));
+    std::set<UnitLocation> covered;
+    while (!todo.empty()) {
+      Unit current = todo.top().first;
+      todo.pop();
+      covered.insert(UnitLocation(todo));
+      for(const auto& p: current.members()) {
+        *ret_borad.Set(p, true);
+      }
+      for (Command c = Command::E; c != Command::IGNORED; ++c) {
+        Unit next = Game::NextUnit(current, c);
+        if (covered.count(UnitLocation(next))) {
+          continue;
+        }
+        if (board_.IsConflicting(next)) {
+          continue;
+        }
+        todo.push(next);
+        covered.insert(UnitLocation(next));
+      }
+    }
+  }
+}

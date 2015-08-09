@@ -16,5 +16,9 @@ int64_t GetHeightPenaltyFromGame(const Game& game);
  */
 int64_t GetDotReachabilityFromTop(const Game& game);
 
+/**
+   Get whether points are reachable by any hands
+ */
+void GetReachabilityMapByAnyHands(const Game& game, Board *ret_board);
 
 #endif  // AI_UTIL_H__

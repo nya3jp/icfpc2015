@@ -31,6 +31,11 @@ class Game {
   // Find a new unit, and put it to the source.
   bool SpawnNewUnit();
 
+  /**
+     Returns Unit instance, of [index]-th unit, poisitioned at the spawning position.
+   */
+  Unit GetUnitAtSpawnPosition(size_t index);
+
   enum class Command {
     E, W, SE, SW, CW, CCW, IGNORED,
   };
@@ -64,6 +69,8 @@ class Game {
   const Board& board() const { return board_; }
 
   const Unit& current_unit() const { return current_unit_; }
+
+  const std::vector<Unit> GetUnits() const { return units_; }
 
  private:
   int id_;
