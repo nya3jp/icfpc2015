@@ -5,6 +5,7 @@
 #include <vector>
 #include <glog/logging.h>
 
+#include "../../simulator/ai_util.h"
 #include "../../simulator/board.h"
 #include "../../simulator/game.h"
 #include "../../simulator/hexpoint.h"
@@ -27,22 +28,13 @@ public:
 
   static int64_t Score(const Game& game, std::ostream& os) {
     const Board& board(game.board());
-    std::vector<int> height(board.width(), -1);
-    std::vector<int> hole(board.width());
+    std::vector<int> height(GetHeightLine(game));
+    int hole;
     for (int i = 0; i < board.width(); ++i) {
-      for (int j = 0; j < board.height(); ++j) {
-        if (board.cells()[j][i]) {
-          if (height[i] < 0) {
-            height[i] = j;
-          }
-        } else {
-          if (height[i] >= 0) {
-            hole[i] ++;
-          }
+      for (int j = height[i] + 1; j < board.height(); ++j) {
+        if (!board.cells()[j][i]) {
+          hole ++;
         }
-      }
-      if (height[i] < 0) {
-        height[i] = board.height();
       }
     }
 
@@ -51,14 +43,9 @@ public:
       const auto& diff = height[i + 1] - height[i];
       height_score += diff * diff;
     }
-    int64_t hole_score = 0;
-    for (int i = 0; i < board.width(); ++i) {
-      hole_score += hole[i];
-    }
     os << "height:" << DumpV(height) << "(score:" << height_score
-       << ") hole:" << DumpV(hole) << "(score:" << hole_score
-       << ")";
-    return game.score() - height_score * 100 - hole_score * 2000;
+       << ") hole:" << hole;
+    return game.score() - height_score * 100 - hole * 2000;
   }
 
   static int64_t MinScore(const Game& game) {
