@@ -31,7 +31,7 @@ int PowerScore(const std::string& solution,
       ++reps;
     }
     int power_bonus = reps ? 300 : 0;
-    int power_score = 2 + phrase.length() * reps + power_bonus;
+    int power_score = 2 * phrase.length() * reps + power_bonus;
     result += power_score;
   }
   return result;
