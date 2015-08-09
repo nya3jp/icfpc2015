@@ -68,17 +68,41 @@ public:
           int bottom = res.first.GetBottom();
           int left = res.first.GetLeft();
 
-          if (bottom == y && left == x && top == y &&
-              (tetris_point.x() > right ||
-               tetris_point.x() < left)) {
-            return Game::Commands2SimpleString(res.second);
+          if (bottom == y && top == y) {
+            if (left == x &&
+                (tetris_point.x() > right ||
+                 tetris_point.x() < left)) {
+              return Game::Commands2SimpleString(res.second);
+            }
+          } else {
+            return SouthWest(game, bfsresult);
           }
         }
       }
     }
 
+    return SouthWest(game, bfsresult);
+  }
+
+  std::string SouthWest(const Game& game,
+                        const std::vector<Game::SearchResult>& bfsresult) {
     std::vector<Game::Command> ret;
     ret.push_back(Game::Command::SW);
+
+    int candidate_bottom = 0;
+    int candidate_left = std::numeric_limits<int>::max();
+    for (const auto &res: bfsresult) {
+      int bottom = res.first.GetBottom();
+      int left = res.first.GetLeft();
+
+      if (bottom > candidate_bottom ||
+          (bottom == candidate_bottom && left < candidate_left)) {
+        candidate_bottom = bottom;
+        candidate_left = left;
+        ret = res.second;
+      }
+    }
+
     return Game::Commands2SimpleString(ret);
   }
 };
