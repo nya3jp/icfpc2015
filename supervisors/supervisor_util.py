@@ -17,10 +17,11 @@ gflags.DEFINE_bool('enable_hazuki_proxy', False, '')
 
 
 class SolverJob(object):
-  def __init__(self, args, task, event_queue=None):
+  def __init__(self, args, task, event_queue=None, cgroup=None):
     self.args = args
     self.task = task
     self.event_queue = event_queue
+    self._cgroup = cgroup
     self.problem_id = task['id']
     self.seed = task['sourceSeeds'][0]
     self._proc = None
@@ -35,18 +36,33 @@ class SolverJob(object):
     logging.debug('Starting: %r', self)
     real_args = list(self.args)
     if FLAGS.enable_hazuki_proxy:
-      real_args.insert(0, os.path.join(os.path.dirname(__file__), 'hazuki_proxy'))
+      real_args = [os.path.join(os.path.dirname(__file__), 'hazuki_proxy')] + real_args
     with tempfile.TemporaryFile() as f:
       json.dump(self.task, f)
       f.flush()
       f.seek(0)
       logging.debug('Launching AI: command line: %s', ' '.join(real_args))
       self._proc = subprocess.Popen(real_args, stdin=f, stdout=subprocess.PIPE)
+    if self._cgroup:
+      subprocess.call(
+        ['sudo', 'cgclassify', '-g', 'memory:%s' % self._cgroup, str(self._proc.pid)])
     self._start_time = time.time()
     self._reader_thread = threading.Thread(target=self._reader_thread_main)
+    self._reader_thread.daemon = True
     self._reader_thread.start()
     self._signal_thread = threading.Thread(target=self._signal_thread_main)
+    self._signal_thread.daemon = True
     self._signal_thread.start()
+
+  def interrupt(self):
+    if not self._proc:
+      logging.error('Attempted to interrupt an unstarted job: %r', self)
+      return
+    logging.debug('Interrupting: %r', self)
+    try:
+      self._proc.send_signal(signal.SIGINT)
+    except Exception:
+      pass
 
   def terminate(self):
     if not self._proc:
@@ -54,7 +70,7 @@ class SolverJob(object):
       return
     logging.debug('Terminating: %r', self)
     try:
-      self._proc.send_signal(signal.SIGINT)
+      self._proc.send_signal(signal.SIGKILL)
     except Exception:
       pass
 
@@ -116,8 +132,8 @@ class SolverJob(object):
         time.sleep(1)
         logging.debug('Sending SIGUSR1: %r', self)
         self._proc.send_signal(signal.SIGUSR1)
-    except Exception:
-      logging.debug('Signal thread stopped: %r', self)
+    except Exception as e:
+      logging.debug('Signal thread stopped: %r: %r', self, e)
 
   def _maybe_notify(self):
     if self.event_queue:

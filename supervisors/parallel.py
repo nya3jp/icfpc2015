@@ -6,9 +6,6 @@ Usage:
 supervisors/parallel.py -f problem.json -c N path/to/solver [extra args to solver...]
 """
 
-import time
-g_start_time = time.time()
-
 import logging
 import Queue as queue
 import sys
