@@ -38,11 +38,7 @@ public:
       }
     }
 
-    int64_t height_score = 0;
-    for (int i = 0; i < board.width() - 1; ++i) {
-      const auto& diff = height[i + 1] - height[i];
-      height_score += diff * diff;
-    }
+    int64_t height_score = GetHeightPenalty(height);
     os << "height:" << DumpV(height) << "(score:" << height_score
        << ") hole:" << hole;
     return game.score() - height_score * 100 - hole * 2000;

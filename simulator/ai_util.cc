@@ -21,3 +21,16 @@ std::vector<int> GetHeightLine(const Game& game) {
   }
   return height;
 }
+
+int64_t GetHeightPenalty(const std::vector<int>& height) {
+  int64_t height_score = 0;
+  for (int i = 0; i < height.size() - 1; ++i) {
+    const auto& diff = height[i + 1] - height[i];
+    height_score += diff * diff;
+  }
+  return height_score;
+}
+
+int64_t GetHeightPenaltyFromGame(const Game& game) {
+  return GetHeightPenalty(GetHeightLine(game));
+}
