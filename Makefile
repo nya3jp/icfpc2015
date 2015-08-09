@@ -1,11 +1,17 @@
-.PHONY: all clean
+.PHONY: all build clean force
 
-all: play_icfp2015
+all: build
 
 clean:
-	rm -f .deps
+	rm -f .build .googlelib .deps
 
-play_icfp2015: .deps
+force:
+
+build: .googlelib .deps force
+	$(MAKE) -C ai/simple_solvers
+
+.googlelib:
+	python tools/build_googlelib.py
 	touch $@
 
 .deps: install_deps.sh
