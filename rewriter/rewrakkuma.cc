@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <set>
 #include <queue>
+#include <random>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -21,7 +22,6 @@
 // Super tenuki utilities.
 /////////////////////////////////////////////////////////////////////////////////
 
-// Tenuki.
 int count_occurrence(const std::string& heystack, const std::string& needle) {
   int cnt = 0;
   for(int s=0; s+needle.size()<=heystack.size(); ++s)
@@ -40,67 +40,32 @@ int score(const std::string& cmd, const std::vector<std::string>& phrases) {
   return total_score;
 }
 
-// Tenuki.
-char canonical(char c) {
-  std::string group[] = {
-    "p'!.03",
-    "bcefy2",
-    "aghij4",
-    "lmno 5",
-    "dqrvz1",
-    "kstuwx",
-  };
-  for(int i=0; i<6; ++i) {
-    if(group[i].find(c) != std::string::npos)
-      return group[i][0];
+const char* g_cmds[] = {
+  "p'!.03",
+  "bcefy2",
+  "aghij4",
+  "lmno 5",
+  "dqrvz1",
+  "kstuwx",
+};
+std::mt19937 g_rand;
+
+std::vector<std::string> random_default_moves() {
+  std::vector<int> idx = {0,1,2,3,4,5};
+  std::shuffle(idx.begin(), idx.end(), g_rand); 
+
+  std::vector<std::string> result;
+  for (int i=0; i<6; ++i) {
+    result.emplace_back(1,
+       g_cmds[idx[i]][std::uniform_int_distribution<int>(0,5)(g_rand)]);
   }
-  return c;
-}
-
-bool match(char c1, char c2) {
-  return canonical(c1) == canonical(c2);
-}
-
-bool match(const std::string& base, int s, const std::string& target) {
-  for (int i=0; i<target.size(); ++i) {
-    if (s+i>=base.size() || !match(base[s+i], target[i]))
-      return false;
-  }
-  return true;
-}
-
-/////////////////////////////////////////////////////////////////////////////////
-
-std::string no_reroute_simple_greedy(
-    const std::string& cmd,
-    const std::vector<std::string>& phrases) {
-  std::set<std::string> p1(phrases.begin(), phrases.end()), p2;
-  std::string result;
-  while (result.size() < cmd.size()) {
-    bool done = false;
-    if (!done)
-      for (auto p: p1)
-        if (match(cmd,result.size(),p)) {
-          done = true;
-          result += p;
-          p2.insert(p);
-          p1.erase(p);
-          break;
-        }
-    if (!done)
-      for (auto p: p2)
-        if (match(cmd,result.size(),p)) {
-          done = true;
-          result += p;
-          break;
-        }
-    if(!done)
-      result += cmd[result.size()];
-  }
-
   return result;
 }
 
+/////////////////////////////////////////////////////////////////////////////////
+// On-graph solver.
+//   Find a way on |Graph| from |Start| to |Goal|.
+//   Let's incude |phrases| as many as possible.
 /////////////////////////////////////////////////////////////////////////////////
 
 typedef int Vert;
@@ -114,8 +79,6 @@ std::string solve_on_graph(
     Vert Start,
     Vert Goal,
     std::vector<std::string> phrases) {
-  std::vector<std::string> default_word = {"p", "b", "a", "l", "d", "k"};
-
   std::set<Vert> visited;
   Vert cur = Start;
   visited.insert(cur);
@@ -174,7 +137,11 @@ std::string solve_on_graph(
       }
       return false;
     };
-    try_phrases(phrases) || try_phrases(default_word);
+
+    if (!try_phrases(phrases)) {
+      std::vector<std::string> allmove = random_default_moves();
+      try_phrases(allmove);
+    }
   }
 
   return result;
@@ -264,6 +231,8 @@ void rewrite_main(
         // Opimize each subsegment corresponding to (|start| to |u|.)
         LOG(INFO) << "[" << before.substr(s, i-s)
             << "][" << before[i] << "]" << std::endl;
+        // Reinitialize RNG, for reproducibility.
+        g_rand = std::mt19937(178116);
         after += generate_powerful_sequence(
            before.substr(s, i-s), game, start, u, phrases);
         after += before[i];
@@ -274,9 +243,6 @@ void rewrite_main(
       game.Run(cmd);
     }
   }
-
-  // Run the most simple solver.
-  // after = no_reroute_simple_greedy(after, phrases);
 
   LOG(INFO) << "Before: " << score(before, phrases);
   LOG(INFO) << "After: " << score(after, phrases);
@@ -321,7 +287,6 @@ std::string to_lower(const std::string& s) {
 int main(int argc, char* argv[]) {
   google::InitGoogleLogging(argv[0]);
   google::ParseCommandLineFlags(&argc, &argv, true);
-
   FLAGS_logtostderr = true;
 
   picojson::value problem;
