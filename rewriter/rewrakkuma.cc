@@ -168,7 +168,7 @@ std::string solve_on_graph(
     auto try_phrases = [&](std::vector<std::string>& phrases) {
       for (int i=0; i<phrases.size(); ++i) {
         if (try_phrase(phrases[i])) {
-          std::swap(phrases[i], phrases.back());
+          std::rotate(phrases.begin()+i, phrases.begin()+i+1, phrases.end());
           return true;
         }
       }
@@ -281,7 +281,8 @@ void rewrite_main(
   LOG(INFO) << "Before: " << score(before, phrases);
   LOG(INFO) << "After: " << score(after, phrases);
   output_entry->get("solution") = picojson::value(after);
-  output_entry->get("tag") = picojson::value(old_tag + "(rwkm)");
+  output_entry->get("tag") = picojson::value("rewrakkuma");
+  //output_entry->get("tag") = picojson::value(old_tag + "(rwkm)");
 }
 
 /////////////////////////////////////////////////////////////////////////////////
