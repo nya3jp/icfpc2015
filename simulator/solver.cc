@@ -16,18 +16,6 @@ DEFINE_string(p, "", "comma-separated power phrases");
 
 namespace {
 
-struct CurrentState {
-  CurrentState(const Game& game) : game_(game) {
-  }
-
-  const Game& game_;
-};
-
-std::ostream& operator<<(std::ostream& os, const CurrentState& state) {
-  state.game_.DumpCurrent(&os);
-  return os;
-}
-
 void WriteOneJsonResult(int problemid,
                         const std::string& tag,
                         int64_t seed,
