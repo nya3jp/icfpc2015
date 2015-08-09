@@ -224,7 +224,14 @@ void rewrite_main(
 
 DEFINE_string(problem, "", "problem file");
 DEFINE_string(output, "", "output file");
-DEFINE_string(p, "", "comma separted list of phrases");
+DEFINE_string(p,
+  "Ei!,"
+  "R'lyeh,"
+  "yuggoth,"
+  "ia! ia!,"
+  "necronomiconi,"
+  "yogsothoth"
+  , "comma separted list of phrases");
 
 std::vector<std::string> split(const std::string& str, char sep=',') {
   std::vector<std::string> result;
