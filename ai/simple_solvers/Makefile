@@ -29,6 +29,9 @@ greedy_ai_3: greedy_ai_3.o board.o game.o solver.o scorer.o
 greedy_ai_2: greedy_ai_2.o board.o game.o solver.o scorer.o
 	g++ -Wl,-rpath=$(PWD)/../../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 
+greedy_ai: greedy_ai.o board.o game.o solver.o scorer.o
+	g++ -Wl,-rpath=$(PWD)/../../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
+
 ai_util.o: ../../simulator/ai_util.cc
 	g++ $(CFLAGS) -c -o $@ $<
 
