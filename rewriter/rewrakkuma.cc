@@ -11,6 +11,10 @@
 #include <glog/logging.h>
 #include <picojson.h>
 
+#include "../../simulator/board.h"
+#include "../../simulator/game.h"
+#include "../../simulator/unit.h"
+
 // Tenuki.
 int count_occurrence(const std::string& heystack, const std::string& needle) {
   int cnt = 0;
