@@ -66,9 +66,25 @@ def process_solution(db, solution):
   score = compute_score(db, solution)
   solution['_score'] = score
   solution['_processed'] = PROCESSOR_VERSION
+  db.solutions.save(solution)
+
+  best_solution = db.best_solutions.find_one(task_query)
+  if not best_solution or solution['_score'] > best_solution['_score']:
+    logging.info(
+      'New record: problem %s, seed %s: score %s',
+      problem_id, seed, solution['_score'])
+    new_solution = solution.copy()
+    del new_solution['_id']
+    requests.post(
+      'https://davar.icfpcontest.org/teams/116/solutions',
+      headers={'Content-Type': 'application/json'},
+      auth=('', '5HCRz0UOZSsseufyW36DvmeWJKUS9mMPf1qXaAuGM9g='),
+      data=json.dumps([new_solution]))
+    logging.info('Uploaded to official leaderboard.')
+    db.best_solutions.update(task_query, new_solution, upsert=True)
+
   logging.info(
     'Processed: problem %s, seed %s, tag %s: score %s', problem_id, seed, tag, score)
-  db.solutions.save(solution)
 
 
 def main(unused_argv):
