@@ -32,7 +32,7 @@ public:
     int hole;
     for (int i = 0; i < board.width(); ++i) {
       for (int j = height[i] + 1; j < board.height(); ++j) {
-        if (!board.cells()[j][i]) {
+        if (!board(i, j)) {
           hole ++;
         }
       }

@@ -23,7 +23,7 @@ public:
       std::vector<int> nfill(board.height());
       for(int y = 0; y < board.height(); ++y)
         for(int x = 0; x < board.width(); ++x)
-          if(board.cells()[y][x]) ++nfill[y];
+          if(board(x, y)) ++nfill[y];
       
       for(const auto &res: bfsresult) {
         std::vector<int> nfill_copy(nfill);

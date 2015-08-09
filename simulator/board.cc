@@ -9,23 +9,17 @@ Board::~Board() {
 }
 
 void Board::Load(const picojson::value& parsed) {
-  int width = parsed.get("width").get<int64_t>();
-  int height = parsed.get("height").get<int64_t>();
-  Init(width, height);
+  width_ = parsed.get("width").get<int64_t>();
+  height_ = parsed.get("height").get<int64_t>();
+  cells_ = Map(width_ * height_);
 
   // Fill the board.
   const picojson::array& filled = parsed.get("filled").get<picojson::array>();
   for (const auto& value : filled) {
     int x = value.get("x").get<int64_t>();
     int y = value.get("y").get<int64_t>();
-    cells_[y][x] = 1;
+    cells_[y * width_ + x] = true;
   }
-}
-
-void Board::Init(int width, int height) {
-  width_ = width;
-  height_ = height;
-  cells_ = Map(height, std::vector<int>(width));
 }
 
 bool Board::IsConflicting(const Unit& unit) const {
@@ -35,7 +29,7 @@ bool Board::IsConflicting(const Unit& unit) const {
         member.x() < 0 || width_ <= member.x()) {
       return true;
     }
-    if (cells_[member.y()][member.x()]) {
+    if (cells_[member.y() * width_ + member.x()]) {
       return true;
     }
   }
@@ -44,47 +38,47 @@ bool Board::IsConflicting(const Unit& unit) const {
 
 int Board::Lock(const Unit& unit) {
   for (const auto& member: unit.members()) {
-    cells_[member.y()][member.x()] = 1;
+    cells_[member.y() * width_ + member.x()] = true;
   }
 
   // Clears for each row if necessary.
   int num_cleared_lines = 0;
   for (int y = height_ - 1; y >= 0; --y) {
-    std::vector<int>& row = cells_[y];
-    if (std::all_of(std::begin(row), std::end(row),
-                    [](int cell) { return cell; })) {
+    size_t begin = y * width_;
+    size_t end = begin + width_;
+
+    if (std::all_of(cells_.begin() + begin, cells_.begin() + end,
+                    [](bool v) { return v; })) {
       ++num_cleared_lines;
-    } else if (num_cleared_lines) {
-      cells_[y + num_cleared_lines] = row;
+    } else {
+      // Fall.
+      size_t dest_begin = (y + num_cleared_lines) * width_;
+      std::copy(cells_.begin() + begin, cells_.begin() + end,
+                cells_.begin() + dest_begin);
     }
   }
-  for (int y = 0; y < num_cleared_lines; ++y) {
-    std::vector<int>& row = cells_[y];
-    std::fill(std::begin(row), std::end(row), 0);
-  }
 
+  // Clear top lines.
+  std::fill(cells_.begin(),
+            cells_.begin() + num_cleared_lines * width_,
+            false);
   return num_cleared_lines;
 }
 
 void Board::Dump(std::ostream* os) const {
-  for (size_t y = 0; y < cells_.size(); ++y) {
+  for (size_t y = 0; y < height_; ++y) {
     if (y & 1) {
       *os << ' ';
     }
-    const std::vector<int>& row = cells_[y];
-    for (size_t x = 0; x < row.size(); ++x) {
-      *os << (row[x] == 0 ? '.' : '*');
-      if (x + 1 < row.size()) {
+    for (size_t x = 0; x < width_; ++x) {
+      *os << (cells_[y * width_ + x] ? '.' : '*');
+      if (x + 1 < width_) {
         *os << ' ';
       }
     }
-    if (y + 1 < cells_.size()) {
+    if (y + 1 < height_) {
       *os << '\n';
     }
   }
 }
 
-std::ostream& operator<<(std::ostream& os, const Board& board) {
-  board.Dump(&os);
-  return os;
-}

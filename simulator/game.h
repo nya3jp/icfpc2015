@@ -84,7 +84,11 @@ inline Game::Command operator++( Game::Command& x ) {
   return x = (Game::Command)(((int)(x) + 1));
 }
 
-std::ostream& operator<<(std::ostream& os, const Game& game);
+inline std::ostream& operator<<(std::ostream& os, const Game& game) {
+  game.Dump(&os);
+  return os;
+}
+
 
 struct CurrentState {
   CurrentState(const Game& game) : game_(game) {

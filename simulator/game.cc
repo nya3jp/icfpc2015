@@ -331,30 +331,31 @@ void Game::DumpCurrent(std::ostream* os) const {
 
   *os << "Map:";
   {
-    const Board::Map& cells = board_.cells();
-    for (size_t y = 0; y < cells.size(); ++y) {
+    for (size_t y = 0; y < board_.height(); ++y) {
       *os << "\n";
       if (y & 1) {
         *os << ' ';
       }
-      const std::vector<int>& row = cells[y];
-      for (size_t x = 0; x < row.size(); ++x) {
-        char c = '.';
-        if (row[x]) {
-          c = '*';
-        }
-        if (Contains(current_unit_.members(), HexPoint(x, y))) {
-          c = '+';
-        }
-        if (current_unit_.pivot() == HexPoint(x, y)) {
-          if (c == '+') {
-            c = '@';
-          } else {
-            c = '%';
-          }
-        }
+
+      for (size_t x = 0; x < board_.width(); ++x) {
         if (x > 0) {
           *os << ' ';
+        }
+
+        char c = '.';
+        if (board_(x, y)) {
+          c = '*';
+        } else {
+          if (Contains(current_unit_.members(), HexPoint(x, y))) {
+            c = '+';
+          }
+          if (current_unit_.pivot() == HexPoint(x, y)) {
+            if (c == '+') {
+              c = '@';
+            } else {
+              c = '%';
+            }
+          }
         }
         *os << c;
       }
@@ -362,7 +363,3 @@ void Game::DumpCurrent(std::ostream* os) const {
   }
 }
 
-std::ostream& operator<<(std::ostream& os, const Game& game) {
-  game.Dump(&os);
-  return os;
-}
