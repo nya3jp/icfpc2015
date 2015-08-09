@@ -80,43 +80,6 @@ void Game::Load(const picojson::value& parsed, int seed_index) {
   SpawnNewUnit();
 }
 
-Unit Game::GetUnitAtSpawnPosition(size_t index)
-{
-  Unit ret;
-  ret = units_[index];
-  // Move to top.
-  {
-    HexPoint origin = ret.members()[0];
-    for (const auto& member : ret.members()) {
-      if (member.y() < origin.y()) {
-        origin = member;
-      }
-    }
-    for (auto& member : *ret.mutable_members()) {
-      member = member.TranslateToOrigin(origin);
-    }
-    *ret.mutable_pivot() =
-        ret.pivot().TranslateToOrigin(origin);
-  }
-
-  // Center it.
-  {
-    int left = board_.width();
-    int right = -1;
-    for (const auto& p : ret.members()) {
-      if (left > p.x()) {
-        left = p.x();
-      }
-      if (right < p.x()) {
-        right = p.x();
-      }
-    }
-    right = board_.width() - right - 1;
-    ret.Shift((right - left) / 2);
-  }
-
-}
-
 bool Game::SpawnNewUnit() {
   if (current_index_ != 0) {
     rand_.Next();
@@ -127,7 +90,37 @@ bool Game::SpawnNewUnit() {
     return false;
   }
 
-  current_unit_ = GetUnitAtSpawnPosition(rand_.current() % units_.size());
+  current_unit_ = units_[rand_.current() % units_.size()];
+  // Move to top.
+  {
+    HexPoint origin = current_unit_.members()[0];
+    for (const auto& member : current_unit_.members()) {
+      if (member.y() < origin.y()) {
+        origin = member;
+      }
+    }
+    for (auto& member : *current_unit_.mutable_members()) {
+      member = member.TranslateToOrigin(origin);
+    }
+    *current_unit_.mutable_pivot() =
+        current_unit_.pivot().TranslateToOrigin(origin);
+  }
+
+  // Center it.
+  {
+    int left = board_.width();
+    int right = -1;
+    for (const auto& p : current_unit_.members()) {
+      if (left > p.x()) {
+        left = p.x();
+      }
+      if (right < p.x()) {
+        right = p.x();
+      }
+    }
+    right = board_.width() - right - 1;
+    current_unit_.Shift((right - left) / 2);
+  }
 
   // Check if it is put to the available space.
   if (board_.IsConflicting(current_unit_)) {
