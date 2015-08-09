@@ -8,7 +8,12 @@ import tempfile
 import time
 import threading
 
+import gflags
 import ujson as json
+
+FLAGS = gflags.FLAGS
+
+gflags.DEFINE_bool('enable_hazuki_proxy', False, '')
 
 
 class SolverJob(object):
@@ -27,36 +32,17 @@ class SolverJob(object):
 
   def start(self):
     logging.debug('Starting: %r', self)
+    real_args = list(self.args)
+    if FLAGS.enable_hazuki_proxy:
+      real_args.insert(0, os.path.join(os.path.dirname(__file__), 'hazuki_proxy'))
     with tempfile.TemporaryFile() as f:
       json.dump(self.task, f)
       f.flush()
       f.seek(0)
-      self._proc = subprocess.Popen(self.args, stdin=f, stdout=subprocess.PIPE)
+      self._proc = subprocess.Popen(real_args, stdin=f, stdout=subprocess.PIPE)
     self._start_time = time.time()
     self._reader_thread = threading.Thread(target=self._reader_thread_main)
     self._reader_thread.start()
-
-  def pause(self):
-    if not self._proc:
-      logging.error('Attempted to pause an unstarted job: %r', self)
-      return False
-    logging.debug('Pausing: %r', self)
-    try:
-      self._proc.send_signal(signal.SIGSTOP)
-    except Exception:
-      return False
-    return True
-
-  def resume(self):
-    if not self._proc:
-      logging.error('Attempted to resume an unstarted job: %r', self)
-      return False
-    logging.debug('Resuming: %r', self)
-    try:
-      self._proc.send_signal(signal.SIGCONT)
-    except Exception:
-      return False
-    return True
 
   def terminate(self):
     if not self._proc:
@@ -64,7 +50,10 @@ class SolverJob(object):
       return
     logging.debug('Terminating: %r', self)
     try:
-      self._proc.terminate()
+      if FLAGS.enable_hazuki_proxy:
+        self._proc.send_signal(signal.SIGINT)
+      else:
+        self._proc.terminate()
     except Exception:
       pass
     self.wait()
