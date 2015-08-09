@@ -8,6 +8,7 @@
 #include <picojson.h>
 
 #include "game.h"
+#include "json_parser.h"
 
 DEFINE_string(problem, "", "problem file");
 DEFINE_string(output, "", "output file");
@@ -90,18 +91,8 @@ int main(int argc, char* argv[]) {
 
   FLAGS_logtostderr = true;
 
-  picojson::value problem;
-  {
-    std::ifstream stream(FLAGS_problem);
-    stream >> problem;
-    CHECK(stream.good()) << picojson::get_last_error();
-  }
-  picojson::value output;
-  {
-    std::ifstream stream(FLAGS_output);
-    stream >> output;
-    CHECK(stream.good()) << picojson::get_last_error();
-  }
+  picojson::value problem = ParseJson(FLAGS_problem);
+  picojson::value output = ParseJson(FLAGS_output);
 
   int error_report = 0;
   for (const auto& entry : output.get<picojson::array>()) {
