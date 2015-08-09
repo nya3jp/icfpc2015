@@ -10,6 +10,37 @@
 #include "unit.h"
 #include "rand_generator.h"
 
+class GameData {
+ public:
+  GameData();
+
+  int id() const { return id_; }
+  const std::vector<Unit>& units() const { return units_; }
+  const std::vector<HexPoint>& spawn_position() const {
+    return spawn_position_;
+  }
+  const Board& board() const { return board_; }
+  int source_length() const { return source_length_; }
+  const std::vector<int>& source_seeds() const { return source_seeds_; }
+
+  void Load(const picojson::value& parsed);
+  void Dump(std::ostream* os) const;
+
+ private:
+  int id_;
+  // TODO: do not copy units_.
+  std::vector<Unit> units_;
+  std::vector<HexPoint> spawn_position_;
+  Board board_;
+  int source_length_;
+  std::vector<int> source_seeds_;
+};
+
+inline std::ostream& operator<<(std::ostream& os, const GameData& data) {
+  data.Dump(&os);
+  return os;
+}
+
 class Game {
  public:
   Game();
@@ -19,12 +50,11 @@ class Game {
   bool error() const { return error_; }
   int current_index() const { return current_index_; }
   bool is_finished() const {
-    return current_index_ > source_length_ || error_;
+    return current_index_ > data_->source_length() || error_;
   }
 
-  void Load(const picojson::value& parsed, int seed_index);
+  void Init(const GameData* data, int rand_seed_index);
   void Dump(std::ostream* os) const;
-  void DumpCurrent(std::ostream* os) const;
 
   const Board& GetBoard() const { return board_; }
 
@@ -72,14 +102,9 @@ class Game {
   size_t GetNumberOfUnits() const { return units_.size(); }
 
  private:
-  int id_;
-  // TODO: do not copy units_.
-  std::vector<Unit> units_;
-  std::vector<HexPoint> spawn_position_;
+  const GameData* data_;
   Board board_;
-  int source_length_;
   RandGenerator rand_;
-
   UnitLocation current_unit_;
   int current_index_;
   std::vector<UnitLocation> history_;
@@ -106,7 +131,7 @@ struct CurrentState {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CurrentState& state) {
-  state.game_.DumpCurrent(&os);
+  state.game_.Dump(&os);
   return os;
 }
 

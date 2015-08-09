@@ -39,8 +39,10 @@ int main(int argc, char* argv[]) {
     int seed_index = FindIndex(
         problem.get("sourceSeeds").get<picojson::array>(),
         entry.get("seed").get<int64_t>());
+    GameData game_data;
+    game_data.Load(problem);
     Game game;
-    game.Load(problem, seed_index);
+    game.Init(&game_data, seed_index);
 
     const std::string& solution = entry.get("solution").get<std::string>();
     std::string rewritten_solution;

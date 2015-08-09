@@ -22,14 +22,16 @@ int main(int argc, char* argv[]) {
   }
   LOG(INFO) << parsed;
 
+  GameData game_data;
+  game_data.Load(parsed);
+  LOG(ERROR) << game_data;
+
   Game game;
-  game.Load(parsed, 0);  // TODO seed_index.
-  LOG(ERROR) << game;
+  game.Init(&game_data, 0);  // TODO seed_index.
 
   // TODO
   while (true) {
-    game.DumpCurrent(&std::cerr);
-    std::cerr << "\n";
+    LOG(INFO) << game;
     if (!game.Run(Game::Command::SE)) {
       break;
     }

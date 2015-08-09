@@ -22,10 +22,12 @@ int main(int argc, char* argv[]) {
   }
   LOG(INFO) << parsed;
 
-  Game game;
-  game.Load(parsed, 0);  // TODO seed_index.
-  LOG(ERROR) << game;
+  GameData game_data;
+  game_data.Load(parsed);
+  LOG(ERROR) << game_data;
 
+  Game game;
+  game.Init(&game_data, 0);   // TODO seed_index.
   std::vector<Game::SearchResult> units;
   std::cerr << "BFS start" << std::endl;
   game.ReachableUnits(&units);
@@ -42,8 +44,7 @@ int main(int argc, char* argv[]) {
 
   // TODO
   while (true) {
-    game.DumpCurrent(&std::cerr);
-    std::cerr << "\n";
+    std::cerr << game << "\n";
     if (!game.Run(Game::Command::SE)) {
       break;
     }

@@ -29,6 +29,23 @@ std::ostream& operator<<(std::ostream& os,
   return os;
 }
 
+std::ostream& operator<<(std::ostream& os,
+                         const std::vector<int>& container) {
+  bool first = true;
+  os << "[";
+  for (const auto& value : container) {
+    if (first) {
+      first = false;
+    } else {
+      os << ", ";
+    }
+    os << value;
+  }
+  os << "]";
+  return os;
+}
+
+
 template<typename Container, typename T>
 bool Contains(const Container& container, const T& value) {
   return std::find(std::begin(container), std::end(container), value) !=
@@ -64,14 +81,10 @@ HexPoint GetSpawnPosition(const Unit& unit, int width) {
 
 }
 
-Game::Game()
-    : id_(-1), source_length_(-1), current_index_(-1), score_(-1) {
+GameData::GameData() : id_(-1), source_length_(-1) {
 }
 
-Game::~Game() {
-}
-
-void Game::Load(const picojson::value& parsed, int seed_index) {
+void GameData::Load(const picojson::value& parsed) {
   // Parse id.
   id_ = parsed.get("id").get<int64_t>();
 
@@ -96,12 +109,47 @@ void Game::Load(const picojson::value& parsed, int seed_index) {
   source_length_ = parsed.get("sourceLength").get<int64_t>();
 
   // Parse sourceSeeds.
-  rand_.set_seed(static_cast<uint32_t>(
-      parsed.get("sourceSeeds").get(seed_index).get<int64_t>()));
+  source_seeds_.clear();
+  {
+    const picojson::array& source_seeds =
+        parsed.get("sourceSeeds").get<picojson::array>();
+    for (const picojson::value& seed : source_seeds) {
+      source_seeds_.push_back(seed.get<int64_t>());
+    }
+  }
+}
+
+void GameData::Dump(std::ostream* os) const {
+  *os << "ID: " << id_ << "\n";
+  *os << "Units: \n";
+  for (size_t i = 0; i < units_.size(); ++i) {
+    *os << " [" << i << "]: " << units_[i].members() << ", "
+        << units_[i].order() << ", "
+        << spawn_position_[i] << "\n";
+  }
+
+  *os << "Board: \n" << board_ << "\n";
+  *os << "SourceLength: " << source_length_ << "\n";
+  *os << "SourceSeeds: " << source_seeds_;
+}
+
+
+Game::Game() :  current_index_(-1), score_(-1) {
+}
+
+Game::~Game() {
+}
+
+void Game::Init(const GameData* data, int rand_seed_index) {
+  data_ = data;
+  board_ = data_->board();
+  // Parse sourceSeeds.
+  rand_.set_seed(data_->source_seeds()[rand_seed_index]);
 
   // Reset the current status.
   current_unit_ = UnitLocation();
   current_index_ = 0;
+  history_.clear();
   score_ = 0;
   prev_cleared_lines_ = 0;
   error_ = false;
@@ -113,12 +161,12 @@ bool Game::SpawnNewUnit() {
     rand_.Next();
   }
   ++current_index_;
-  if (current_index_ > source_length_) {
+  if (current_index_ > data_->source_length()) {
     // Game over.
     return false;
   }
 
-  int next_index = rand_.current() % units_.size();
+  int next_index = rand_.current() % data_->units().size();
   current_unit_ = GetUnitAtSpawnPosition(next_index);
 
   // Check if it is put to the available space.
@@ -197,7 +245,7 @@ bool Game::Run(Command command) {
     // If the state is already in error, do nothing.
     return false;
   }
-  if (current_index_ > source_length_) {
+  if (current_index_ > data_->source_length()) {
     // Running a step after the finish, causes an error.
     error_ = true;
     score_ = 0;
@@ -313,20 +361,6 @@ void Game::ReachableUnits(std::vector<SearchResult>* result) const {
 }
 
 void Game::Dump(std::ostream* os) const {
-  *os << "ID: " << id_ << "\n";
-  *os << "Units: \n";
-  for (size_t i = 0; i < units_.size(); ++i) {
-    *os << " [" << i << "]: " << units_[i].members() << ", "
-        << units_[i].order() << ", "
-        << spawn_position_[i] << "\n";
-  }
-
-  *os << "Board: \n" << board_ << "\n";
-  *os << "SourceLength: " << source_length_ << "\n";
-  *os << "RandSeed: " << rand_.seed();
-}
-
-void Game::DumpCurrent(std::ostream* os) const {
   *os << "current_index: " << current_index_ << "\n";
   *os << "Rand: " << rand_.current() << "\n";
   *os << "Score: " << score_ << "\n";

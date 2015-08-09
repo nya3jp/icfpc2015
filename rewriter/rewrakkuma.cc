@@ -248,8 +248,10 @@ void rewrite_main(
       output_entry->get("_score").get<int64_t>() : 0);
 
   // Initialize the game.
+  GameData game_data;
+  game_data.Load(problem);
   Game game;
-  game.Load(problem, seed_index);
+  game.Init(&game_data, seed_index);
 
   // Split to subsegments.
   for (int s=0; s<before.size(); ) {
