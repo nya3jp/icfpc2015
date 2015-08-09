@@ -73,9 +73,9 @@ int RunSolver(Solver* solver, std::string solver_tag) {
   const int64_t seed =
     problem.get("sourceSeeds").get<picojson::array>()[0].get<int64_t>();
   VLOG(1) << " Seed: " << seed;
-  Game game;
-  game.Load(problem, 0);
-  VLOG(1) << game;
+  GameData game_data;
+  game_data.Load(problem);
+  VLOG(1) << game_data;
 
   // Record signal handler
   CHECK(std::signal(SIGUSR1, SigHandler) != SIG_ERR);
@@ -84,8 +84,10 @@ int RunSolver(Solver* solver, std::string solver_tag) {
   std::string final_commands;
   bool is_finished = false;
   bool error = false;
+  Game game;
+  game.Init(&game_data, 0);
   while(true) {
-    VLOG(1) << CurrentState(game);
+    VLOG(1) << game;
     // get sequence from AI
     const std::string instructions = solver->NextCommands(game);
     for(const auto& c: instructions) {

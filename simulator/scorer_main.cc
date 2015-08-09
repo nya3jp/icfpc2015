@@ -50,10 +50,12 @@ int main(int argc, char* argv[]) {
         problem.get("sourceSeeds").get<picojson::array>(),
         entry.get("seed").get<int64_t>());
     LOG(INFO) << "SeedIndex: " << seed_index;
-    Game game;
-    game.Load(problem, seed_index);
-    LOG(INFO) << game;
+    GameData game_data;
+    game_data.Load(problem);
+    LOG(INFO) << game_data;
 
+    Game game;
+    game.Init(&game_data, seed_index);
     const std::string& solution = entry.get("solution").get<std::string>();
     for (size_t i = 0; i < solution.size(); ++i) {
       LOG(INFO) << CurrentState(game);
