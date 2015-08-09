@@ -28,6 +28,9 @@ gflags.DEFINE_integer('cores', 0, 'Number of CPU cores.', short_name='c')
 gflags.DEFINE_integer('timelimit', 0, 'Time limit in seconds.', short_name='t')
 gflags.DEFINE_integer('memlimit', 0, 'Memory limit in megabytes.', short_name='m')
 
+gflags.DEFINE_bool('show_scores', False, 'Show scores.')
+gflags.DEFINE_bool('report', True, 'Report the result to log server.')
+
 
 class JobScheduler(object):
   def __init__(self, tasks, solver_args, num_threads):
@@ -99,6 +102,12 @@ def main(argv):
   final_solutions = sched.run()
 
   json.dump(final_solutions, sys.stdout)
+
+  if FLAGS.show_scores:
+    supervisor_util.show_scores(solutions)
+
+  if FLAGS.report:
+    supervisor_util.report_to_log_server(solutions)
 
 
 if __name__ == '__main__':
