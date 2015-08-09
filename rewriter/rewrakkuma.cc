@@ -30,6 +30,7 @@ void set_hurry_up_mode(int signum) {
 }
 
 void install_signal_handlers() {
+  signal(SIGUSR1, &set_hurry_up_mode);
   signal(SIGINT, &set_hurry_up_mode);
 }
 
@@ -94,15 +95,16 @@ std::string solve_on_graph(
     Vert Start,
     Vert Goal,
     std::vector<std::string> phrases) {
-  std::set<Vert> visited;
-  Vert cur = Start;
-  visited.insert(cur);
   std::string result;
+
+  std::vector<bool> visited(Graph.size());
+  Vert cur = Start;
+  visited[cur] = true;
   while (cur != Goal) {
     if (HURRY_UP_MODE)
       return hint;
     auto is_goalable = [&]() {
-      std::set<Vert> V = visited;
+      auto V = visited;
       std::queue<Vert> Q; Q.push(cur);
       while (!Q.empty()) {
         if (HURRY_UP_MODE)
@@ -112,8 +114,8 @@ std::string solve_on_graph(
           return true;
         for (auto cmd_next: Graph[v]) {
           Vert u = cmd_next.second;
-          if (V.count(u)) continue;
-          V.insert(u);
+          if (V[u]) continue;
+          V[u] = true;
           Q.push(u);
         }
       }
@@ -124,9 +126,9 @@ std::string solve_on_graph(
         bool found = false;
         for (auto& cmd_next: Graph[cur])
           if (cmd_next.first == Game::Char2Command(c) &&
-              !visited.count(cmd_next.second)) {
+              !visited[cmd_next.second]) {
             cur = cmd_next.second;
-            visited.insert(cur);
+            visited[cur] = true;
             found = true;
             break;
           }
@@ -136,11 +138,11 @@ std::string solve_on_graph(
       return true;
     };
     auto try_phrase = [&](const std::string& ph) {
-      std::set<Vert> snapshot_visited = visited;
+      auto snapshot_visited = visited;
       Vert snapshot_cur = cur;
       if (!walk_by(ph) || !is_goalable()) {
         cur = snapshot_cur;
-        visited = snapshot_visited;
+        visited = std::move(snapshot_visited);
         return false;
       }
       result += ph;
@@ -211,6 +213,8 @@ std::string generate_powerful_sequence(
     }
   }
 
+  // Solve over the graph.
+  LOG(INFO) << "  Graph Generated (" << graph.size() << " nodes)";
   if (HURRY_UP_MODE)
     return hint;
   return solve_on_graph(hint, graph, S, G, phrases);
@@ -235,19 +239,24 @@ void rewrite_main(
     CHECK_NE(-1, seed_index);
   }
 
+  // Original metadata.
+  std::string before = output_entry->get("solution").get<std::string>();
+  std::string old_tag = output_entry->get("tag").get<std::string>();
+  std::string after;
+  int64_t oldscore = (output_entry->contains("_score") ?
+      output_entry->get("_score").get<int64_t>() : 0);
+
+  // Initialize the game.
   Game game;
   game.Load(problem, seed_index);
 
-  std::string before = output_entry->get("solution").get<std::string>();
-  std::string old_tag = output_entry->get("tag").get<std::string>();
-
   // Split to subsegments.
-  std::string after;
   for (int s=0; s<before.size(); ) {
     if (HURRY_UP_MODE) {
       after += before.substr(s);
       break;
     }
+    // New unit spawned.
     Unit start = game.current_unit();
     for (int i=s;; ++i) {
       if (HURRY_UP_MODE)
@@ -255,10 +264,10 @@ void rewrite_main(
       auto cmd = Game::Char2Command(before[i]);
       Unit u = game.current_unit();
       if (game.IsLockableBy(u,cmd) || i+1==before.size()) {
-        // Opimize each subsegment corresponding to (|start| to |u|.)
+        // If this is the last move for this unit, proceed to subproblem.
         LOG(INFO) << "[" << before.substr(s, i-s)
             << "][" << before[i] << "]" << std::endl;
-        // Reinitialize RNG, for reproducibility.
+        // (Reinitialize RNG, for reproducibility.)
         g_rand = std::mt19937(178116);
         after += generate_powerful_sequence(
            before.substr(s, i-s), game, start, u, phrases);
@@ -267,20 +276,19 @@ void rewrite_main(
         s = i+1;
         break;
       }
+      // One step ahead.
       game.Run(cmd);
     }
   }
 
+  // Output metadata.
   int beforescore = score(before, phrases);
   int afterscore = score(after, phrases);
   LOG(INFO) << "Before: " << beforescore;
   LOG(INFO) << "After: " << afterscore;
   output_entry->get("solution") = picojson::value(after);
   output_entry->get("tag") = picojson::value("rewrakkuma");
-  if (output_entry->contains("_score")) {
-    output_entry->get("_score") = picojson::value(
-      output_entry->get("_score").get<int64_t>() + afterscore - beforescore);
-  }
+  output_entry->get("_score") = picojson::value(oldscore + afterscore - beforescore);
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -318,24 +326,32 @@ std::string to_lower(const std::string& s) {
 }
 
 int main(int argc, char* argv[]) {
+  // Initialization.
   google::InitGoogleLogging(argv[0]);
   google::ParseCommandLineFlags(&argc, &argv, true);
   FLAGS_logtostderr = true;
   install_signal_handlers();
 
+  // Read --output json, the original solution to be modified.
   picojson::value output;
   {
     std::ifstream stream(FLAGS_output);
     stream >> output;
     CHECK(stream.good()) << picojson::get_last_error();
   }
+
+  // Read --p option, the comma separated list of phrases.
   std::vector<std::string> phrases = split(FLAGS_p);
   for (auto& p: phrases)
     p = to_lower(p);
 
+  // For each --output entry...
   for (auto& entry : output.get<picojson::array>()) {
     if (HURRY_UP_MODE)
       continue;
+    // Load the corresponding problem.
+    // If --problem points to a json file, open it.
+    // Otherwise assume it to be a directory and find read problem_%d.json.
     picojson::value problem;
     if (FLAGS_problem.size()>=4 && FLAGS_problem.substr(FLAGS_problem.size()-4)=="json") {
       std::ifstream stream(FLAGS_problem);
@@ -344,6 +360,7 @@ int main(int argc, char* argv[]) {
       rewrite_main(problem, &entry, phrases);
     } else {
       int id = entry.get("problemId").get<int64_t>();
+      // id filtering.
       if (id!=178116 && (FLAGS_id==-1 || FLAGS_id==id)) {
         std::stringstream ss;
         ss << FLAGS_problem << "/problem_" << id << ".json";
