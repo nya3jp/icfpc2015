@@ -230,12 +230,15 @@ bool Game::Run(Command command) {
   return true;
 }
 
+bool Game::IsLockableBy(const Unit& current, Command cmd) const {
+  Unit new_unit = Game::NextUnit(current, cmd);
+  return board_.IsConflicting(new_unit);
+}
+
 Game::Command Game::GetLockCommand(const Unit& current) const {
   for (Command c = Command::E; c != Command::IGNORED; ++c) {
-    Unit new_unit = Game::NextUnit(current, c);
-    if (board_.IsConflicting(new_unit)) {
+    if (IsLockableBy(current, c))
       return c;
-    }
   }
   return Command::IGNORED;
 }

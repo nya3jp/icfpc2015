@@ -6,6 +6,7 @@
 #include <vector>
 #include <algorithm>
 #include <set>
+#include <queue>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -69,10 +70,9 @@ bool match(const std::string& base, int s, const std::string& target) {
 
 /////////////////////////////////////////////////////////////////////////////////
 
-std::string solve_hoge(const std::string& cmd,
-                       const std::vector<std::string>& phrases) {
-
-  // simple greedy changer.
+std::string no_reroute_simple_greedy(
+    const std::string& cmd,
+    const std::vector<std::string>& phrases) {
   std::set<std::string> p1(phrases.begin(), phrases.end()), p2;
   std::string result;
   while (result.size() < cmd.size()) {
@@ -100,6 +100,57 @@ std::string solve_hoge(const std::string& cmd,
   return result;
 }
 
+/////////////////////////////////////////////////////////////////////////////////
+
+std::string generate_great_sequence(
+    const std::string& preopt,
+    Game& game,
+    const Unit& start,
+    const Unit& goal) {
+  typedef int Vert;
+  typedef std::pair<Game::Command, Vert> Edge;
+  typedef std::vector<Edge> Edges;
+  typedef std::vector<Edges> Graph;
+  
+  std::vector<Unit> known_unit;
+  auto unit_to_id = [&](const Unit& u) {
+    for (int i=0; i<known_unit.size(); ++i) {
+      if (known_unit[i] == u)
+        return i;
+    }
+    known_unit.emplace_back(u);
+    return int(known_unit.size() - 1);
+  };
+
+  Graph graph(1);
+  Vert S = unit_to_id(start);
+  Vert G = unit_to_id(goal);
+
+  std::queue<int> Q;
+  Q.push(S);
+  std::set<int> V;
+  V.insert(S);
+  while (!Q.empty()) {
+    Vert v = Q.front();
+    Q.pop();
+
+    for (Game::Command c = Game::Command::E; c != Game::Command::IGNORED; ++c) {
+      Unit uu = Game::NextUnit(known_unit[v], c);
+      // TODO: if not conflicting.
+      Vert u = unit_to_id(uu);
+      if (graph.size() <= v)
+        graph.resize(v);
+      graph[v].emplace_back(c, u);
+      if (V.count(u))
+        continue;
+      Q.push(u);
+      V.insert(u);
+    }
+  }
+
+  return preopt;
+}
+
 void rewrite_main(
     const picojson::value& problem,
     picojson::value* output_entry,
@@ -125,7 +176,32 @@ void rewrite_main(
   std::string before = output_entry->get("solution").get<std::string>();
   std::string old_tag = output_entry->get("tag").get<std::string>();
 
-  std::string after = solve_hoge(before, phrases);
+  std::string after;
+  for (int s=0; s<before.size(); ) {
+    Unit start = game.current_unit();
+    for (int i=s;; ++i) {
+      auto cmd = Game::Char2Command(before[i]);
+      Unit u = game.current_unit();
+      if (game.IsLockableBy(u,cmd) || i+1==before.size()) {
+        // Opimize |start| to |u|.
+        LOG(INFO) << "[" << before.substr(s, i-s)
+            << "][" << before[i] << "]" << std::endl;
+        after += generate_great_sequence(
+           before.substr(s, i-s),
+           game,
+           start,
+           u);
+        after += before[i];
+        game.Run(cmd);
+        s = i+1;
+        break;
+      }
+      game.Run(cmd);
+    }
+  }
+
+  // Run the most simple solver.
+  // after = no_reroute_simple_greedy(after, phrases);
 
   LOG(INFO) << "Before: " << score(before, phrases);
   LOG(INFO) << "After: " << score(after, phrases);
