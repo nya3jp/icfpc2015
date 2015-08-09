@@ -1,136 +1,38 @@
-#include <algorithm>
-#include <fstream>
-#include <iostream>
-#include <iterator>
+#include "scorer.h"
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
-#include <picojson.h>
-
-#include "game.h"
-#include "json_parser.h"
-
-DEFINE_string(problem, "", "problem file");
-DEFINE_string(output, "", "output file");
-
-DEFINE_bool(enable_phrase_score, false, "Enables the phrase scoring.");
-DEFINE_bool(report_error, false,
-            "Returns non-zero status code if an error is found in any case.");
-
-namespace {
-
-int FindIndex(const picojson::array& source_seeds, int64_t seed) {
-  for (int i = 0; i < source_seeds.size(); ++i) {
-    if (source_seeds[i].get<int64_t>() == seed) {
-      return i;
+std::vector<std::string> ParsePhraseList(const std::string& phrase_list) {
+  std::vector<std::string> result;
+  size_t pos = 0;
+  while (true) {
+    size_t end = phrase_list.find(',', pos);
+    if (end == std::string::npos) {
+      result.push_back(phrase_list.substr(pos));
+      break;
     }
+    result.push_back(phrase_list.substr(pos, end - pos));
+    pos = end + 1;
   }
-  return -1;
+  return std::move(result);
 }
 
-Game::Command ParseCommand(char c) {
-  switch(c) {
-    case 'p': case '\'': case '!': case '.': case '0': case '3':
-      return Game::Command::W;
-    case 'b': case 'c': case 'e': case 'f': case 'y': case '2':
-      return Game::Command::E;
-    case 'a': case 'g': case 'h': case 'i': case 'j': case '4':
-      return Game::Command::SW;
-    case 'l': case 'm': case 'n': case 'o': case ' ': case '5':
-      return Game::Command::SE;
-    case 'd': case 'q': case 'r': case 'v': case 'z': case '1':
-      return Game::Command::CW;
-    case 'k': case 's': case 't': case 'u': case 'w': case 'x':
-      return Game::Command::CCW;
-    case '\t': case '\n': case '\r':
-      return Game::Command::IGNORED;
-    defult:
-      LOG(FATAL) << "Unknown Character.";
-  }
+int MoveScore(int size, int ls, int ls_old) {
+  int points = size + 100 * (1 + ls) * ls / 2;
+  int line_bonus = ls_old > 1 ? ((ls_old - 1) * points / 10) : 0;
+  return points + line_bonus;
 }
 
-struct CurrentState {
-  CurrentState(const Game& game) : game_(game) {
-  }
-
-  const Game& game_;
-};
-
-std::ostream& operator<<(std::ostream& os, const CurrentState& state) {
-  state.game_.DumpCurrent(&os);
-  return os;
-}
-
-const char* kPhraseList[] = {
-  "ei!",
-};
-
-int PhraseScore(const std::string& s) {
-  int score = 0;
-  for (int i = 0; i < sizeof(kPhraseList) / sizeof(kPhraseList[0]); ++i) {
-    const char* phrase = kPhraseList[i];
+int PowerScore(const std::string& solution,
+               const std::vector<std::string>& phrase_list) {
+  int result = 0;
+  for (const std::string& phrase : phrase_list) {
     int reps = 0;
-    size_t pos = 0;
-    while ((pos = s.find(phrase, pos)) != std::string::npos) {
+    for (size_t pos = 0;
+         (pos = solution.find(phrase, pos)) != std::string::npos; ++pos) {
       ++reps;
-      ++pos;
     }
-    if (reps) {
-      score += 2 * strlen(phrase) * reps + 300;
-    }
+    int power_bonus = reps ? 300 : 0;
+    int power_score = 2 + phrase.length() * reps + power_bonus;
+    result += power_score;
   }
-  return score;
-}
-
-
-}  // namespace
-
-int main(int argc, char* argv[]) {
-  google::InitGoogleLogging(argv[0]);
-  google::ParseCommandLineFlags(&argc, &argv, true);
-
-  FLAGS_logtostderr = true;
-
-  picojson::value problem = ParseJson(FLAGS_problem);
-  picojson::value output = ParseJson(FLAGS_output);
-
-  int error_report = 0;
-  for (const auto& entry : output.get<picojson::array>()) {
-    CHECK_EQ(problem.get("id").get<int64_t>(),
-             entry.get("problemId").get<int64_t>());
-    int seed_index = FindIndex(
-        problem.get("sourceSeeds").get<picojson::array>(),
-        entry.get("seed").get<int64_t>());
-    LOG(INFO) << "SeedIndex: " << seed_index;
-    Game game;
-    game.Load(problem, seed_index);
-    LOG(INFO) << game;
-
-    const std::string& solution = entry.get("solution").get<std::string>();
-    bool is_finished = false;
-    bool error = false;
-    int i = 0;
-    for (; i < solution.size(); ++i) {
-      LOG(INFO) << CurrentState(game);
-      Game::Command command = ParseCommand(solution[i]);
-      LOG(INFO) << "Run: " << i << ", " << solution[i] << ", " << command;
-      if (is_finished) {
-        error = true;
-        break;
-      }
-      if (!game.Run(command)) {
-        is_finished = true;
-      }
-    }
-    LOG(INFO) << "i: " << i << ", " << solution.size();
-    error |= game.error();
-    int score = error ? 0 : game.score();
-    if (!error && FLAGS_enable_phrase_score) {
-      score += PhraseScore(solution);
-    }
-    error_report |= error;
-    std::cout << score << "\n";
-  }
-
-  return FLAGS_report_error && error_report;
+  return result;
 }

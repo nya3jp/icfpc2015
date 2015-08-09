@@ -14,25 +14,25 @@ CFLAGS=-O2 -DPICOJSON_USE_INT64 --std=c++11 $(INCLUDE)
 
 all: simulator scorer hexpoint_test bfs greedy_ai greedy_ai_2 greedy_ai_3 hasuta4
 
-scorer: scorer.o board.o game.o
+scorer: scorer_main.o scorer.o board.o game.o scorer.o
 	g++ -Wl,-rpath=$(PWD)/../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 
-simulator: main.o board.o game.o
+simulator: main.o board.o game.o scorer.o
 	g++ -Wl,-rpath=$(PWD)/../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 
-bfs: bfs_main.o board.o game.o
+bfs: bfs_main.o board.o game.o scorer.o
 	g++ -Wl,-rpath=$(PWD)/../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 
-greedy_ai: greedy_ai.o board.o game.o
+greedy_ai: greedy_ai.o board.o game.o scorer.o
 	g++ -Wl,-rpath=$(PWD)/../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 
-greedy_ai_2: greedy_ai_2.o board.o game.o
+greedy_ai_2: greedy_ai_2.o board.o game.o scorer.o
 	g++ -Wl,-rpath=$(PWD)/../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 
-greedy_ai_3: greedy_ai_3.o board.o game.o
+greedy_ai_3: greedy_ai_3.o board.o game.o scorer.o
 	g++ -Wl,-rpath=$(PWD)/../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 
-hasuta4: hasuta4.o board.o game.o
+hasuta4: hasuta4.o board.o game.o scorer.o
 	g++ -Wl,-rpath=$(PWD)/../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 
 %_test: %_test.cc
