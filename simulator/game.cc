@@ -134,10 +134,10 @@ bool Game::SpawnNewUnit() {
 }
 
 const char Game::command_char_map_[7][7] = {
-  "bcefy2",  // E
-  "p'!.03",  // W
-  "lmno 5",  // SE
-  "aghij4",  // SW
+  "ebcfy2",  // E
+  "!p'.03",  // W
+  " lmno5",  // SE
+  "iaghj4",  // SW
   "dqrvz1",  // CW
   "kstuwx",  // CCW
   "\t\n\r\t\n\r"  // ignored
