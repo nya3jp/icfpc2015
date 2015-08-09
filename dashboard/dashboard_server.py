@@ -83,6 +83,10 @@ def index_handler():
         live_solution_map[setting['setting']] = team['score']
         rank_solution_map[setting['setting']] = team['rank']
 
+  tag_class_map = collections.defaultdict(str)
+  tag_class_map['handplay_viz'] = 'warning'
+  tag_class_map['rewrakkuma'] = 'success'
+
   template_values = {
     'problem_ids': problem_ids,
     'tags': tags,
@@ -92,6 +96,7 @@ def index_handler():
     'live_solution_map': live_solution_map,
     'rank_solution_map': rank_solution_map,
     'leaderboard_time': leaderboard['time'],
+    'tag_class_map': tag_class_map,
   }
   return bottle.template('index.html', **template_values)
 
