@@ -2,9 +2,10 @@
 
 """AI to answer known solutions."""
 
-import json
 import os
 import sys
+
+import ujson as json
 
 
 def main(unused_argv):

@@ -1,6 +1,5 @@
 #!/usr/bin/python
 
-import json
 import logging
 import os
 import subprocess
@@ -11,6 +10,7 @@ import time
 import logging_util
 import gflags
 import pymongo
+import ujson as json
 
 FLAGS = gflags.FLAGS
 

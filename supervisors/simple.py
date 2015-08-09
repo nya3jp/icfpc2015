@@ -6,13 +6,13 @@ Usage:
 supervisors/simple.py -f problem.json path/to/solver [extra args to solver...]
 """
 
-import json
 import logging
 import sys
 
 import logging_util
 import gflags
 import supervisor_util
+import ujson as json
 
 FLAGS = gflags.FLAGS
 

@@ -1,6 +1,5 @@
 import collections
 import copy
-import json
 import logging
 import os
 import signal
@@ -8,6 +7,8 @@ import subprocess
 import tempfile
 import time
 import threading
+
+import ujson as json
 
 
 class SolverJob(object):

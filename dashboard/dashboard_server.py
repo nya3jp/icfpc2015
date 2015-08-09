@@ -1,13 +1,13 @@
 #!/usr/bin/python
 
 import collections
-import json
 import os
 import sys
 
 import bottle
 import gflags
 import pymongo
+import ujson as json
 
 FLAGS = gflags.FLAGS
 
