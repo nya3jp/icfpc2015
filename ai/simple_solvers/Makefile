@@ -14,16 +14,19 @@ CFLAGS=-O2 -DPICOJSON_USE_INT64 --std=c++11 $(INCLUDE)
 
 all: greedy_solver flat_solver
 
-greedy_solver: greedy_solver.o board.o game.o solver.o
+greedy_solver: greedy_solver.o board.o game.o solver.o scorer.o
 	g++ -Wl,-rpath=$(PWD)/../../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 
-flat_solver: flat_solver.o board.o game.o solver.o
+flat_solver: flat_solver.o board.o game.o solver.o scorer.o
 	g++ -Wl,-rpath=$(PWD)/../../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 
 board.o: ../../simulator/board.cc
 	g++ $(CFLAGS) -c -o $@ $<
 
 game.o: ../../simulator/game.cc
+	g++ $(CFLAGS) -c -o $@ $<
+
+scorer.o: ../../simulator/scorer.cc
 	g++ $(CFLAGS) -c -o $@ $<
 
 solver.o: ../../simulator/solver.cc

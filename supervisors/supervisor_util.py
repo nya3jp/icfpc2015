@@ -1,3 +1,4 @@
+import collections
 import copy
 import json
 import logging
@@ -161,3 +162,31 @@ def get_free_memory():
   output = subprocess.check_output(['free', '-m'])
   free_mem = int(output.splitlines()[2].split()[-1])
   return free_mem
+
+
+def show_scores(solutions):
+  sorted_solutions = sorted(
+    solutions, key=lambda solution: (solution['problemId'], solution['seed']))
+  logging.info('Score stats:')
+  for solution in sorted_solutions:
+    logging.info(
+      'p%d/s%d score=%d tag=%s',
+      solution['problemId'], solution['seed'], solution['_score'], solution['tag'])
+  scores_by_problem_id = collections.defaultdict(list)
+  for solution in sorted_solutions:
+    scores_by_problem_id[solution['problemId']].append(solution['_score'])
+  for problem_id, scores in sorted(scores_by_problem_id.items()):
+    logging.info('p%d/avg score=%d', problem_id, sum(scores) / len(scores))
+
+
+def report_to_log_server(solutions):
+  import requests  # Defer loading the module to speed up the boot in prod
+  try:
+    requests.post(
+      'http://solutions.natsubate.nya3.jp/log',
+      headers={'Content-Type': 'application/json'},
+      data=json.dumps(solutions))
+  except Exception:
+    logging.exception('An exception raised while reporting solutions to log server.')
+  else:
+    logging.info('Reported solutions to the log server.')

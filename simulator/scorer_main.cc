@@ -31,39 +31,6 @@ int FindIndex(const picojson::array& source_seeds, int64_t seed) {
   return -1;
 }
 
-Game::Command ParseCommand(char c) {
-  switch(c) {
-    case 'p': case '\'': case '!': case '.': case '0': case '3':
-      return Game::Command::W;
-    case 'b': case 'c': case 'e': case 'f': case 'y': case '2':
-      return Game::Command::E;
-    case 'a': case 'g': case 'h': case 'i': case 'j': case '4':
-      return Game::Command::SW;
-    case 'l': case 'm': case 'n': case 'o': case ' ': case '5':
-      return Game::Command::SE;
-    case 'd': case 'q': case 'r': case 'v': case 'z': case '1':
-      return Game::Command::CW;
-    case 'k': case 's': case 't': case 'u': case 'w': case 'x':
-      return Game::Command::CCW;
-    case '\t': case '\n': case '\r':
-      return Game::Command::IGNORED;
-    defult:
-      LOG(FATAL) << "Unknown Character.";
-  }
-}
-
-struct CurrentState {
-  CurrentState(const Game& game) : game_(game) {
-  }
-
-  const Game& game_;
-};
-
-std::ostream& operator<<(std::ostream& os, const CurrentState& state) {
-  state.game_.DumpCurrent(&os);
-  return os;
-}
-
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -76,7 +43,7 @@ int main(int argc, char* argv[]) {
   picojson::value output = ParseJson(FLAGS_output);
   std::vector<std::string> phrase_list = ParsePhraseList(FLAGS_p);
 
-  int error_report = 0;
+  int status = 0;
   for (const auto& entry : output.get<picojson::array>()) {
     CHECK_EQ(problem.get("id").get<int64_t>(),
              entry.get("problemId").get<int64_t>());
@@ -89,30 +56,21 @@ int main(int argc, char* argv[]) {
     LOG(INFO) << game;
 
     const std::string& solution = entry.get("solution").get<std::string>();
-    bool is_finished = false;
-    bool error = false;
-    int i = 0;
-    for (; i < solution.size(); ++i) {
+    for (size_t i = 0; i < solution.size(); ++i) {
       LOG(INFO) << CurrentState(game);
       Game::Command command = ParseCommand(solution[i]);
       LOG(INFO) << "Run: " << i << ", " << solution[i] << ", " << command;
-      if (is_finished) {
-        error = true;
-        break;
-      }
-      if (!game.Run(command)) {
-        is_finished = true;
-      }
+      game.Run(command);
     }
-    LOG(INFO) << "i: " << i << ", " << solution.size();
-    error |= game.error();
+    int error = game.error();
     int score = error ? 0 : game.score();
     if (!error && FLAGS_enable_phrase_score) {
       score += PowerScore(solution, phrase_list);
     }
-    error_report |= error;
     std::cout << score << "\n";
+
+    status |= error;
   }
 
-  return FLAGS_report_error && error_report;
+  return FLAGS_report_error ? status : 0;
 }

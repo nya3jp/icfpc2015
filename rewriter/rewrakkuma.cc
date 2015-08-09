@@ -102,16 +102,27 @@ std::string no_reroute_simple_greedy(
 
 /////////////////////////////////////////////////////////////////////////////////
 
-std::string generate_great_sequence(
+typedef int Vert;
+typedef std::pair<Game::Command, Vert> Edge;
+typedef std::vector<Edge> Edges;
+typedef std::vector<Edges> Graph;
+
+std::string solve_on_graph(
+    const std::string& preopt,
+    const Graph& G,
+    Vert Start,
+    Vert Goal,
+    const std::vector<std::string>& phrases) {
+  return preopt;
+}
+
+std::string generate_powerful_sequence(
     const std::string& preopt,
     Game& game,
     const Unit& start,
-    const Unit& goal) {
-  typedef int Vert;
-  typedef std::pair<Game::Command, Vert> Edge;
-  typedef std::vector<Edge> Edges;
-  typedef std::vector<Edges> Graph;
-  
+    const Unit& goal,
+    const std::vector<std::string>& phrases) {
+  // Construct the abstract graph structure. 
   std::vector<Unit> known_unit;
   auto unit_to_id = [&](const Unit& u) {
     for (int i=0; i<known_unit.size(); ++i) {
@@ -136,10 +147,11 @@ std::string generate_great_sequence(
 
     for (Game::Command c = Game::Command::E; c != Game::Command::IGNORED; ++c) {
       Unit uu = Game::NextUnit(known_unit[v], c);
-      // TODO: if not conflicting.
+      if (game.GetBoard().IsConflicting(uu))
+        continue;
       Vert u = unit_to_id(uu);
       if (graph.size() <= v)
-        graph.resize(v);
+        graph.resize(v+1);
       graph[v].emplace_back(c, u);
       if (V.count(u))
         continue;
@@ -148,7 +160,8 @@ std::string generate_great_sequence(
     }
   }
 
-  return preopt;
+  // Solve genericly.
+  return solve_on_graph(preopt, graph, S, G, phrases);
 }
 
 void rewrite_main(
@@ -176,6 +189,7 @@ void rewrite_main(
   std::string before = output_entry->get("solution").get<std::string>();
   std::string old_tag = output_entry->get("tag").get<std::string>();
 
+  // Split to subsegments.
   std::string after;
   for (int s=0; s<before.size(); ) {
     Unit start = game.current_unit();
@@ -183,14 +197,11 @@ void rewrite_main(
       auto cmd = Game::Char2Command(before[i]);
       Unit u = game.current_unit();
       if (game.IsLockableBy(u,cmd) || i+1==before.size()) {
-        // Opimize |start| to |u|.
+        // Opimize each subsegment corresponding to (|start| to |u|.)
         LOG(INFO) << "[" << before.substr(s, i-s)
             << "][" << before[i] << "]" << std::endl;
-        after += generate_great_sequence(
-           before.substr(s, i-s),
-           game,
-           start,
-           u);
+        after += generate_powerful_sequence(
+           before.substr(s, i-s), game, start, u, phrases);
         after += before[i];
         game.Run(cmd);
         s = i+1;

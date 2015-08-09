@@ -7,6 +7,19 @@
 DEFINE_string(problem, "", "Problem file.");
 DEFINE_string(output, "", "Input solution.");
 
+namespace {
+
+int FindIndex(const picojson::array& source_seeds, int64_t seed) {
+  for (int i = 0; i < source_seeds.size(); ++i) {
+    if (source_seeds[i].get<int64_t>() == seed) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+}
+
 int main(int argc, char* argv[]) {
   google::InitGoogleLogging(argv[0]);
   google::ParseCommandLineFlags(&argc, &argv, true);
@@ -20,6 +33,28 @@ int main(int argc, char* argv[]) {
   for (const auto& entry: output.get<picojson::array>()) {
     CHECK_EQ(problem.get("id").get<int64_t>(),
              entry.get("problemId").get<int64_t>());
+    int seed_index = FindIndex(
+        problem.get("sourceSeeds").get<picojson::array>(),
+        entry.get("seed")get<int64>());
+    Game game;
+    game.Load(problem, seed_index);
+
+    const std::string& solution = entry.get("solution").get<std::string>();
+    bool is_finished = false;
+    bool error = false;
+    int i = 0;
+    for (; i < solution.length(); ++i) {
+      LOG(INFO) << CurrentState(game);
+      Game::Command command = ParseCommand(solution[i]);
+      LOG(INFO) << "Run: " << i << ", " << solution[i] << ", " << command;
+      if (is_finished) {
+        error = true;
+        break;
+      }
+      if (!game.Run(command)) {
+        is_finished = true;
+      }
+    }
   }
 
 #if 0
