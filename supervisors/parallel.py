@@ -99,9 +99,9 @@ def main(argv):
   logging.info('Using %d threads', num_threads)
 
   sched = JobScheduler(tasks, solver_args, num_threads=num_threads)
-  final_solutions = sched.run()
+  solutions = sched.run()
 
-  json.dump(final_solutions, sys.stdout)
+  json.dump(solutions, sys.stdout)
 
   if FLAGS.show_scores:
     supervisor_util.show_scores(solutions)
