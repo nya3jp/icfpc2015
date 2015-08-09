@@ -244,10 +244,16 @@ void rewrite_main(
     }
   }
 
-  LOG(INFO) << "Before: " << score(before, phrases);
-  LOG(INFO) << "After: " << score(after, phrases);
+  int beforescore = score(before, phrases);
+  int afterscore = score(after, phrases);
+  LOG(INFO) << "Before: " << beforescore;
+  LOG(INFO) << "After: " << afterscore;
   output_entry->get("solution") = picojson::value(after);
   output_entry->get("tag") = picojson::value("rewrakkuma");
+  if (output_entry->contains("_score")) {
+    output_entry->get("_score") = picojson::value(
+      output_entry->get("_score").get<int64_t>() + afterscore - beforescore);
+  }
   //output_entry->get("tag") = picojson::value(old_tag + "(rwkm)");
 }
 
@@ -289,12 +295,6 @@ int main(int argc, char* argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   FLAGS_logtostderr = true;
 
-  picojson::value problem;
-  {
-    std::ifstream stream(FLAGS_problem);
-    stream >> problem;
-    CHECK(stream.good()) << picojson::get_last_error();
-  }
   picojson::value output;
   {
     std::ifstream stream(FLAGS_output);
@@ -305,7 +305,30 @@ int main(int argc, char* argv[]) {
   for (auto& p: phrases)
     p = to_lower(p);
 
-  for (auto& entry : output.get<picojson::array>())
-    rewrite_main(problem, &entry, phrases);
+  for (auto& entry : output.get<picojson::array>()) {
+    picojson::value problem;
+    if (FLAGS_problem.size()>=4 && FLAGS_problem.substr(FLAGS_problem.size()-4)=="json") {
+      std::ifstream stream(FLAGS_problem);
+      stream >> problem;
+      CHECK(stream.good()) << picojson::get_last_error();
+      rewrite_main(problem, &entry, phrases);
+    } else {
+      int id = entry.get("problemId").get<int64_t>();
+      if (id != 178116) {
+        std::stringstream ss;
+        ss << FLAGS_problem << "/problem_" << id << ".json";
+        LOG(INFO) << "Problem=" << ss.str();
+        try {
+          std::ifstream stream(ss.str());
+          stream >> problem;
+          CHECK(stream.good()) << picojson::get_last_error();
+          rewrite_main(problem, &entry, phrases);
+        } catch (...) {
+          LOG(ERROR) << "ERROR: " << id;
+        }
+      }
+    }
+  }
   std::cout << output.serialize() << std::endl;
 }
+
