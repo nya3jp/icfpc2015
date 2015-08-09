@@ -10,7 +10,6 @@ import time
 g_start_time = time.time()
 
 import logging
-import Queue as queue
 import sys
 import threading
 
@@ -35,109 +34,67 @@ gflags.DEFINE_bool('report', True, 'Report the result to log server.')
 CGROUP_NAME = 'natsubate'
 
 
-class JobScheduler(object):
-  def __init__(self, tasks, quick_solvers, num_threads, deadline):
-    self._tasks = tasks
-    self._num_threads = num_threads
-    self._deadline = deadline
-    self._event_queue = queue.Queue()
-    self._solution_map = {}
+def run_solvers(tasks, quick_solvers, num_threads, deadline):
+  jobs = []
+  for quick_solver in quick_solvers:
     for task in tasks:
-      problem_id = task['id']
-      seed = task['sourceSeeds'][0]
-      self._solution_map[(problem_id, seed)] = supervisor_util.make_sentinel_solution(
-        problem_id, seed)
-    self._unstarted_jobs = []
-    for quick_solver in quick_solvers:
-      for task in tasks:
-        job = supervisor_util.SolverJob(
-          [quick_solver], task, self._event_queue, cgroup=CGROUP_NAME)
-        self._unstarted_jobs.append(job)
-    self._started_jobs = []
+      job = supervisor_util.SolverJob(
+        args=[quick_solver],
+        task=task,
+        cgroup=CGROUP_NAME)
+      jobs.append(job)
 
-  def run(self):
-    solutions = self._run_solvers()
-    solutions = self._run_rewriter(solutions)
-    return solutions
+  soft_deadline = deadline - 0.5
 
-  def _run_solvers(self):
-    logging.debug('JobScheduler: solver phase')
+  start_time = time.time()
+  logging.info(
+    'Start solver phase: jobs=%d, soft_deadline=%.1fs hard_deadline=%.1fs',
+    len(jobs), soft_deadline - start_time, deadline - start_time)
 
-    now = time.time()
-    # Give the rewriter 0.5 * #tasks (max 1/5 of allowed time, min 3sec).
-    time_to_deadline = self._deadline - now
-    rewrite_time = min(max(3, 0.5 * len(self._tasks)), time_to_deadline / 5)
-    interrupt_grace_time = 1
-    hard_deadline = self._deadline - rewrite_time
-    soft_deadline = hard_deadline - interrupt_grace_time
-    logging.info(
-      'Solver deadline info: rewrite_time=%f, interrupt_grace_time=%f, '
-      'soft_deadline=%f, hard_deadline=%f',
-      rewrite_time, interrupt_grace_time,
-      soft_deadline - now, hard_deadline - now)
+  supervisor_util.run_generic_jobs(jobs, num_threads, soft_deadline, deadline)
+  solutions = [job.solution for job in jobs if job.solution['_score'] > 0]
 
-    interrupted = False
+  end_time = time.time()
+  logging.info(
+    'End solver phase: solutions=%d, time=%.1fs',
+    len(solutions), end_time - start_time)
 
-    while self._started_jobs or self._unstarted_jobs:
-      now = time.time()
-      if now >= hard_deadline:
-        break
-      if now >= soft_deadline and not interrupted:
-        for job in self._started_jobs:
-          job.interrupt()
-        interrupted = True
+  return solutions
 
-      # Start jobs as many as possible.
-      now = time.time()
-      if now < soft_deadline:
-        while self._unstarted_jobs and len(self._started_jobs) < self._num_threads:
-          new_job = self._unstarted_jobs.pop(0)
-          new_job.start()
-          self._started_jobs.append(new_job)
 
-      # Wait for job finish or solution update.
-      now = time.time()
-      if now < soft_deadline:
-        timeout = soft_deadline - now
-        timeout_hard = False
-      elif now < hard_deadline:
-        timeout = hard_deadline - now
-        timeout_hard = True
-      else:
-        break
+def run_rewriter(solutions, num_threads, deadline):
+  # TODO: IMPLMENT THIS!
+  now = time.time()
+  time_to_deadline = deadline - now
+  time.sleep(time_to_deadline)
+  return []
 
-      try:
-        job = self._event_queue.get(timeout=timeout)
-      except queue.Empty:
-        if timeout_hard:
-          break
-        continue
 
-      if job in self._started_jobs and job.poll() is not None:
-        job.wait()
-        self._started_jobs.remove(job)
-      old_solution = self._solution_map[(job.problem_id, job.seed)]
-      new_solution = job.best_solution
-      if new_solution['_score'] > old_solution['_score']:
-        self._solution_map[(job.problem_id, job.seed)] = new_solution
-        logging.info(
-          'Updated solution: score=%d by %r', new_solution['_score'], job)
-      self._event_queue.task_done()
+def choose_best_solutions(solutions, tasks):
+  solution_map = {}
+  for task in tasks:
+    problem_id = task['id']
+    seed = task['sourceSeeds'][0]
+    solution_map[(problem_id, seed)] = supervisor_util.make_sentinel_solution(
+      problem_id, seed)
+  for solution in solutions:
+    key = (solution['problemId'], solution['seed'])
+    if (key not in solution_map or
+        solution['_score'] > solution_map[key]['_score']):
+      solution_map[key] = solution
+  return solution_map.values()
 
-    # Terminate orphan jobs.
-    for job in self._started_jobs:
-      job.terminate()
 
-    return list(self._solution_map.values())
+def solve_tasks(tasks, quick_solvers, num_threads, deadline):
+  now = time.time()
+  # Give the rewriter 0.5 * #tasks (max 1/5 of allowed time, min 3sec).
+  time_to_deadline = deadline - now
+  rewrite_time = min(max(3, 0.5 * len(tasks)), time_to_deadline / 5)
+  solver_deadline = deadline - rewrite_time
 
-  def _run_rewriter(self, solutions):
-    logging.debug('JobScheduler: rewriter phase')
-
-    # TODO: IMPLMENT THIS!
-    now = time.time()
-    time_to_deadline = self._deadline - now
-    time.sleep(time_to_deadline)
-    return solutions
+  solutions = run_solvers(tasks, quick_solvers, num_threads, solver_deadline)
+  solutions += run_rewriter(solutions, num_threads, deadline)
+  return choose_best_solutions(solutions, tasks)
 
 
 def main(unused_argv):
@@ -166,18 +123,18 @@ def main(unused_argv):
 
   deadline = g_start_time + FLAGS.timelimit - 1
 
+  # Impose memory limit with cgroup.
   solver_memlimit = max(1, FLAGS.memlimit - 128)
   cgroup_memlimit_path = (
     '/sys/fs/cgroup/memory/%s/memory.limit_in_bytes' % CGROUP_NAME)
   with open(cgroup_memlimit_path, 'w') as f:
     f.write(str(solver_memlimit * 1024 * 1024))
 
-  sched = JobScheduler(
-    tasks=tasks,
-    quick_solvers=FLAGS.quick_solver,
-    num_threads=num_threads,
-    deadline=deadline)
-  solutions = sched.run()
+  solutions = solve_tasks(
+    tasks,
+    FLAGS.quick_solver,
+    num_threads,
+    deadline)
 
   json.dump(solutions, sys.stdout)
   sys.stdout.flush()

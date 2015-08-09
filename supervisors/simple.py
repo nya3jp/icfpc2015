@@ -52,7 +52,7 @@ def main(argv):
     job = supervisor_util.SolverJob(solver_args, task)
     job.start()
     job.wait()
-    solutions.append(job.best_solution)
+    solutions.append(job.solution)
 
   json.dump(solutions, sys.stdout)
 
