@@ -16,7 +16,6 @@ DEFINE_string(output, "", "output file");
 
 DEFINE_string(p, "ei!,r'lyeh,yuggoth,ia! ia!,necronomicon,yogsothoth",
               "Power phrase");
-DEFINE_bool(enable_phrase_score, false, "Enables the phrase scoring.");
 DEFINE_bool(report_error, false,
             "Returns non-zero status code if an error is found in any case.");
 
@@ -64,7 +63,7 @@ int main(int argc, char* argv[]) {
     }
     int error = game.error();
     int score = error ? 0 : game.score();
-    if (!error && FLAGS_enable_phrase_score) {
+    if (!error) {
       score += PowerScore(solution, phrase_list);
     }
     std::cout << score << "\n";
