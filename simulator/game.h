@@ -44,6 +44,7 @@ class Game {
 
   typedef std::pair<Unit, std::vector<Command>> SearchResult;
   void ReachableUnits(std::vector<SearchResult>* result) const;
+  const Board& board() const { return board_; }
 
  private:
   int id_;
