@@ -21,7 +21,7 @@ class Game {
   void Dump(std::ostream* os) const;
   void DumpCurrent(std::ostream* os) const;
 
-  const Board& GetBoard() const { return board_; } 
+  const Board& GetBoard() const { return board_; }
 
   // Find a new unit, and put it to the source.
   bool SpawnNewUnit();
@@ -76,6 +76,39 @@ inline Game::Command operator++( Game::Command& x ) {
 
 std::ostream& operator<<(std::ostream& os, const Game& game);
 
+struct CurrentState {
+  CurrentState(const Game& game) : game_(game) {
+  }
+
+  const Game& game_;
+};
+
+inline std::ostream& operator<<(std::ostream& os, const CurrentState& state) {
+  state.game_.DumpCurrent(&os);
+  return os;
+}
+
+inline Game::Command ParseCommand(char c) {
+  switch(c) {
+    case 'p': case '\'': case '!': case '.': case '0': case '3':
+      return Game::Command::W;
+    case 'b': case 'c': case 'e': case 'f': case 'y': case '2':
+      return Game::Command::E;
+    case 'a': case 'g': case 'h': case 'i': case 'j': case '4':
+      return Game::Command::SW;
+    case 'l': case 'm': case 'n': case 'o': case ' ': case '5':
+      return Game::Command::SE;
+    case 'd': case 'q': case 'r': case 'v': case 'z': case '1':
+      return Game::Command::CW;
+    case 'k': case 's': case 't': case 'u': case 'w': case 'x':
+      return Game::Command::CCW;
+    case '\t': case '\n': case '\r':
+      return Game::Command::IGNORED;
+    defult:
+      LOG(FATAL) << "Unknown Character: " << c << "(" << (int) c << ")";
+  }
+}
+
 inline std::ostream& operator<<(std::ostream& os, Game::Command command) {
   switch (command) {
     case Game::Command::W:
@@ -103,6 +136,10 @@ inline std::ostream& operator<<(std::ostream& os, Game::Command command) {
       LOG(FATAL) << "Unknown command";
   }
   return os;
+}
+
+inline Game::Command Game::Char2Command(char code) {
+  return ParseCommand(code);
 }
 
 #endif  // GAME_H_

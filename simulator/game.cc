@@ -144,17 +144,6 @@ const char Game::command_char_map_[7][7] = {
   "\t\n\r\t\n\r"  // ignored
 };
 
-Game::Command Game::Char2Command(char code) {
-  for (Command com = Command::E; com != Command::IGNORED; ++com) {
-    if (strchr(Game::command_char_map_[(int)com], code)) {
-      return com;
-    }
-  }
-  CHECK(strchr(Game::command_char_map_[(int)Command::IGNORED], code))
-    << "Unknown code '" << code << "' (" << ((int)code) << ")";
-  return Command::IGNORED;
-}
-
 const char* Game::Command2Chars(Command com) {
   return Game::command_char_map_[(int)com];
 }
@@ -205,6 +194,17 @@ Unit Game::NextUnit(const Unit& prev_unit, Command command) {
 }
 
 bool Game::Run(Command command) {
+  if (error_) {
+    // If the state is already in error, do nothing.
+    return false;
+  }
+  if (current_index_ > source_length_) {
+    // Running a step after the finish, causes an error.
+    error_ = true;
+    score_ = 0;
+    return false;
+  }
+
   if (command == Command::IGNORED) {
     return true;
   }
