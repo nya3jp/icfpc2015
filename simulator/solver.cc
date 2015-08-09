@@ -4,6 +4,8 @@
 #include <iterator>
 #include <map>
 
+#include <csignal>
+
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <picojson.h>
@@ -41,6 +43,21 @@ void WriteOneJsonResult(int problemid,
 Solver::Solver() {}
 Solver::~Solver() {}
 
+volatile sig_atomic_t sig_sig_ = 0;
+
+void SigHandler(int num) {
+  switch(num) {
+  case SIGUSR1:
+    sig_sig_ = 1;
+    break;
+  case SIGINT:
+    sig_sig_ =2;
+    break;
+  default:
+    break;
+  }
+}
+
 int RunSolver(Solver* solver, std::string solver_tag) {
   if (!FLAGS_ai_tag.empty()) {
     solver_tag = FLAGS_ai_tag;
@@ -59,6 +76,10 @@ int RunSolver(Solver* solver, std::string solver_tag) {
   Game game;
   game.Load(problem, 0);
   VLOG(1) << game;
+
+  // Record signal handler
+  CHECK(std::signal(SIGUSR1, SigHandler) != SIG_ERR);
+  CHECK(std::signal(SIGINT, SigHandler) != SIG_ERR);
 
   std::string final_commands;
   bool is_finished = false;
@@ -81,10 +102,15 @@ int RunSolver(Solver* solver, std::string solver_tag) {
       break;
     }
     const int score = game.score();
-    if (score > max_score) {
-      max_score = score;
+    if (sig_sig_ == 2) {
+      LOG(INFO) << "Shutting down:" << seed << ", " << score;
+      break;
+    }
+    if (sig_sig_ == 1) {
+      LOG(INFO) << "Dump Result:" << seed << ", " << score;
       WriteOneJsonResult(problem.get("id").get<int64_t>(), solver_tag,
                          seed, score, final_commands);
+      sig_sig_ = 0;
     }
   }
   int score = error ? 0 : game.score();
