@@ -10,7 +10,7 @@ public:
   GreedySolver() {}
   virtual ~GreedySolver() {}
 
-  virtual std::vector<Game::Command> NextCommands(const Game& game) {
+  virtual std::string NextCommands(const Game& game) {
     std::vector<Game::Command> ret;
 
     std::vector<Game::SearchResult> bfsresult;
@@ -27,7 +27,7 @@ public:
         }
       }
     }
-    return ret;
+    return Game::Commands2SimpleString(ret);
   }
 };
 

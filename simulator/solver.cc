@@ -29,24 +29,14 @@ std::ostream& operator<<(std::ostream& os, const CurrentState& state) {
   return os;
 }
 
-std::string encode_command(const std::vector<Game::Command>& commands)
-{
-  std::string ret;
-  for(const auto &c: commands) {
-    ret += Game::Command2Chars(c)[0];
-  }
-  return ret;
-}
-
-
 struct resultseq
 {
   int64_t seed;
   int score;
-  std::vector<Game::Command> commands;
+  std::string commands;
 
   resultseq(){}
-  resultseq(int64_t seed, int score, const std::vector<Game::Command>& commands)
+  resultseq(int64_t seed, int score, const std::string commands)
     : seed(seed), score(score), commands(commands) {}
 };
 
@@ -57,13 +47,11 @@ void write_json(int problemid,
   std::vector<picojson::value> outputs;
   for(const auto &s: seeds_and_commands) {
     int64_t seed = s.seed;
-    const std::vector<Game::Command> &commands = s.commands;
     int score = s.score;
 
     picojson::object output;
 
-    picojson::value solution(encode_command(commands));
-    output["solution"] = solution;
+    output["solution"] = picojson::value(s.commands);
     output["problemId"] = picojson::value((int64_t)problemid);
     output["seed"] = picojson::value((int64_t)seed);
     output["tag"] = picojson::value(tag);
@@ -109,21 +97,17 @@ int RunSolver(Solver* solver) {
     game.Load(problem, seed_index);
     LOG(INFO) << game;
 
-    std::vector<Game::Command> final_commands;
+    std::string final_commands;
     bool is_finished = false;
     bool error = false;
     while(true) {
       LOG(INFO) << CurrentState(game);
       // get sequence from AI
-      std::vector<Game::Command> instructions = solver->NextCommands(game);
-      for(const auto& c: instructions) {
-        std::cerr << c << " ";
-      }
-      std::cerr << std::endl;
+      const std::string instructions = solver->NextCommands(game);
       
       for(const auto& c: instructions) {
         final_commands.push_back(c);
-        if (!game.Run(c)) {
+        if (!game.Run(Game::Char2Command(c))) {
           is_finished = true;
         }
         if (is_finished) {

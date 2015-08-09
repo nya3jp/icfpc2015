@@ -158,6 +158,16 @@ const char* Game::Command2Chars(Command com) {
   return Game::command_char_map_[(int)com];
 }
 
+std::string Game::Commands2SimpleString(const std::vector<Command>& commands) {
+  std::string result;
+  result.reserve(commands.size() + 1);
+  for (const auto& c : commands) {
+    result += Command2Chars(c)[0];
+  }
+  return result;
+}
+
+
 Unit Game::NextUnit(const Unit& prev_unit, Command command) {
   // This won't happen.
   if (command == Command::IGNORED) {

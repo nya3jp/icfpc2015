@@ -11,7 +11,7 @@ public:
   Solver();
   virtual ~Solver();
 
-  virtual std::vector<Game::Command> NextCommands(const Game& game) = 0;
+  virtual std::string NextCommands(const Game& game) = 0;
 };
 
 int RunSolver(Solver* solver);

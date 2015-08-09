@@ -32,6 +32,8 @@ class Game {
 
   static Command Char2Command(char code);
   static const char* Command2Chars(Command com);
+  static std::string Commands2SimpleString(
+      const std::vector<Command>& commands);
 
   static Unit NextUnit(const Unit& prev_unit, Command command);
 
