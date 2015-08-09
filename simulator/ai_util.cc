@@ -3,7 +3,6 @@
 #include <vector>
 #include <stack>
 #include <utility>
-#include <set>
 
 #include "game.h"
 
@@ -85,48 +84,34 @@ int64_t GetDotReachabilityFromTop(const Game& game)
   return ret;
 }
 
-// XXX: kopipe from game.cc
-struct UnitLocation {
-  HexPoint pivot;
-  int angle;
-  UnitLocation() {}
-  UnitLocation(const HexPoint& pivot, int angle) : pivot(pivot), angle(angle) {}
-  bool operator<(const UnitLocation& other) const {
-    return pivot.x() != other.pivot.x() ? pivot.x() < other.pivot.x() :
-      pivot.y() != other.pivot.y() ? pivot.y() < other.pivot.y() :
-      angle < other.angle;
-  }
-  UnitLocation(const Unit& unit)
-    : pivot(unit.pivot()), angle(unit.angle()) {}
-};
 
 void GetReachabilityMapByAnyHands(const Game& game, Board *ret_board)
 {
-  *ret_board = game.GetBoard(); // copy
-  for(int h = 0; h < ret_board->height(); ++h) {
-    for(int w = 0; w < ret_board->width(); ++w) {
-      ret_board->Set(w, h, false);
+  *ret_board = game.GetBoard();
+  for(int h = 0; h < *ret_board.height(); ++h) {
+    for(int w = 0; w < *ret_board.width(); ++w) {
+      *ret_board.Set(w, h, false);
     }
   }
 
   for(size_t index = 0; index < game.GetUnits().size(); ++index) {
     const Unit &u = game.GetUnits()[index];
-    std::stack<Unit> todo;
-    todo.push(u);
+    std::stack<UnitLocation> todo;
+    todo.push(SearchResult(u, {}));
     std::set<UnitLocation> covered;
     while (!todo.empty()) {
-      Unit current = todo.top();
+      Unit current = todo.top().first;
       todo.pop();
-      covered.insert(UnitLocation(current));
+      covered.insert(UnitLocation(todo));
       for(const auto& p: current.members()) {
-        ret_board->Set(p, true);
+        *ret_borad.Set(p, true);
       }
-      for (Game::Command c = Game::Command::E; c != Game::Command::IGNORED; ++c) {
+      for (Command c = Command::E; c != Command::IGNORED; ++c) {
         Unit next = Game::NextUnit(current, c);
         if (covered.count(UnitLocation(next))) {
           continue;
         }
-        if (game.GetBoard().IsConflicting(next)) {
+        if (board_.IsConflicting(next)) {
           continue;
         }
         todo.push(next);
