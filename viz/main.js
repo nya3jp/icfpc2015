@@ -55,6 +55,8 @@ function cloneGame(game, copyLocks) {
   newGame.configurations = game.configurations;
   newGame.unit = game.unit ? cloneUnit(game.unit) : undefined;
   newGame.move_scores = game.move_scores;
+  newGame.totalCleared = game.totalCleared;
+  newGame.maxCleared = game.maxCleared;
   newGame.ls_old = game.ls_old;
   newGame.commandHistory = game.commandHistory;
   newGame.done = game.done;
@@ -355,6 +357,8 @@ function doLock() {
   g_currentGame.ls_old = ls;
 
   g_currentGame.move_scores += move_score;
+  g_currentGame.totalCleared += ls;
+  g_currentGame.maxCleared = Math.max(g_currentGame.maxCleared, ls);
 
   g_currentGame.board = result.board;
 }
@@ -382,6 +386,8 @@ function updateInfo() {
     'Seed: ' + g_currentGame.seed + '\n' +
     'Score: ' + (g_currentGame.move_scores + power_scores) + ' = ' + g_currentGame.move_scores + ' + ' + power_scores + '\n' +
     'ls_old: ' + g_currentGame.ls_old + '\n' +
+    'Total cleared: ' + g_currentGame.totalCleared + '\n' +
+    'Max cleared: ' + g_currentGame.maxCleared + '\n' +
     'Remaining units: ' + (g_currentGame.source.length - g_currentGame.sourceIndex) + '\n' +
     'Command length: ' + g_currentGame.commandHistory.length;
 
@@ -707,6 +713,8 @@ function loadBest(run) {
         if (!run)
           undoAllSavingRedo();
         drawGame(undefined);
+        showAlertMessage('Loaded best solution: tag=' + solution.tag +
+                         ', score=' + solution._score);
         return;
       }
     }
@@ -739,7 +747,7 @@ function init() {
   problems.addEventListener('change', function () {
     var file = getSelectedProblem();
     if (file != g_currentGame.file) {
-      fetchAndDrawProblem(file, -1, []);
+      fetchAndDrawProblem(file, -1, document.getElementById("loadbestcheck").checked ? 'BEST' : []);
     }
   });
 
@@ -803,7 +811,7 @@ function init() {
       undoAll();
 
       if (params[2] == 'BEST') {
-        loadBest(true);
+        loadBest(false);
       } else {
         replayCommands(params[2]);
       }
@@ -933,6 +941,9 @@ function aiStep() {
   var bb = getUnitBoundBox(g_currentGame.unit);
 
   var size = g_currentGame.unit.members.length;
+
+  if (bb.top != bb.bottom)
+    return true;
 
   for (var y = height - 1; y >= 0; --y) {
     if (y <= 1)
@@ -1247,6 +1258,8 @@ function setupGame(configurations, file, seed) {
     configurations: configurations,
     unit: undefined,
     move_scores: 0,
+    totalCleared: 0,
+    maxCleared: 0,
     ls_old: 0,
     commandHistory: '',
     done: false,
@@ -1306,6 +1319,11 @@ function fetchAndDrawProblem(file, seed, commands) {
 
       setupGame(g_currentGame.configurations, g_currentGame.file, selectedSeed);
       updateHash();
+
+      if (document.getElementById("loadbestcheck").checked) {
+        loadBest(false);
+      }
+
       drawGame(undefined);
     });
 
@@ -1313,7 +1331,7 @@ function fetchAndDrawProblem(file, seed, commands) {
     updateHash();
 
     if (commands == 'BEST') {
-      loadBest(true);
+      loadBest(false);
     } else if (commands) {
       replayCommands(commands);
     }

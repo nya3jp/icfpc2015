@@ -34,6 +34,38 @@ class Unit {
     return true;
   }
 
+  int GetTop() const {
+    int top = std::numeric_limits<int>::max();
+    for (auto& member : members_) {
+      top = std::min(top, member.y());
+    }
+    return top;
+  }
+
+  int GetRight() const {
+    int right = 0;
+    for (auto& member : members_) {
+      right = std::max(right, member.x());
+    }
+    return right;
+  }
+
+  int GetBottom() const {
+    int bottom = 0;
+    for (auto& member : members_) {
+      bottom = std::max(bottom, member.y());
+    }
+    return bottom;
+  }
+
+  int GetLeft() const {
+    int left = std::numeric_limits<int>::max();
+    for (auto& member : members_) {
+      left = std::min(left, member.x());
+    }
+    return left;
+  }
+
   void Shift(int x) {
     const HexPoint movement(x, 0);
     pivot_ += movement;

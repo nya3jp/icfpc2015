@@ -40,6 +40,37 @@ class HexPoint {
     return !(*this == other);
   }
 
+  void Shift(int x) {
+    const HexPoint movement(x, 0);
+    *this += movement;
+  }
+
+  void MoveEast() {
+    Shift(1);
+  }
+
+  void MoveWest() {
+    Shift(-1);
+  }
+
+  void MoveNorthWest() {
+    const HexPoint odd_movement(0, -1);
+    const HexPoint even_movement(-1, -1);
+    *this += (y() & 1 ? odd_movement : even_movement);
+  }
+
+  void MoveSouthEast() {
+    const HexPoint odd_movement(1, 1);
+    const HexPoint even_movement(0, 1);
+    *this += (y() & 1 ? odd_movement : even_movement);
+  }
+
+  void MoveSouthWest() {
+    const HexPoint odd_movement(0, 1);
+    const HexPoint even_movement(-1, 1);
+    *this += (y() & 1 ? odd_movement : even_movement);
+  }
+
   // Rotate 60 degrees in clockwise centering (0, 0).
   HexPoint RotateClockwise() const {
     int xx = x_ - (y_ - (y_ & 1)) / 2;

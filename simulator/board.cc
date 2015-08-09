@@ -65,6 +65,33 @@ int Board::Lock(const Unit& unit) {
   return num_cleared_lines;
 }
 
+int Board::LockPreview(const Unit& unit) const {
+  int num_cleared_lines = 0;
+  for (int y = height_ - 1; y >= 0; --y) {
+    bool ok = true;
+    for (size_t x = 0; x < width_; ++x) {
+      if (cells_[y * width_ + x])
+        continue;
+
+      bool hit = false;
+      for (const auto& member: unit.members()) {
+        if (y == member.y() && x == member.x()) {
+          hit = true;
+        }
+      }
+      if (hit)
+        continue;
+
+      ok = false;
+      break;
+    }
+    if (ok) {
+      ++num_cleared_lines;
+    }
+  }
+  return num_cleared_lines;
+}
+
 void Board::Dump(std::ostream* os) const {
   for (size_t y = 0; y < height_; ++y) {
     if (y & 1) {

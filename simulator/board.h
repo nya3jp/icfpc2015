@@ -24,6 +24,7 @@ class Board {
 
   bool IsConflicting(const Unit& unit) const;
   int Lock(const Unit& unit);
+  int LockPreview(const Unit& unit) const;
 
   void Dump(std::ostream* os) const;
 
