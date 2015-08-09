@@ -309,6 +309,34 @@ function doClear(board, unit) {
   return {ls: ls, board: newBoard};
 }
 
+function countCleared(board, unit) {
+  var rowsSet = {};
+  for (var i = 0; i < unit.members.length; ++i) {
+    rowsSet[unit.members[i].y] = true;
+  }
+
+  var board = cloneBoard(board);
+  placeUnit(board, unit, false);
+
+  var ls = 0;
+  for (var y = board[0].length - 1; y >= 0; --y) {
+    if (!rowsSet[y])
+      continue;
+
+    var cleared = true;
+    for (var x = 0; x < board.length; ++x) {
+      if (board[x][y] == 0) {
+        cleared = false;
+        break;
+      }
+    }
+    if (cleared)
+      ls += 1;
+  }
+
+  return ls;
+}
+
 function doLock() {
   var unit = g_currentGame.unit;
 
@@ -831,31 +859,47 @@ function goDown(y) {
   }
 }
 
-function goConflict(board, x, y) {
+function goConflict(board, points) {
   var width = board.length;
   var height = board[0].length;
 
-  if (x == 0) {
-    goW();
-  } else if (board[x - 1][y] == 1) {
-    goW();
-  } else if (x == width - 1) {
-    goE();
-  } else if (board[x + 1][y] == 1) {
-    goE();
-  } else if (y == height - 1) {
-    goSW();
-  } else if (y % 2 == 0 && board[x][y + 1] == 1) {
-    goSE();
-  } else if (y % 2 == 0 && board[x - 1][y + 1] == 1) {
-    goSW();
-  } else if (y % 2 == 1 && board[x][y + 1] == 1) {
-    goSW();
-  } else if (y % 2 == 1 && board[x + 1][y + 1] == 1) {
-    goSE();
-  } else {
-    goDown(y);
+  for (var i = 0; i < points.length; ++i) {
+    var x = points[i].x;
+    var y = points[i].y;
+
+    if (x == 0) {
+      goW();
+      return;
+    } else if (board[x - 1][y] == 1) {
+      goW();
+      return;
+    } else if (x == width - 1) {
+      goE();
+      return;
+    } else if (board[x + 1][y] == 1) {
+      goE();
+      return;
+    } else if (y == height - 1) {
+      goSW();
+      return;
+    } else if (y % 2 == 0 && board[x][y + 1] == 1) {
+      goSE();
+      return;
+    } else if (y % 2 == 0 && board[x - 1][y + 1] == 1) {
+      goSW();
+      return;
+    } else if (y % 2 == 1 && board[x][y + 1] == 1) {
+      goSW();
+      return;
+    } else if (y % 2 == 1 && board[x + 1][y + 1] == 1) {
+      goSE();
+      return;
+    } else {
+      continue;
+    }
   }
+
+  goDown(y);
 }
 
 function aiStep() {
@@ -896,7 +940,7 @@ function aiStep() {
         } else if (bb.left > x) {
           goW();
         } else if (bb.top == y) {
-          goConflict(board, x, y);
+          goConflict(board, [{x: x, y: y}]);
         } else {
           goDown(bb.top);
         }
@@ -971,17 +1015,22 @@ function tetrisStep() {
     } else {
       return true;
     }
-  } else if (canMove(board, unit, moveSE)) {
-    goSE();
-  } else if (bb.right == width - 1 && bb.bottom == height - 1) {
-    goSE();
+  } else if (countCleared(board, unit) == size) {
+    goConflict(board, unit.members);
     return true;
+  } else if (canMove(board, unit, moveSE)){
+    goSE();
   } else {
+    goSE();
     return true;
   }
 }
 
 function tetris() {
+  // tetrisStep();
+  // drawGame();
+  // return;
+
   while (g_currentGame.unit !== undefined) {
     if (tetrisStep())
       break;
