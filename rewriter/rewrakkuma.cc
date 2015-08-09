@@ -94,11 +94,22 @@ std::string solve(const std::string& cmd, const std::vector<std::string>& phrase
 	return result;
 }
 
+void rewrite_main(
+    const picojson::value& problem,
+    picojson::value* output_entry,
+    const std::vector<std::string>& phrases) {
+  std::string before = output_entry->get("solution").get<std::string>();
+  std::string after = solve(before, phrases);
+  std::string old_tag = output_entry->get("tag").get<std::string>();
+  output_entry->get("solution") = picojson::value(after);
+  output_entry->get("tag") = picojson::value("rewrakkuma");
+}
+
 ///////////////////////////////////////////////////////////////
 
 DEFINE_string(problem, "", "problem file");
 DEFINE_string(output, "", "output file");
-DEFINE_string(phrases, "", "comma separted list of phrases");
+DEFINE_string(p, "", "comma separted list of phrases");
 
 std::vector<std::string> split(const std::string& str, char sep=',') {
   std::vector<std::string> result;
@@ -131,16 +142,12 @@ int main(int argc, char* argv[]) {
     stream >> output;
     CHECK(stream.good()) << picojson::get_last_error();
   }
-  std::vector<std::string> phrases = split(FLAGS_phrases);
+  std::vector<std::string> phrases = split(FLAGS_p);
 
   for (auto& entry : output.get<picojson::array>()) {
     CHECK_EQ(problem.get("id").get<int64_t>(),
              entry.get("problemId").get<int64_t>());
-
-    std::string before = entry.get("solution").get<std::string>();
-    std::string after = solve(before, phrases);
-    entry.get("solution") = picojson::value(after);
-    entry.get("tag") = picojson::value("rewrakkuma");
+    rewrite_main(problem, &entry, phrases);
   }
   std::cout << output.serialize() << std::endl;
 }
