@@ -13,7 +13,7 @@ _LOGLEVELS = (
     'none', 'debug', 'info', 'warn', 'warning', 'error', 'fatal', 'critical')
 
 gflags.DEFINE_enum(
-    'logtostderr', 'warning',
+    'logtostderr', 'info',
     _LOGLEVELS,
     'Log to stderr.')
 gflags.DEFINE_enum(
