@@ -3,7 +3,7 @@ var g_canvasContext;
 var g_currentGame;
 var g_history;
 var g_redoHistory;
-var g_inDryRun;
+var g_inPreview;
 
 function showAlertMessage(msg) {
   var elem = document.getElementById('message');
@@ -47,7 +47,7 @@ function hashUnit(unit) {
   return JSON.stringify(obj);
 }
 
-function cloneGame(game) {
+function cloneGame(game, copyLocks) {
   var newGame = {};
   newGame.source = game.source;
   newGame.sourceIndex = game.sourceIndex;
@@ -61,6 +61,8 @@ function cloneGame(game) {
   newGame.seed = game.seed;
   newGame.currentUnitHistory = [].concat(game.currentUnitHistory);
   newGame.file = game.file;
+  if (copyLocks)
+    newGame.locks = game.locks;
   return newGame;
 }
 
@@ -391,20 +393,20 @@ function undo() {
   if (g_history.length == 0)
     return;
 
-  g_redoHistory.push(cloneGame(g_currentGame));
+  g_redoHistory.push(cloneGame(g_currentGame, true));
   g_currentGame = g_history.pop();
 
   showAlertMessage(''); // clear
 }
 
-function moreUndo() {
+function quickUndo() {
   undo();
 
   while (g_history.length > 0) {
     if (g_currentGame.locks)
       break;
 
-    g_redoHistory.push(cloneGame(g_currentGame));
+    g_redoHistory.push(cloneGame(g_currentGame, true));
     g_currentGame = g_history.pop();
   }
 
@@ -413,7 +415,7 @@ function moreUndo() {
 
 function undoAllSavingRedo() {
   while (g_history.length > 1) {
-    g_redoHistory.push(cloneGame(g_currentGame));
+    g_redoHistory.push(cloneGame(g_currentGame, true));
     g_currentGame = g_history.pop();
   }
 
@@ -433,15 +435,25 @@ function undoAll() {
 
 function redo() {
   if (g_redoHistory.length == 0)
-    return;
+    return false;
 
   saveGame();
   g_currentGame = g_redoHistory.pop();
-  showAlertMessage(''); // clear
-  spawnNewUnit();
-  checkGameOver();
-  drawGame(undefined);
-  logKey();
+  return true;
+}
+
+function quickRedo() {
+  var did = redo();
+
+  while (g_redoHistory.length > 0) {
+    if (g_currentGame.locks)
+      break;
+
+    saveGame();
+    g_currentGame = g_redoHistory.pop();
+  }
+
+  return did;
 }
 
 function handleKey(e) {
@@ -480,7 +492,7 @@ function handleKey(e) {
   } else {
     if (keyCode == 'U'.charCodeAt(0)) {
       if (e.shiftKey) {
-        moreUndo();
+        quickUndo();
       } else {
         undo();
       }
@@ -492,7 +504,18 @@ function handleKey(e) {
     }
 
     if (keyCode == 'R'.charCodeAt(0)) {
-      redo();
+      if (e.shiftKey) {
+        if (!quickRedo())
+          return;
+      } else {
+        if (!redo())
+          return;
+      }
+
+      showAlertMessage(''); // clear
+      spawnNewUnit();
+      checkGameOver();
+      drawGame(undefined);
       return;
     }
 
@@ -549,7 +572,7 @@ function canMove(board, unit, op) {
   return !isInvalidUnitPlacement(board, moved);
 }
 
-function doCommand(command, dryRun) {
+function doCommand(command, preview) {
   if (g_currentGame === undefined ||
       g_currentGame.unit === undefined) {
     return;
@@ -616,8 +639,8 @@ function doCommand(command, dryRun) {
     return;
   }
 
-  if (dryRun) {
-    g_inDryRun = true;
+  if (preview) {
+    g_inPreview = true;
     spawnNewUnit();
     checkGameOver();
     drawGame(newUnit);
@@ -806,7 +829,7 @@ function init() {
       return;
     }
 
-    if (g_inDryRun) {
+    if (g_inPreview) {
       spawnNewUnit();
       checkGameOver();
       drawGame(undefined);
@@ -1111,7 +1134,7 @@ function spawnNewUnit() {
 }
 
 function getPowerScores(commands) {
-  var phrasesOfPower = ["r'lyeh", 'yuggoth', 'ia! ia!', 'ei!'];
+  var phrasesOfPower = ["r'lyeh", 'yuggoth', 'ia! ia!', 'ei!', 'necronomicon', 'yogsothoth'];
   var score = 0;
   for (var i = 0; i < phrasesOfPower.length; ++i) {
     var phrase = phrasesOfPower[i];
@@ -1146,15 +1169,15 @@ function checkGameOver() {
   }
 }
 
-function drawGame(dryUnit) {
+function drawGame(previewUnit) {
   var boardForDisplay = cloneBoard(g_currentGame.board);
 
-  if (!dryUnit && g_currentGame.unit) {
+  if (!previewUnit && g_currentGame.unit) {
     placeUnit(boardForDisplay, g_currentGame.unit, true, false, true);
   }
 
-  if (dryUnit) {
-    placeUnit(boardForDisplay, dryUnit, true, true);
+  if (previewUnit) {
+    placeUnit(boardForDisplay, previewUnit, true, true);
   }
 
   var r = 8;
@@ -1232,7 +1255,6 @@ function setupGame(configurations, file, seed) {
   };
   g_history = [];
   g_redoHistory = [];
-  g_dryRun = false;
   saveGame();
 
   spawnNewUnit();
@@ -1313,7 +1335,7 @@ function replayFromLogIfNeeded() {
   drawGame(undefined);
 }
 
-function placeUnit(board, unit, placePivot, dryUnit, currentUnit) {
+function placeUnit(board, unit, placePivot, previewUnit, currentUnit) {
   var members = unit.members;
 
   for (var j = 0; j < members.length; ++j) {
@@ -1321,7 +1343,7 @@ function placeUnit(board, unit, placePivot, dryUnit, currentUnit) {
       continue;
     }
 
-    board[members[j].x][members[j].y] |= 1 << (dryUnit ? 2 : 0) << (currentUnit ? 4 : 0);
+    board[members[j].x][members[j].y] |= 1 << (previewUnit ? 2 : 0) << (currentUnit ? 4 : 0);
   }
 
   if (!placePivot) {
@@ -1334,7 +1356,7 @@ function placeUnit(board, unit, placePivot, dryUnit, currentUnit) {
     return;
   }
 
-  board[pivot.x][pivot.y] |= 2 << (dryUnit ? 2 : 0) << (currentUnit ? 4 : 0);
+  board[pivot.x][pivot.y] |= 2 << (previewUnit ? 2 : 0) << (currentUnit ? 4 : 0);
 }
 
 function drawHex(center, r, context) {
