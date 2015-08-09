@@ -11,6 +11,8 @@ FLAGS = gflags.FLAGS
 gflags.DEFINE_integer('port', None, 'port')
 gflags.MarkFlagAsRequired('port')
 
+bottle.BaseRequest.MEMFILE_MAX = 16 * 1024 * 1024
+
 
 def set_cors_headers():
   bottle.response.headers['Access-Control-Allow-Origin'] = '*'
