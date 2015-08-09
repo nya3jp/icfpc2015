@@ -12,12 +12,21 @@ CFLAGS=-O2 -DPICOJSON_USE_INT64 --std=c++11 $(INCLUDE)
 
 .PHONY: clean
 
-all: greedy_solver flat_solver
+all: greedy_solver flat_solver hasuta4 greedy_ai_2 greedy_ai_3
 
 greedy_solver: greedy_solver.o board.o game.o solver.o scorer.o
 	g++ -Wl,-rpath=$(PWD)/../../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 
 flat_solver: flat_solver.o board.o game.o solver.o scorer.o
+	g++ -Wl,-rpath=$(PWD)/../../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
+
+hasuta4: hasuta4.o board.o game.o solver.o scorer.o
+	g++ -Wl,-rpath=$(PWD)/../../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
+
+greedy_ai_3: greedy_ai_3.o board.o game.o solver.o scorer.o
+	g++ -Wl,-rpath=$(PWD)/../../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
+
+greedy_ai_2: greedy_ai_2.o board.o game.o solver.o scorer.o
 	g++ -Wl,-rpath=$(PWD)/../../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 
 board.o: ../../simulator/board.cc
