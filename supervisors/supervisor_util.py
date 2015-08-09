@@ -39,6 +39,7 @@ class SolverJob(object):
       json.dump(self.task, f)
       f.flush()
       f.seek(0)
+      logging.debug('Launching AI: command line: %s', ' '.join(real_args))
       self._proc = subprocess.Popen(real_args, stdin=f, stdout=subprocess.PIPE)
     self._start_time = time.time()
     self._reader_thread = threading.Thread(target=self._reader_thread_main)

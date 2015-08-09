@@ -211,7 +211,8 @@ std::string generate_powerful_sequence(
     }
   }
 
-  // Solve genericly.
+  if (HURRY_UP_MODE)
+    return hint;
   return solve_on_graph(hint, graph, S, G, phrases);
 }
 
@@ -286,6 +287,7 @@ void rewrite_main(
 
 DEFINE_string(problem, "", "problem file");
 DEFINE_string(output, "", "output file");
+DEFINE_int64(id, -1, "specific id");
 DEFINE_string(p,
   "Ei!,"
   "R'lyeh,"
@@ -342,7 +344,7 @@ int main(int argc, char* argv[]) {
       rewrite_main(problem, &entry, phrases);
     } else {
       int id = entry.get("problemId").get<int64_t>();
-      if (id != 178116) {
+      if (id!=178116 && (FLAGS_id==-1 || FLAGS_id==id)) {
         std::stringstream ss;
         ss << FLAGS_problem << "/problem_" << id << ".json";
         LOG(INFO) << "Problem=" << ss.str();
