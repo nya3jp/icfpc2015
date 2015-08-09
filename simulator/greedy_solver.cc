@@ -36,5 +36,5 @@ int main(int argc, char* argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
 
   FLAGS_logtostderr = true;
-  return RunSolver(new GreedySolver());
+  return RunSolver(new GreedySolver(), "GreedySolver");
 }
