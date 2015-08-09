@@ -11,7 +11,7 @@
 #include "game.h"
 #include "solver.h"
 
-DEFINE_string(ai_tag, __FILE__, "Tag of this trial");
+DEFINE_string(ai_tag, "", "Tag of this trial");
 DEFINE_string(p, "", "comma-separated power phrases");
 
 namespace {
@@ -54,7 +54,7 @@ Solver::Solver() {}
 Solver::~Solver() {}
 
 int RunSolver(Solver* solver, std::string solver_tag) {
-  if (solver_tag.empty()) {
+  if (!FLAGS_ai_tag.empty()) {
     solver_tag = FLAGS_ai_tag;
   }
   picojson::value problem;
@@ -67,16 +67,17 @@ int RunSolver(Solver* solver, std::string solver_tag) {
   // Always get the #0 seed.
   const int64_t seed =
     problem.get("sourceSeeds").get<picojson::array>()[0].get<int64_t>();
-  LOG(INFO) << " Seed: " << seed;
+  VLOG(1) << " Seed: " << seed;
   Game game;
   game.Load(problem, 0);
-  LOG(INFO) << game;
+  VLOG(1) << game;
 
   std::string final_commands;
   bool is_finished = false;
   bool error = false;
+  int max_score = 0;
   while(true) {
-    LOG(INFO) << CurrentState(game);
+    VLOG(1) << CurrentState(game);
     // get sequence from AI
     const std::string instructions = solver->NextCommands(game);
     for(const auto& c: instructions) {
@@ -91,10 +92,14 @@ int RunSolver(Solver* solver, std::string solver_tag) {
     if(is_finished || error) {
       break;
     }
-    // TODO: Generate json result here to be on the safe side.
+    const int score = game.score();
+    if (score > max_score) {
+      max_score = score;
+      WriteOneJsonResult(problem.get("id").get<int64_t>(), solver_tag,
+                         seed, score, final_commands);
+    }
   }
   int score = error ? 0 : game.score();
-  std::cerr << score << "\n";
   WriteOneJsonResult(problem.get("id").get<int64_t>(), solver_tag,
                      seed, score, final_commands);
   return 0;
