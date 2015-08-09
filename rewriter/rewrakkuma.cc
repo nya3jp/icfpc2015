@@ -9,6 +9,7 @@
 #include <set>
 #include <queue>
 #include <random>
+#include <signal.h>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -17,6 +18,20 @@
 #include "../../simulator/board.h"
 #include "../../simulator/game.h"
 #include "../../simulator/unit.h"
+
+/////////////////////////////////////////////////////////////////////////////////
+// Signal handling.
+/////////////////////////////////////////////////////////////////////////////////
+
+bool HURRY_UP_MODE = false;
+
+void set_hurry_up_mode(int signum) {
+  HURRY_UP_MODE = true;
+}
+
+void install_signal_handlers() {
+  signal(SIGINT, &set_hurry_up_mode);
+}
 
 /////////////////////////////////////////////////////////////////////////////////
 // Super tenuki utilities.
@@ -74,7 +89,7 @@ typedef std::vector<Edge> Edges;
 typedef std::vector<Edges> Graph;
 
 std::string solve_on_graph(
-    const std::string& preopt,
+    const std::string& hint,
     const Graph& Graph,
     Vert Start,
     Vert Goal,
@@ -84,10 +99,14 @@ std::string solve_on_graph(
   visited.insert(cur);
   std::string result;
   while (cur != Goal) {
+    if (HURRY_UP_MODE)
+      return hint;
     auto is_goalable = [&]() {
       std::set<Vert> V = visited;
       std::queue<Vert> Q; Q.push(cur);
       while (!Q.empty()) {
+        if (HURRY_UP_MODE)
+          return false;
         Vert v = Q.front(); Q.pop();
         if (v == Goal)
           return true;
@@ -100,7 +119,6 @@ std::string solve_on_graph(
       }
       return false;
     };
-    assert(is_goalable());
     auto walk_by = [&](const std::string& s) {
       for (char c: s) {
         bool found = false;
@@ -148,7 +166,7 @@ std::string solve_on_graph(
 }
 
 std::string generate_powerful_sequence(
-    const std::string& preopt,
+    const std::string& hint,
     Game& game,
     const Unit& start,
     const Unit& goal,
@@ -177,6 +195,8 @@ std::string generate_powerful_sequence(
     Q.pop();
 
     for (Game::Command c = Game::Command::E; c != Game::Command::IGNORED; ++c) {
+      if (HURRY_UP_MODE)
+        return hint;
       Unit uu = Game::NextUnit(known_unit[v], c);
       if (game.GetBoard().IsConflicting(uu))
         continue;
@@ -192,7 +212,7 @@ std::string generate_powerful_sequence(
   }
 
   // Solve genericly.
-  return solve_on_graph(preopt, graph, S, G, phrases);
+  return solve_on_graph(hint, graph, S, G, phrases);
 }
 
 void rewrite_main(
@@ -223,8 +243,14 @@ void rewrite_main(
   // Split to subsegments.
   std::string after;
   for (int s=0; s<before.size(); ) {
+    if (HURRY_UP_MODE) {
+      after += before.substr(s);
+      break;
+    }
     Unit start = game.current_unit();
     for (int i=s;; ++i) {
+      if (HURRY_UP_MODE)
+        break;
       auto cmd = Game::Char2Command(before[i]);
       Unit u = game.current_unit();
       if (game.IsLockableBy(u,cmd) || i+1==before.size()) {
@@ -254,7 +280,6 @@ void rewrite_main(
     output_entry->get("_score") = picojson::value(
       output_entry->get("_score").get<int64_t>() + afterscore - beforescore);
   }
-  //output_entry->get("tag") = picojson::value(old_tag + "(rwkm)");
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -294,6 +319,7 @@ int main(int argc, char* argv[]) {
   google::InitGoogleLogging(argv[0]);
   google::ParseCommandLineFlags(&argc, &argv, true);
   FLAGS_logtostderr = true;
+  install_signal_handlers();
 
   picojson::value output;
   {
@@ -306,6 +332,8 @@ int main(int argc, char* argv[]) {
     p = to_lower(p);
 
   for (auto& entry : output.get<picojson::array>()) {
+    if (HURRY_UP_MODE)
+      continue;
     picojson::value problem;
     if (FLAGS_problem.size()>=4 && FLAGS_problem.substr(FLAGS_problem.size()-4)=="json") {
       std::ifstream stream(FLAGS_problem);
