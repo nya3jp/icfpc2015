@@ -8,7 +8,8 @@ clean:
 force:
 
 build: .googlelib .deps force
-	$(MAKE) -C ai/simple_solvers
+	sudo cgcreate -g memory:natsubate -a $(USER)
+	#$(MAKE) -C ai/simple_solvers
 
 .googlelib:
 	python tools/build_googlelib.py

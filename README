@@ -1,9 +1,10 @@
 Natsubate!
 ==========
 
-Build Environment
------------------
+Environment
+-----------
 
 - Ubuntu 14.04.2
-- To install dependencies, run ./install_deps.sh
+- IMPORTANT: The running user must be allowed to run sudo without password.
+- To install dependencies, run ./install_deps.sh.
 
