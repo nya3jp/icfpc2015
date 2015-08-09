@@ -1,3 +1,4 @@
+#include <cassert>
 #include <string>
 #include <algorithm>
 #include <fstream>
@@ -109,11 +110,74 @@ typedef std::vector<Edges> Graph;
 
 std::string solve_on_graph(
     const std::string& preopt,
-    const Graph& G,
+    const Graph& Graph,
     Vert Start,
     Vert Goal,
-    const std::vector<std::string>& phrases) {
-  return preopt;
+    std::vector<std::string> phrases) {
+  std::vector<std::string> default_word = {"p", "b", "a", "l", "d", "k"};
+
+  std::set<Vert> visited;
+  Vert cur = Start;
+  visited.insert(cur);
+  std::string result;
+  while (cur != Goal) {
+    auto is_goalable = [&]() {
+      std::set<Vert> V = visited;
+      std::queue<Vert> Q; Q.push(cur);
+      while (!Q.empty()) {
+        Vert v = Q.front(); Q.pop();
+        if (v == Goal)
+          return true;
+        for (auto cmd_next: Graph[v]) {
+          Vert u = cmd_next.second;
+          if (V.count(u)) continue;
+          V.insert(u);
+          Q.push(u);
+        }
+      }
+      return false;
+    };
+    assert(is_goalable());
+    auto walk_by = [&](const std::string& s) {
+      for (char c: s) {
+        bool found = false;
+        for (auto& cmd_next: Graph[cur])
+          if (cmd_next.first == Game::Char2Command(c) &&
+              !visited.count(cmd_next.second)) {
+            cur = cmd_next.second;
+            visited.insert(cur);
+            found = true;
+            break;
+          }
+        if(!found)
+          return false;
+      }
+      return true;
+    };
+    auto try_phrase = [&](const std::string& ph) {
+      std::set<Vert> snapshot_visited = visited;
+      Vert snapshot_cur = cur;
+      if (!walk_by(ph) || !is_goalable()) {
+        cur = snapshot_cur;
+        visited = snapshot_visited;
+        return false;
+      }
+      result += ph;
+      return true;
+    };
+    auto try_phrases = [&](std::vector<std::string>& phrases) {
+      for (int i=0; i<phrases.size(); ++i) {
+        if (try_phrase(phrases[i])) {
+          std::swap(phrases[i], phrases.back());
+          return true;
+        }
+      }
+      return false;
+    };
+    try_phrases(phrases) || try_phrases(default_word);
+  }
+
+  return result;
 }
 
 std::string generate_powerful_sequence(
@@ -150,13 +214,13 @@ std::string generate_powerful_sequence(
       if (game.GetBoard().IsConflicting(uu))
         continue;
       Vert u = unit_to_id(uu);
-      if (graph.size() <= v)
-        graph.resize(v+1);
+      if (graph.size() <= v) graph.resize(v+1);
       graph[v].emplace_back(c, u);
       if (V.count(u))
         continue;
       Q.push(u);
       V.insert(u);
+      if (graph.size() <= u) graph.resize(u+1);
     }
   }
 
