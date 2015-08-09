@@ -86,12 +86,12 @@ class SolverJob(object):
           break
         solutions = json.loads(line)
         for solution in solutions:
-          assert solution['problemId'] == self.problem_id
-          assert solution['seed'] == self.seed
           assert isinstance(solution['tag'], unicode)
           assert isinstance(solution['solution'], unicode)
           assert isinstance(solution['_score'], int)
           if solution['_score'] > self.best_solution['_score']:
+            solution['problemId'] = self.problem_id
+            solution['seed'] = self.seed
             self.best_solution = solution
             self._maybe_notify()
     except Exception:

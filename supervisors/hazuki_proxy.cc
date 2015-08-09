@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
   CreateAiProcess(argc - 1, argv + 1, &pid, &fd);
 
   int returncode = 0;
-  std::string best_json_text = "{\"_score\":0,\"tag\":\"sentinel\"}";
+  std::string best_json_text = "{\"_score\":0,\"tag\":\"sentinel\",\"solution\":\"\"}";
   int best_score = 0;
   std::string json_buf;
 
