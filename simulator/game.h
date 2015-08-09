@@ -2,6 +2,7 @@
 #define GAME_H_
 
 #include <iostream>
+#include <vector>
 #include <glog/logging.h>
 
 #include "board.h"
@@ -43,6 +44,7 @@ class Game {
   static Unit NextUnit(const Unit& prev_unit, Command command);
 
   bool Run(Command action);
+  bool RunSequence(const std::vector<Command>& actions);
 
   // Given the current unit position, returns a command to lock the unit
   // at the position, or returns IGNORED if it's impossible to lock it.

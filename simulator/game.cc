@@ -230,6 +230,14 @@ bool Game::Run(Command command) {
   return true;
 }
 
+bool Game::RunSequence(const std::vector<Command>& commands) {
+  for (const auto& c : commands) {
+    if (!Run(c))
+      return false;
+  }
+  return true;
+}
+
 bool Game::IsLockableBy(const Unit& current, Command cmd) const {
   Unit new_unit = Game::NextUnit(current, cmd);
   return board_.IsConflicting(new_unit);
