@@ -3,7 +3,7 @@
 """Supervisor that runs jobs in parallel.
 
 Usage:
-supervisors/parallel.py -f problem.json -c N path/to/solver
+supervisors/parallel.py -f problem.json -c N path/to/solver [extra args to solver...]
 """
 
 import time
@@ -30,7 +30,7 @@ gflags.DEFINE_integer('memlimit', 0, 'Memory limit in megabytes.', short_name='m
 
 
 class JobScheduler(object):
-  def __init__(self, tasks, solver_path, num_threads):
+  def __init__(self, tasks, solver_args, num_threads):
     self._num_threads = num_threads
     self._event_queue = queue.Queue()
     self._solution_map = {}
@@ -41,7 +41,7 @@ class JobScheduler(object):
         problem_id, seed)
     self._unstarted_jobs = []
     for task in tasks:
-      job = supervisor_util.SolverJob([solver_path], task, self._event_queue)
+      job = supervisor_util.SolverJob(solver_args, task, self._event_queue)
       self._unstarted_jobs.append(job)
     self._started_jobs = []
 
@@ -74,7 +74,7 @@ class JobScheduler(object):
 def main(argv):
   logging_util.setup()
 
-  solver_path = argv[1]
+  solver_args = argv[1:]
 
   # Set defaults.
   if FLAGS.cores == 0:
@@ -95,7 +95,7 @@ def main(argv):
 
   logging.info('Using %d threads', num_threads)
 
-  sched = JobScheduler(tasks, solver_path, num_threads=num_threads)
+  sched = JobScheduler(tasks, solver_args, num_threads=num_threads)
   final_solutions = sched.run()
 
   json.dump(final_solutions, sys.stdout)
