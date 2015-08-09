@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <queue>
+#include <set>
 #include <glog/logging.h>
 
 #include "game.h"
@@ -74,6 +75,7 @@ void Game::Load(const picojson::value& parsed, int seed_index) {
   current_index_ = 0;
   score_ = 0;
   prev_cleared_lines_ = 0;
+  error_ = false;
   SpawnNewUnit();
 }
 
@@ -131,6 +133,41 @@ bool Game::SpawnNewUnit() {
   return true;
 }
 
+const char Game::command_char_map_[7][7] = {
+  "ebcfy2",  // E
+  "!p'.03",  // W
+  " lmno5",  // SE
+  "iaghj4",  // SW
+  "dqrvz1",  // CW
+  "kstuwx",  // CCW
+  "\t\n\r\t\n\r"  // ignored
+};
+
+Game::Command Game::Char2Command(char code) {
+  for (Command com = Command::E; com != Command::IGNORED; ++com) {
+    if (strchr(Game::command_char_map_[(int)com], code)) {
+      return com;
+    }
+  }
+  CHECK(strchr(Game::command_char_map_[(int)Command::IGNORED], code))
+    << "Unknown code '" << code << "' (" << ((int)code) << ")";
+  return Command::IGNORED;
+}
+
+const char* Game::Command2Chars(Command com) {
+  return Game::command_char_map_[(int)com];
+}
+
+std::string Game::Commands2SimpleString(const std::vector<Command>& commands) {
+  std::string result;
+  result.reserve(commands.size() + 1);
+  for (const auto& c : commands) {
+    result += Command2Chars(c)[0];
+  }
+  return result;
+}
+
+
 Unit Game::NextUnit(const Unit& prev_unit, Command command) {
   // This won't happen.
   if (command == Command::IGNORED) {
@@ -174,6 +211,7 @@ bool Game::Run(Command command) {
 
   if (Contains(history_, new_unit)) {
     // Error.
+    error_ = true;
     score_ = 0;
     return false;
   }
@@ -208,6 +246,21 @@ bool Game::IsLockable(const Unit& current) const {
   return GetLockCommand(current) != Command::IGNORED;
 }
 
+struct UnitLocation {
+  HexPoint pivot;
+  int angle;
+  UnitLocation() {}
+  UnitLocation(const HexPoint& pivot, int angle) : pivot(pivot), angle(angle) {}
+  bool operator<(const UnitLocation& other) const {
+    return pivot.x() != other.pivot.x() ? pivot.x() < other.pivot.x() :
+      pivot.y() != other.pivot.y() ? pivot.y() < other.pivot.y() :
+      angle < other.angle;
+  }
+  UnitLocation(const Unit& unit)
+    : pivot(unit.pivot()), angle(unit.angle()) {}
+};
+
+
 void Game::ReachableUnits(std::vector<SearchResult>* result) const {
   result->clear();
   {
@@ -220,10 +273,8 @@ void Game::ReachableUnits(std::vector<SearchResult>* result) const {
   // TODO: Don't copy vector<command> too much. Use dfs instead?
   std::queue<SearchResult> todo;
   todo.push(SearchResult(current_unit_, {}));
-  // TODO: Use set.
-  // TODO: Hold lighter object than Unit for covered detection.
-  std::vector<Unit> covered;
-  covered.emplace_back(current_unit_);
+  std::set<UnitLocation> covered;
+  covered.insert(UnitLocation(current_unit_));
   while (!todo.empty()) {
     Unit current = todo.front().first;
     std::vector<Command> moves = todo.front().second;
@@ -231,7 +282,7 @@ void Game::ReachableUnits(std::vector<SearchResult>* result) const {
     for (Command c = Command::E; c != Command::IGNORED; ++c) {
       Unit next = Game::NextUnit(current, c);
       // TODO: performance improvement using set and such.
-      if (Contains(covered, next)) {
+      if (covered.count(UnitLocation(next))) {
         continue;
       }
       if (board_.IsConflicting(next)) {
@@ -239,7 +290,7 @@ void Game::ReachableUnits(std::vector<SearchResult>* result) const {
       }
       moves.emplace_back(c);
       todo.push(SearchResult(next, moves));
-      covered.emplace_back(next);
+      covered.insert(UnitLocation(next));
       Command lock_command = GetLockCommand(next);
       if (lock_command != Command::IGNORED) {
         moves.emplace_back(lock_command);

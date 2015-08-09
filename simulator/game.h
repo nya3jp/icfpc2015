@@ -2,6 +2,7 @@
 #define GAME_H_
 
 #include <iostream>
+#include <glog/logging.h>
 
 #include "board.h"
 #include "common.h"
@@ -14,6 +15,7 @@ class Game {
   ~Game();
 
   int score() const { return score_; }
+  bool error() const { return error_; }
 
   void Load(const picojson::value& parsed, int seed_index);
   void Dump(std::ostream* os) const;
@@ -28,6 +30,13 @@ class Game {
     E, W, SE, SW, CW, CCW, IGNORED,
   };
 
+  static const char command_char_map_[7][7];
+
+  static Command Char2Command(char code);
+  static const char* Command2Chars(Command com);
+  static std::string Commands2SimpleString(
+      const std::vector<Command>& commands);
+
   static Unit NextUnit(const Unit& prev_unit, Command command);
 
   bool Run(Command action);
@@ -37,6 +46,7 @@ class Game {
 
   typedef std::pair<Unit, std::vector<Command>> SearchResult;
   void ReachableUnits(std::vector<SearchResult>* result) const;
+  const Board& board() const { return board_; }
 
  private:
   int id_;
@@ -50,6 +60,7 @@ class Game {
   std::vector<Unit> history_;
   int score_;
   int prev_cleared_lines_;
+  bool error_;
 };
 
 inline Game::Command operator++( Game::Command& x ) {

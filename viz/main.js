@@ -49,11 +49,12 @@ function hashUnit(unit) {
 
 function cloneGame(game) {
   var newGame = {};
-  newGame.source = [].concat(game.source);
-  newGame.board = cloneBoard(game.board);
+  newGame.source = game.source;
+  newGame.sourceIndex = game.sourceIndex;
+  newGame.board = game.locks ? cloneBoard(game.board) : game.board;
   newGame.configurations = game.configurations;
   newGame.unit = game.unit ? cloneUnit(game.unit) : undefined;
-  newGame.score = game.score;
+  newGame.move_scores = game.move_scores;
   newGame.ls_old = game.ls_old;
   newGame.commandHistory = game.commandHistory;
   newGame.done = game.done;
@@ -314,7 +315,7 @@ function doLock() {
 
   g_currentGame.ls_old = ls;
 
-  g_currentGame.score += move_score;
+  g_currentGame.move_scores += move_score;
 
   g_currentGame.board = result.board;
 }
@@ -334,13 +335,15 @@ function updateInfo() {
     return;
   }
 
+  var power_scores = getPowerScores(g_currentGame.commandHistory);
+
   var infoDiv = document.getElementById("info");
   infoDiv.innerText =
     'Problem ID: ' + g_currentGame.configurations.id + ' / ' +
     'Seed: ' + g_currentGame.seed + '\n' +
-    'Score: ' + g_currentGame.score + '\n' +
+    'Score: ' + (g_currentGame.move_scores + power_scores) + ' = ' + g_currentGame.move_scores + ' + ' + power_scores + '\n' +
     'ls_old: ' + g_currentGame.ls_old + '\n' +
-    'Remaining units: ' + g_currentGame.source.length + '\n' +
+    'Remaining units: ' + (g_currentGame.source.length - g_currentGame.sourceIndex) + '\n' +
     'Command length: ' + g_currentGame.commandHistory.length;
 
   var log = document.getElementById('log');
@@ -348,10 +351,28 @@ function updateInfo() {
 }
 
 function undo() {
+  // var commands = g_currentGame.commandHistory;
+  // undoAll();
+  // replayCommands(commands.slice(0, commands.length - 1));
+  // return;
+
   if (g_history.length > 0) {
     g_redoHistory.push(cloneGame(g_currentGame));
     g_currentGame = g_history.pop();
     showAlertMessage(''); // clear
+  }
+}
+
+function moreUndo() {
+  undo();
+
+  while (g_history.length > 0) {
+    if (g_currentGame.locks) {
+      break;
+    }
+
+    g_redoHistory.push(cloneGame(g_currentGame));
+    g_currentGame = g_history.pop();
   }
 }
 
@@ -364,69 +385,116 @@ function undoAll() {
 }
 
 function redo() {
-  if (g_redoHistory.length > 0) {
-    saveGame();
-    g_currentGame = g_redoHistory.pop();
-    showAlertMessage(''); // clear
-  }
-  updateInfo();
+  if (g_redoHistory.length == 0)
+    return false;
+
+  saveGame();
+  g_currentGame = g_redoHistory.pop();
+  showAlertMessage(''); // clear
+  return true;
 }
 
 function handleKey(e) {
   var keyCode = e.keyCode;
 
-  if (keyCode == 'U'.charCodeAt(0)) {
-    undo();
-
-    drawGame(undefined);
-    return;
-  }
-
-  if (keyCode == 'R'.charCodeAt(0)) {
-    redo();
-
-    drawGame(undefined);
-    logKey();
-    return;
-  }
-
   var command;
 
-  switch (keyCode) {
-  case 'W'.charCodeAt(0):
-    command = 'k';
-    break;
+  if (document.getElementById("typemode").checked) {
+    if (e.shiftKey && keyCode == '1'.charCodeAt(0)) {
+      command = '!';
+    } else if (keyCode >= 'A'.charCodeAt(0) &&
+               keyCode <= 'Z'.charCodeAt(0)) {
+      command = String.fromCharCode(keyCode + 0x20);
+    } else if (keyCode == 190) {
+      command = '.';
+    } else if (keyCode == 222) {
+      command = "'";
+    } else if (keyCode == 32) {
+      e.preventDefault();
+      command = ' ';
+    } else if (keyCode == 8) {
+      e.preventDefault();
+      undo();
 
-  case 'E'.charCodeAt(0):
-    command = 'd';
-    break;
+      spawnNewUnit();
+      checkGameOver();
+      drawGame(undefined);
+      return;
+    } else {
+      command = String.fromCharCode(keyCode);
+    }
+    doCommand(command, false);
 
-  case 'A'.charCodeAt(0):
-    command = 'p';
-    break;
-
-  case 'Z'.charCodeAt(0):
-    command = 'a';
-    break;
-
-  case 'X'.charCodeAt(0):
-    command = 'l';
-    break;
-
-  case 'D'.charCodeAt(0):
-    command = 'b';
-    break;
-
-  case 'S'.charCodeAt(0):
-    command = 'al';
-    break;
-
-  default:
+    drawGame(undefined);
     return;
+  } else {
+    if (keyCode == 'U'.charCodeAt(0)) {
+      if (e.shiftKey) {
+        moreUndo();
+      } else {
+        undo();
+      }
+
+      spawnNewUnit();
+      checkGameOver();
+      drawGame(undefined);
+      return;
+    }
+
+    if (keyCode == 'R'.charCodeAt(0)) {
+      if (redo()) {
+        spawnNewUnit();
+        checkGameOver();
+        drawGame(undefined);
+        logKey();
+      }
+      return;
+    }
+
+    switch (keyCode) {
+    case 'W'.charCodeAt(0):
+      command = 'k';
+      break;
+
+    case 'E'.charCodeAt(0):
+      command = 'd';
+      break;
+
+    case 'A'.charCodeAt(0):
+      command = 'p';
+      break;
+
+    case 'Z'.charCodeAt(0):
+      command = 'a';
+      break;
+
+    case 'X'.charCodeAt(0):
+      command = 'l';
+      break;
+
+    case 'D'.charCodeAt(0):
+      command = 'b';
+      break;
+
+    case 'S'.charCodeAt(0):
+      command = 'al';
+      break;
+
+    default:
+      return;
+    }
   }
 
-  for (var i = 0; i < command.length; ++i) {
-    doCommand(command[i], e.shiftKey);
+  if (e.shiftKey) {
+    for (var i = 0; i < command.length; ++i) {
+      doCommand(command[i], true);
+    }
+  } else {
+    for (var i = 0; i < command.length; ++i) {
+      doCommand(command[i], false);
+    }
+
+    drawGame(undefined);
   }
 }
 
@@ -499,6 +567,8 @@ function doCommand(command, dryRun) {
 
   if (dryRun) {
     g_inDryRun = true;
+    spawnNewUnit();
+    checkGameOver();
     drawGame(newUnit);
     return;
   }
@@ -512,35 +582,45 @@ function doCommand(command, dryRun) {
   }
 
   g_redoHistory = [];
-  saveGame();
+  var locks = isInvalidUnitPlacement(g_currentGame.board, newUnit);
+  //if (g_history.length < 2) {
+  g_currentGame.locks = locks;
+    saveGame();
+  //}
   g_currentGame.currentUnitHistory.push(newUnitHash);
   g_currentGame.commandHistory += command;
-  if (!isInvalidUnitPlacement(g_currentGame.board, newUnit)) {
+  if (!locks) {
     g_currentGame.unit = newUnit;
   } else {
     placeUnit(g_currentGame.board, g_currentGame.unit, false);
     doLock();
     g_currentGame.unit = undefined;
   }
-  drawGame(undefined);
+  spawnNewUnit();
+  checkGameOver();
 }
 
-function drawSelectedProblem() {
-  var name = problems.options[problems.selectedIndex].value;
-  fetchAndDrawProblem(name, 0, []);
-  window.location.hash = name;
-}
-
-function extractFromFragment() {
-  for (var i = 0; i < problems.options.length; ++i) {
-    if (problems.options[i].value == window.location.hash.substr(1)) {
-      problems.selectedIndex = i;
-      return;
-    }
+function getSelectedSeed() {
+  var seeds = document.getElementById('seeds');
+  if (seeds.length == 0) {
+    return -1;
   }
+  return parseInt(seeds.options[seeds.selectedIndex].value);
 }
 
-function loadBest() {
+function updateHash() {
+  window.location.hash = g_currentGame.file + '|' + getSelectedSeed();
+}
+
+function getSelectedProblem() {
+  return problems.options[problems.selectedIndex].value;
+}
+
+function parseHash() {
+  return decodeURIComponent(window.location.hash.substr(1)).split('|');
+}
+
+function loadBest(id, seed) {
   var x = new XMLHttpRequest();
   x.open('GET', 'http://dashboard.natsubate.nya3.jp/state-of-the-art.json');
   x.responseType = 'json';
@@ -550,7 +630,9 @@ function loadBest() {
       var solution = json[i];
       if (g_currentGame.configurations.id == solution.problemId &&
           g_currentGame.seed == solution.seed) {
-        fetchAndDrawProblem(g_currentGame.file, g_currentGame.seed, solution.solution);
+        undoAll();
+        replayCommands(solution.solution);
+        drawGame(undefined);
         return;
       }
     }
@@ -565,7 +647,7 @@ function load() {
 
 function init() {
   var problems = document.getElementById('problems');
-  for (var i = 0; i < 24; ++i) {
+  for (var i = 0; i < 25; ++i) {
     var file = 'problem_' + i + '.json';
     var option = document.createElement('option');
     option.value = file;
@@ -581,7 +663,10 @@ function init() {
   }
 
   problems.addEventListener('change', function () {
-    drawSelectedProblem();
+    var file = getSelectedProblem();
+    if (file != g_currentGame.file) {
+      fetchAndDrawProblem(file, -1, []);
+    }
   });
 
   var saveList = document.getElementById('saveList');
@@ -590,55 +675,133 @@ function init() {
   });
 
   window.addEventListener('hashchange', function () {
-    extractFromFragment();
-    drawSelectedProblem();
-  });
+    var params = parseHash();
 
-  extractFromFragment();
-  drawSelectedProblem();
+    if (params.length < 1) {
+      return;
+    }
+
+    var problems = document.getElementById('problems');
+    for (var i = 0; i < problems.options.length; ++i) {
+      if (problems.options[i].value == params[0]) {
+        problems.selectedIndex = i;
+        break;
+      }
+    }
+
+    var file = getSelectedProblem();
+    if (file != g_currentGame.file) {
+      fetchAndDrawProblem(file, params[1], params[2]);
+      return;
+    }
+
+    if (params.length < 2) {
+      return;
+    }
+
+    var seeds = document.getElementById('seeds');
+    for (var i = 0; i < seeds.options.length; ++i) {
+      if (seeds.options[i].value == params[1]) {
+        seeds.selectedIndex = i;
+        break;
+      }
+    }
+
+    var selectedSeed = getSelectedSeed();
+    if (selectedSeed != g_currentGame.seed) {
+      setupGame(g_currentGame.configurations,
+                g_currentGame.file,
+                selectedSeed);
+
+      if (params[2]) {
+        replayCommands(params[2]);
+      }
+
+      drawGame(undefined);
+      return;
+    }
+
+    if (params.length < 3) {
+      return;
+    }
+
+    if (params[2] != g_currentGame.commandHistory) {
+      undoAll();
+
+      if (params[2] == 'BEST') {
+        loadBest();
+      } else {
+        replayCommands(params[2]);
+      }
+
+      drawGame(undefined);
+    }
+  });
 
   document.body.addEventListener('keydown', function (e) {
     if (e.target == document.getElementById('log')) {
-      return true;
+      if (e.keyCode == 13) {
+        replayFromLogIfNeeded();
+        e.preventDefault();
+      }
+
+      return;
     }
+
     handleKey(e);
   });
   document.body.addEventListener('keyup', function (e) {
     if (e.target == document.getElementById('log')) {
-      return true;
+      return;
     }
+
     if (g_inDryRun) {
+      spawnNewUnit();
+      checkGameOver();
       drawGame(undefined);
     }
   });
 
   var logDiv = document.getElementById('log');
   logDiv.addEventListener('change', function () {
-    var commands = logDiv.value;
-    undoAll();
-    replayCommands(commands)
-    drawGame(undefined);
+    replayFromLogIfNeeded();
   });
+
+  var params = parseHash();
+
+  if (params.length >= 1) {
+    var problems = document.getElementById('problems');
+    for (var i = 0; i < problems.options.length; ++i) {
+      if (problems.options[i].value == params[0]) {
+        problems.selectedIndex = i;
+        break;
+      }
+    }
+  }
+
+  fetchAndDrawProblem(getSelectedProblem(), params[1], params[2]);
 }
 
 function replayCommands(commands) {
   for (var i = 0; i < commands.length; ++i) {
     doCommand(commands[i]);
   }
+
+  drawGame(undefined);
 }
 
 function cloneBoard(board) {
   var width = board.length;
   var height = board[0].length;
 
-  var newBoard = [];
+  var newBoard = new Array(width);
 
   for (var x = 0; x < width; ++x) {
-    var col = [];
+    var col = new Array(height);
     for (var y = 0; y < height; ++y) {
-      col.push(board[x][y]);
+      col[y] = board[x][y];
     }
-    newBoard.push(col);
+    newBoard[x] = col;
   }
   return newBoard;
 }
@@ -665,34 +828,69 @@ function calcRandSeq(mod, seed, len) {
   return result;
 }
 
-function drawGame(dryUnit) {
-  if (g_currentGame.unit === undefined) {
-    if (g_currentGame.source.length > 0) {
-      var newUnit = cloneUnit(g_currentGame.configurations.units[g_currentGame.source.shift()]);
-      var newOrigin = determineStart(g_currentGame.board, newUnit);
-      moveUnit(newUnit, function (position) {
-        var newp = makeOriginAs(newOrigin, position);
-        position.x = newp.x;
-        position.y = newp.y;
-      });
+function spawnNewUnit() {
+  if (g_currentGame.unit !== undefined) {
+    return;
+  }
 
-      if (!isInvalidUnitPlacement(g_currentGame.board, newUnit)) {
-        g_currentGame.unit = newUnit;
-        g_currentGame.currentUnitHistory = [hashUnit(newUnit)];
-      } else {
-        showAlertMessage('CONFLICT!')
-      }
+  if (g_currentGame.source.length > g_currentGame.sourceIndex) {
+    var newUnit = cloneUnit(g_currentGame.configurations.units[g_currentGame.source[g_currentGame.sourceIndex]]);
+    ++g_currentGame.sourceIndex;
+    var newOrigin = determineStart(g_currentGame.board, newUnit);
+    moveUnit(newUnit, function (position) {
+      var newp = makeOriginAs(newOrigin, position);
+      position.x = newp.x;
+      position.y = newp.y;
+    });
+
+    if (!isInvalidUnitPlacement(g_currentGame.board, newUnit)) {
+      g_currentGame.unit = newUnit;
+      g_currentGame.currentUnitHistory = [hashUnit(newUnit)];
     } else {
-      showAlertMessage('GAME CLEAR!')
+      showAlertMessage('CONFLICT!')
     }
+  } else {
+    showAlertMessage('GAME CLEAR!')
+  }
+}
+
+function getPowerScores(commands) {
+  var phrasesOfPower = ["r'lyeh", 'yuggoth', 'ia! ia!', 'ei!'];
+  var score = 0;
+  for (var i = 0; i < phrasesOfPower.length; ++i) {
+    var phrase = phrasesOfPower[i];
+    var reps = 0;
+    for (var j = 0; j < commands.length; ++j) {
+      var found = false;
+      if (commands.length - j >= phrase.length) {
+        found = true;
+        for (var k = 0; k < phrase.length; ++k) {
+          if (commands[j + k] != phrase[k]) {
+            found = false;
+            break;
+          }
+        }
+      }
+      if (found) {
+        reps += 1;
+      }
+    }
+    score += 2 * phrase.length * reps + (reps > 0 ? 300 : 0);
+  }
+  return score;
+}
+
+function checkGameOver() {
+  if (g_currentGame.unit !== undefined) {
+    return;
   }
 
-  if (g_currentGame.unit === undefined) {
-    if (!g_currentGame.done) {
-      done();
-    }
+  if (!g_currentGame.done) {
+    sendSolution();
   }
+}
 
+function drawGame(dryUnit) {
   var boardForDisplay = cloneBoard(g_currentGame.board);
 
   if (!dryUnit && g_currentGame.unit) {
@@ -703,7 +901,7 @@ function drawGame(dryUnit) {
     placeUnit(boardForDisplay, dryUnit, true, true);
   }
 
-  var r = 12;
+  var r = 8;
   var gridMul = 1.05;
 
   var boardMargin = {x: 10, y: 10};
@@ -719,8 +917,8 @@ function drawGame(dryUnit) {
   drawBoard(boardForDisplay, r, gridMul, boardMargin, boardContext, true);
 
   var nextUnits = [];
-  for (var i = 0; i < Math.min(g_currentGame.source.length, 20); ++i) {
-    nextUnits.push(g_currentGame.configurations.units[g_currentGame.source[i]]);
+  for (var i = 0; i < Math.min((g_currentGame.source.length - g_currentGame.sourceIndex), 20); ++i) {
+    nextUnits.push(g_currentGame.configurations.units[g_currentGame.source[g_currentGame.sourceIndex + i]]);
   }
 
   var nextCanvas = document.getElementById('next');
@@ -748,11 +946,9 @@ function drawGame(dryUnit) {
 }
 
 function saveGame() {
-  g_history.push(cloneGame(g_currentGame));
-}
-
-function done() {
-  sendSolution();
+  var cloned = cloneGame(g_currentGame);
+  g_history.push(g_currentGame);
+  g_currentGame = cloned;
 }
 
 function setupGame(configurations, file, seed) {
@@ -767,10 +963,11 @@ function setupGame(configurations, file, seed) {
     source: calcRandSeq(configurations.units.length,
                         seed,
                         configurations.sourceLength),
+    sourceIndex: 0,
     board: board,
     configurations: configurations,
     unit: undefined,
-    score: 0,
+    move_scores: 0,
     ls_old: 0,
     commandHistory: '',
     done: false,
@@ -782,7 +979,8 @@ function setupGame(configurations, file, seed) {
   g_dryRun = false;
   saveGame();
 
-  drawGame(undefined);
+  spawnNewUnit();
+  checkGameOver();
 }
 
 function save() {
@@ -817,22 +1015,46 @@ function fetchAndDrawProblem(file, seed, commands) {
       option.innerText = seedCandidate;
       seeds.appendChild(option);
 
-      if (seedCandidate == seed) {
+      if (seed !== undefined && seedCandidate == seed) {
         seeds.selectedIndex = seeds.options.length - 1;
       }
     }
 
     seeds.addEventListener('change', function () {
-      var selectedSeed = parseInt(seeds.options[seeds.selectedIndex].value);
-      setupGame(configurations, file, selectedSeed);
+      var selectedSeed = getSelectedSeed();
+      if (selectedSeed == g_currentGame.seed) {
+        return;
+      }
+
+      setupGame(g_currentGame.configurations, g_currentGame.file, selectedSeed);
+      updateHash();
+      drawGame(undefined);
     });
 
-    setupGame(configurations, file, seed);
-    if (commands) {
+    setupGame(configurations, file, getSelectedSeed());
+    updateHash();
+
+    if (commands == 'BEST') {
+      loadBest();
+    } else if (commands) {
       replayCommands(commands);
     }
+
+    drawGame(undefined);
   };
   x.send();
+}
+
+function replayFromLogIfNeeded() {
+  var logDiv = document.getElementById('log');
+  var commands = logDiv.value;
+  if (g_currentGame.commandHistory == commands) {
+    return;
+  }
+
+  undoAll();
+  replayCommands(commands);
+  drawGame(undefined);
 }
 
 function placeUnit(board, unit, placePivot, dryUnit, currentUnit) {

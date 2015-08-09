@@ -6,6 +6,7 @@ body {
   margin: 0;
 }
 #sidebar {
+  position: fixed;
   width: 16ex;
   float: left;
   height: 100%;
@@ -58,6 +59,10 @@ body {
   Saved games: <select id="saveList"></select><br>
   <input type="button" value="Save" onclick="save()">
   <input type="button" value="Load" onclick="load()">
+</p>
+
+<p>
+  <input type="checkbox" id="typemode"><label for="typemode">Type mode</label>
 </p>
 
 <!-- usage -->

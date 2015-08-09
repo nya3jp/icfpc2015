@@ -17,6 +17,7 @@ bottle.TEMPLATE_PATH = [os.path.join(os.path.dirname(__file__), 'views')]
 
 def ensure_index():
   db.problems.ensure_index([('id', pymongo.ASCENDING)])
+  db.leaderboard.ensure_index([('time', pymongo.ASCENDING)])
 
 
 def init_problems():
@@ -37,26 +38,58 @@ def index_handler():
     problem_id = problem['id']
     problem_ids.append(problem_id)
     problem_seed_sizes[problem_id] = len(problem['sourceSeeds'])
-  best_seed_solution_map = collections.defaultdict(
-    lambda: {'tag': 'nop', '_score': 0})
+
+  seed_map = collections.defaultdict(lambda: {'tag': 'nop', '_score': 0})
   for solution in db.solutions.find():
     key = (solution['problemId'], solution['seed'], solution['tag'])
-    if solution.get('_score', -1) > best_seed_solution_map[key]['_score']:
-      best_seed_solution_map[key] = solution
-  tags = sorted(set(tag for (_, _, tag) in best_seed_solution_map.iterkeys()))
-  best_problem_solution_map = collections.defaultdict(
-    lambda: {'_solutions': [], '_avg_score': 0})
-  for (problem_id, seed, tag), solution in best_seed_solution_map.iteritems():
-    best_problem_solution_map[(problem_id, tag)]['_solutions'].append(solution)
-  for (problem_id, tag), entry in best_problem_solution_map.iteritems():
+    if solution.get('_score', -1) > seed_map[key]['_score']:
+      seed_map[key] = solution
+  tags = sorted(set(tag for (_, _, tag) in seed_map.iterkeys()))
+  solution_map = collections.defaultdict(lambda: {'_solutions': [], '_avg_score': 0})
+  for (problem_id, seed, tag), solution in seed_map.iteritems():
+    solution_map[(problem_id, tag)]['_solutions'].append(solution)
+  for (problem_id, tag), entry in solution_map.iteritems():
     entry['_avg_score'] = (
       0 if not entry['_solutions']
       else
-      float(sum(s['_score'] for s in entry['_solutions'])) / problem_seed_sizes[problem_id])
+      sum(s['_score'] for s in entry['_solutions']) / problem_seed_sizes[problem_id])
+
+  best_seed_map = collections.defaultdict(lambda: {'tag': 'nop', '_score': 0})
+  for solution in db.solutions.find():
+    key = (solution['problemId'], solution['seed'])
+    if solution.get('_score', -1) > best_seed_map[key]['_score']:
+      best_seed_map[key] = solution
+  best_solution_map = collections.defaultdict(lambda: {'_solutions': [], '_avg_score': 0})
+  for (problem_id, seed), solution in best_seed_map.iteritems():
+    best_solution_map[problem_id]['_solutions'].append(solution)
+  for problem_id, entry in best_solution_map.iteritems():
+    entry['_avg_score'] = (
+      0 if not entry['_solutions']
+      else
+      sum(s['_score'] for s in entry['_solutions']) / problem_seed_sizes[problem_id])
+
+  leaderboard = db.leaderboard.find_one({}, sort=[('time', pymongo.DESCENDING)])
+  for team in leaderboard['data']['rankings']:
+    if team['teamId'] == 116:
+      total_rank = team['rank']
+      break
+  live_solution_map = collections.defaultdict(lambda: 'N/A')
+  rank_solution_map = collections.defaultdict(lambda: 'N/A')
+  for setting in leaderboard['data']['settings']:
+    for team in setting['rankings']:
+      if team['teamId'] == 116:
+        live_solution_map[setting['setting']] = team['score']
+        rank_solution_map[setting['setting']] = team['rank']
+
   template_values = {
     'problem_ids': problem_ids,
     'tags': tags,
-    'best_solution_map': best_problem_solution_map,
+    'solution_map': solution_map,
+    'best_solution_map': best_solution_map,
+    'total_rank': total_rank,
+    'live_solution_map': live_solution_map,
+    'rank_solution_map': rank_solution_map,
+    'leaderboard_time': leaderboard['time'],
   }
   return bottle.template('index.html', **template_values)
 
