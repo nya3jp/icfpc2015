@@ -1,5 +1,6 @@
 #include <signal.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -10,14 +11,22 @@
 
 #include <picojson.h>
 
-static bool g_signaled = false;
+static volatile sig_atomic_t g_signaled = 0;
 
-void OnSIGINT(int signum) {
-  g_signaled = true;
+void OnSignal(int signum) {
+  if (signum == SIGUSR1) {
+    g_signaled = 1;
+  } else if (signum == SIGINT) {
+    g_signaled = 2;
+  }
 }
 
 void InstallSignalHandler() {
-  signal(SIGINT, OnSIGINT);
+  struct sigaction sa;
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = OnSignal;
+  sigaction(SIGUSR1, &sa, NULL);
+  sigaction(SIGINT, &sa, NULL);
 }
 
 void CreateAiProcess(int argc, char** argv, pid_t* pid, int* fd) {
@@ -72,12 +81,18 @@ int main(int argc, char** argv) {
   CreateAiProcess(argc - 1, argv + 1, &pid, &fd);
 
   int returncode = 0;
-  std::string best_json_text = "{\"_score\":0,\"tag\":\"sentinel\",\"solution\":\"\"}";
+  std::string best_json_text = "[{\"_score\":0,\"tag\":\"sentinel\",\"solution\":\"\"}]";
   int best_score = 0;
   std::string json_buf;
+  bool print_next = false;
 
   for (;;) {
-    if (g_signaled) {
+    if (g_signaled == 1) {
+      kill(pid, SIGUSR1);
+      g_signaled = 0;
+      print_next = true;
+    }
+    if (g_signaled == 2) {
       kill(pid, SIGKILL);
       while (waitpid(pid, NULL, 0) != 0 && errno == EINTR);
       returncode = 28;
@@ -104,7 +119,11 @@ int main(int argc, char** argv) {
       if (score > best_score) {
         best_score = score;
         best_json_text = json_text;
+        if (print_next) {
+          std::cout << best_json_text << std::endl;
+        }
       }
+      print_next = false;
     }
   }
 

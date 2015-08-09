@@ -25,6 +25,7 @@ class SolverJob(object):
     self.seed = task['sourceSeeds'][0]
     self._proc = None
     self._reader_thread = None
+    self._signal_thread = None
     self.best_solution = make_sentinel_solution(self.problem_id, self.seed)
     self.returncode = None
     self._start_time = None
@@ -44,6 +45,8 @@ class SolverJob(object):
     self._start_time = time.time()
     self._reader_thread = threading.Thread(target=self._reader_thread_main)
     self._reader_thread.start()
+    self._signal_thread = threading.Thread(target=self._signal_thread_main)
+    self._signal_thread.start()
 
   def terminate(self):
     if not self._proc:
@@ -51,13 +54,9 @@ class SolverJob(object):
       return
     logging.debug('Terminating: %r', self)
     try:
-      if FLAGS.enable_hazuki_proxy:
-        self._proc.send_signal(signal.SIGINT)
-      else:
-        self._proc.terminate()
+      self._proc.send_signal(signal.SIGINT)
     except Exception:
       pass
-    self.wait()
 
   def poll(self):
     returncode = self._proc.poll()
@@ -85,6 +84,8 @@ class SolverJob(object):
         line = self._proc.stdout.readline()
         if not line:
           break
+        if not line.strip():
+          continue
         solutions = json.loads(line)
         for solution in solutions:
           assert isinstance(solution['tag'], unicode)
@@ -108,6 +109,15 @@ class SolverJob(object):
     self._end_time = time.time()
     logging.debug('Elapsed %.3fs: %r', self._end_time - self._start_time, self)
     self._maybe_notify()
+
+  def _signal_thread_main(self):
+    try:
+      while True:
+        time.sleep(1)
+        logging.debug('Sending SIGUSR1: %r', self)
+        self._proc.send_signal(signal.SIGUSR1)
+    except Exception:
+      logging.debug('Signal thread stopped: %r', self)
 
   def _maybe_notify(self):
     if self.event_queue:
