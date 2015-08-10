@@ -19,7 +19,7 @@ while read -u 3 -r i; do
 done
 exec 3<&-
 
-./play_icfp2015 \
+time ./play_icfp2015 \
   --logtostderr=debug \
   --disable_cgroup --show_scores --report --report_tag=shinku \
   -t 60 -m 1024 -c 4 \
