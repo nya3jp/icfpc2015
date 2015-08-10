@@ -381,8 +381,8 @@ public:
     HexPoint target_position;
     int highest_density = 0;
 
-    Board rboard(board.width(), board.height());
-    GetDotReachabilityFromTopAsMap(game, &rboard);
+    //Board rboard(board.width(), board.height());
+    //GetDotReachabilityFromTopAsMap(game, &rboard);
 
     //for (int y = board.height() - 1; y >= 0; --y) {
     for (int y = 0; y < board.height(); ++y) {
@@ -393,10 +393,10 @@ public:
         if (board(x, y)) {
           ++density;
         } else {
-          if (!rboard(x, y)) {
-            bad = true;
-            break;
-          }
+          // if (!rboard(x, y)) {
+          //   bad = true;
+          //   break;
+          // }
         }
       }
 
@@ -477,13 +477,13 @@ public:
           int left = GetLeft(res.first);
 
           int score = CountContact(board, res.first.members());
-
+          score *= 1;
 
           score += y - x;
 
 
-          //if (top != bottom)
-          //  continue;
+          if (top != bottom)
+            continue;
 
           if (score < score_of_best)
             continue;
