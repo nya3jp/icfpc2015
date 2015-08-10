@@ -152,8 +152,8 @@ class UnitLocation {
     typedef size_t result_type;
     result_type operator()(const UnitLocation& u) const {
        return reinterpret_cast<size_t>(u.unit_)
-          ^ (u.pivot().x()<<16)
-          ^ (u.pivot().y()<<16)
+          ^ (u.pivot().x()<<8)
+          ^ (u.pivot().y()<<17)
           ^ (u.angle()<<13);
     }
   };

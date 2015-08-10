@@ -3,7 +3,7 @@
 #include <vector>
 #include <stack>
 #include <utility>
-#include <set>
+#include <unordered_set>
 
 #include "game.h"
 
@@ -106,24 +106,25 @@ void GetReachabilityMapByAnyHands(const Game& game, Board *ret_board)
     }
     std::stack<UnitLocation> todo;
     todo.push(u);
-    std::set<UnitLocation, UnitLocationLess> covered;
+    std::unordered_set<UnitLocation, UnitLocation::Hash> covered;
     while (!todo.empty()) {
       UnitLocation current = todo.top();
       todo.pop();
-      covered.insert(UnitLocation(current));
+      covered.insert(current);
+
       for(const auto& p: current.members()) {
         ret_board->Set(p, true);
       }
       for (Game::Command c = Game::Command::E; c != Game::Command::IGNORED; ++c) {
         UnitLocation next = Game::NextUnit(current, c);
-        if (covered.count(next)) {
+        if (covered.count(next) > 0) {
           continue;
         }
         if (game.GetBoard().IsConflicting(next)) {
           continue;
         }
         todo.push(next);
-        covered.insert(UnitLocation(next));
+        covered.insert(next);
       }
     }
   }
