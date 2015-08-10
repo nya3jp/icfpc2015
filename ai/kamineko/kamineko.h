@@ -16,6 +16,14 @@ class GameScorer {
                         std::string* debug) = 0;
 };
 
+class KaminekoScorer : public GameScorer {
+ public:
+  KaminekoScorer();
+  ~KaminekoScorer();
+  virtual int64_t Score(const Game& game, bool finished,
+                        std::string* debug);
+};
+
 class Kamineko: public Solver2 {
  public:
   Kamineko();
