@@ -139,6 +139,17 @@ class UnitLocation {
     return HexPointLess()(pivot_, other.pivot_);
   }
 
+  struct Hash {
+    typedef size_t result_type;
+    result_type operator()(const UnitLocation& u) const {
+       return reinterpret_cast<size_t>(u.unit_)
+          ^ (u.pivot().x()<<16)
+          ^ (u.pivot().y()<<16)
+          ^ (u.angle());
+    }
+  };
+  friend struct UnitLocation::Hash;
+
  private:
   const Unit* unit_;
   HexPoint pivot_;

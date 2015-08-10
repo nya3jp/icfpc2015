@@ -7,6 +7,9 @@
 #include <vector>
 #include <algorithm>
 #include <set>
+#include <map>
+#include <unordered_set>
+#include <unordered_map>
 #include <queue>
 #include <random>
 #include <signal.h>
@@ -203,7 +206,8 @@ std::string generate_powerful_sequence(
     const UnitLocation& goal,
     const std::vector<std::string>& phrases) {
   // Construct the abstract graph structure. 
-  std::map<UnitLocation, int> known_unit_id;
+  std::unordered_map<UnitLocation, int, UnitLocation::Hash> known_unit_id;
+  //std::map<UnitLocation, int> known_unit_id;
   std::vector<UnitLocation> known_unit;
   auto unit_to_id = [&](const UnitLocation& u) {
     auto it = known_unit_id.find(u);
