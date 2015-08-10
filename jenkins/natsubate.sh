@@ -4,6 +4,7 @@ export LANG=C
 cd "$(dirname "$0")/.."
 set -ex
 
+touch .deps
 make build
 
 mkdir -p out/
