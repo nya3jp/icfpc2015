@@ -33,6 +33,7 @@ gflags.DEFINE_bool('disable_cgroup', False, 'Disable cgroup.')
 gflags.DEFINE_bool('use_state_of_the_art', False, 'Use state-of-the-art.json.')
 gflags.DEFINE_multistring('quick_solver', [], 'Path to quick solver.')
 gflags.DEFINE_multistring('heavy_solver', [], 'Path to heavy solver.')
+gflags.DEFINE_multistring('extra_solver', [], 'Path to extra solver.')
 gflags.DEFINE_string('rewriter', None, 'Path to rewriter.')
 gflags.DEFINE_bool('show_scores', False, 'Show scores.')
 gflags.DEFINE_bool('report', True, 'Report the result to log server.')
@@ -75,7 +76,7 @@ def register_reschedule_callbacks(secondary_job, primary_jobs):
     quick_score = quick_jobs[0].solution['_score']
     heavy_score = heavy_jobs[0].solution['_score']
     if heavy_score <= quick_score:
-      base_priority = 900
+      base_priority = 700
     else:
       base_priority = 300
     for i, heavy_job in enumerate(heavy_jobs):
@@ -136,6 +137,16 @@ def run_solvers(tasks, num_threads, deadline):
         cgroup=None if FLAGS.disable_cgroup else CGROUP_NAME)
       jobs.append(job)
       register_reschedule_callbacks(job, primary_jobs_map[job.problem_id])
+
+  for extra_solver in FLAGS.extra_solver:
+    for task in tasks:
+      job = supervisor_util.SolverJob(
+        args=[extra_solver],
+        task=task,
+        priority=900,
+        data='extra',
+        cgroup=None if FLAGS.disable_cgroup else CGROUP_NAME)
+      jobs.append(job)
 
   soft_deadline = deadline - 0.5
 

@@ -34,8 +34,8 @@ class HazukiJobBase(object):
     self._reader_thread = None
     self.solution = make_sentinel_solution(self.problem_id, self.seed)
     self.returncode = None
-    self._start_time = None
-    self._end_time = None
+    self.start_time = None
+    self.end_time = None
     self._finish_callbacks = []
 
   def register_finish_callback(self, callback):
@@ -53,7 +53,7 @@ class HazukiJobBase(object):
       subprocess.call(
         ['sudo', '-n', 'cgclassify', '-g', 'memory:%s' % self._cgroup,
          str(self._proc.pid)])
-    self._start_time = time.time()
+    self.start_time = time.time()
     self._reader_thread = threading.Thread(target=self._reader_thread_main)
     self._reader_thread.daemon = True
     self._reader_thread.start()
@@ -127,8 +127,8 @@ class HazukiJobBase(object):
     except Exception:
       pass
     self._proc.wait()
-    self._end_time = time.time()
-    logging.debug('Finished in %.3fs: %r', self._end_time - self._start_time, self)
+    self.end_time = time.time()
+    logging.debug('Finished in %.3fs: %r', self.end_time - self.start_time, self)
     self._call_callbacks()
 
   def _call_callbacks(self):
@@ -270,7 +270,9 @@ def run_generic_jobs(jobs, num_threads, soft_deadline, hard_deadline):
 
   logging.debug('Job execution order:')
   for job in job_order:
-    logging.debug('  %r score=%d', job, job.solution['_score'])
+    cost = job.end_time - job.start_time if job.end_time else None
+    cost_str = '%.3fs%s' % (cost, ' *' if cost >= 1 else '') if cost else 'overrun'
+    logging.debug('  %r score=%d time=%s', job, job.solution['_score'], cost_str)
 
 
 def make_sentinel_solution(problem_id, seed):

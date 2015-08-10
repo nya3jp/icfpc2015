@@ -18,6 +18,8 @@ build: .googlelib .deps force
 	$(MAKE) -C ai/simple_solvers
 	$(MAKE) -C ai/kamineko clean
 	$(MAKE) -C ai/kamineko
+	$(MAKE) -C ai/duralmin clean
+	$(MAKE) -C ai/duralmin
 	$(MAKE) -C rewriter clean
 	$(MAKE) -C rewriter
 

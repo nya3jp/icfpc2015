@@ -10,6 +10,7 @@ exec "$root_dir/supervisors/shinku.py" \
   --quick_solver=ai/simple_solvers/trivial_solver \
   --heavy_solver=ai/simple_solvers/yasaka \
   --heavy_solver=ai/kamineko/kamineko \
+  --extra_solver=ai/duralmin/duralmin \
   --rewriter=rewriter/rewrakkuma \
   --noreport \
   "$@"

@@ -4,7 +4,9 @@ export LANG=C
 cd "$(dirname "$0")/.."
 set -ex
 
-if [[ "--nobuild" != "$1" ]]; then
+if [[ "--nobuild" == "$1" ]]; then
+  shift 1
+else
   touch .deps
   make build
 fi
@@ -50,4 +52,5 @@ time ./play_icfp2015 \
   -f problems/problem_22.json \
   -f problems/problem_23.json \
   -f problems/problem_24.json \
+  "$@" \
   > out/output.json
