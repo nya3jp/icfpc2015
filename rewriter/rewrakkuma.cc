@@ -134,7 +134,8 @@ std::string solve_on_graph(
     std::vector<std::string> phrases) {
   std::string result;
 
-  const std::vector<bool> reachable_to_goal = calc_goal_reachability(Graph, Goal);
+  const std::vector<bool> reachable_to_goal =
+    std::move(calc_goal_reachability(Graph, Goal));
 
   std::vector<bool> visited(Graph.size());
   for (Vert v=0; v<visited.size(); ++ v)
@@ -421,7 +422,7 @@ int main(int argc, char* argv[]) {
     // If --problem points to a json file, open it.
     // Otherwise assume it to be a directory and find read problem_%d.json.
     picojson::value problem;
-    if (FLAGS_problem.size()>=4 && FLAGS_problem.substr(FLAGS_problem.size()-4)=="json") {
+    if (!FLAGS_problem.empty() && FLAGS_problem.back()!='/') {
       std::ifstream stream(FLAGS_problem);
       stream >> problem;
       CHECK(stream.good()) << picojson::get_last_error();
@@ -431,7 +432,7 @@ int main(int argc, char* argv[]) {
       // id filtering.
       if (id!=178116 && (FLAGS_id==-1 || FLAGS_id==id)) {
         std::stringstream ss;
-        ss << FLAGS_problem << "/problem_" << id << ".json";
+        ss << FLAGS_problem << "problem_" << id << ".json";
         LOG(INFO) << "Problem=" << ss.str();
         try {
           std::ifstream stream(ss.str());
