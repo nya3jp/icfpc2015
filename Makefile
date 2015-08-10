@@ -20,6 +20,8 @@ build: .googlelib .deps force
 	$(MAKE) -C ai/kamineko
 	$(MAKE) -C ai/duralmin clean
 	$(MAKE) -C ai/duralmin
+	$(MAKE) -C ai/duralstarman clean
+	$(MAKE) -C ai/duralstarman
 	$(MAKE) -C rewriter clean
 	$(MAKE) -C rewriter
 
