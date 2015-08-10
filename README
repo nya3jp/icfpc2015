@@ -1,10 +1,26 @@
 Natsubate!
 ==========
 
+We developed various AIs and mixed them at the run-time to get better scores.
+* Greedy AIs greedily put units at the bottom of the map / greedily erase lines / etc.
+* Duralmin / DuralStarman chooses the best move according to tree search.
+* Hasuta4, oh, guess what?
+* Kamineko uses beam search.
+* Yasaka tries to find appropriate line to erase units.
+Final output from these AIs are merged by the control program `shinku`, and
+`rewrakkuma` embeds names of unspekables, preserving the move output from AIs.
+
+
+Install
+----------
+Hey, that's exactly as you wrote in the specification!
+
+
 Environment
 -----------
 
 - Ubuntu 14.04.2
 - IMPORTANT: The running user must be allowed to run sudo without password.
+  (running `make` installs prerequisite packages and sets cgroup memory)
 - To install dependencies, run ./install_deps.sh.
 
