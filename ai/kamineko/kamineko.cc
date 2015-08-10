@@ -18,7 +18,7 @@
 
 #define ENABLE_DEBUG_LOG 0
 
-DEFINE_int32(kamineko_hands, 3, "");
+DEFINE_int32(kamineko_hands, 8, "");
 
 template<typename T>
 std::string DumpV(const std::vector<T>& seq) {
