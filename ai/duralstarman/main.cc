@@ -5,7 +5,7 @@
 #include "../../simulator/solver.h"
 
 DEFINE_int32(dural_width, 20, "");
-DEFINE_int32(dural_depth, 1, "");
+DEFINE_int32(dural_depth, 2, "");
 
 int main(int argc, char* argv[]) {
   google::InitGoogleLogging(argv[0]);

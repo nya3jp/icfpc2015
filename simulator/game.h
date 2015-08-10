@@ -56,6 +56,8 @@ class Game {
   Game();
   ~Game();
 
+  int id() const { return data_->id(); }
+
   int score() const { return score_; }
   int current_index() const { return current_index_; }
   int units_remaining() const { return data_->source_length() - current_index_; }

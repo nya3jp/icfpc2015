@@ -67,14 +67,26 @@ class TrivialSolver : public Solver {
 public:
   TrivialSolver()
     : checked_units_(false),
-      is_bar_only_game_(false),
+      is_bar_only_game_(true),
+      is_no_bar_game_(true),
       max_unit_size_(0) {}
   virtual ~TrivialSolver() {}
 
-  bool IsForbidden(const Board& board, const HexPoint& p) {
-    return (p.x() <= board.width() / 2 + 2) &&
-      (p.x() >= board.width() / 2 - 2) &&
-      (p.y() <= 2);
+  bool IsForbidden(const Game& game,
+                   const HexPoint& p,
+                   const HexPoint& tetris_line_top) {
+    const Board& board = game.GetBoard();
+    if (game.id() == 8) {
+      if (p.y() == 0 && p.x() >= (std::min(3, tetris_line_top.x() - 1)) && p.x() <= std::max(7 + 2, tetris_line_top.x() + 2))
+        return true;
+      if (p.y() == 1 && p.x() >= (std::min(4, tetris_line_top.x() - 1)) && p.x() <= std::max(7 + 2, tetris_line_top.x() + 2))
+        return true;
+      return false;
+    } else {
+      return (p.x() <= board.width() / 2 + 2) &&
+        (p.x() >= board.width() / 2 - 2) &&
+        (p.y() <= 2);
+    }
   }
 
   static bool InBoard(const Board& board, const HexPoint& p) {
@@ -83,17 +95,21 @@ public:
                             p.y() >= 0 && p.y() < board.height();
   }
 
-  std::set<int> GetTetrisPositions(const Board& board, const HexPoint& target) {
-    std::set<int> result;
-    result.insert(target.x() + target.y() * board.width());
+  void GetTetrisPositions(const Board& board,
+                          const HexPoint& target,
+                          std::set<int>* line,
+                          HexPoint* top) {
+    line->insert(target.x() + target.y() * board.width());
     HexPoint p(target.x(), target.y());
+    *top = p;
     for (int i = 0; i < target.y(); ++i) {
       p.MoveNorthWest();
-      if (!InBoard(board, p))
+      if (!InBoard(board, p)) {
         break;
-      result.insert(p.x() + p.y() * board.width());
+      }
+      *top = p;
+      line->insert(p.x() + p.y() * board.width());
     }
-    return result;
   }
 
   static int GetEmptyLocationID(const Board& board,
@@ -284,7 +300,8 @@ public:
 
   std::string Tetris(const Game& game,
                      const std::vector<Game::SearchResult>& bfsresult,
-                     const std::set<int> tetris_positions) {
+                     const std::set<int> tetris_line,
+                     const HexPoint& tetris_line_top) {
     std::vector<Game::Command> ret;
 
     int max_cleared = -1;
@@ -308,7 +325,7 @@ public:
     }
 
     if (max_cleared <= 0) {
-      return SouthWest(game, bfsresult, tetris_positions);
+      return SouthWest(game, bfsresult, tetris_line, tetris_line_top);
     }
 
     return Game::Commands2SimpleString(ret);
@@ -316,6 +333,7 @@ public:
 
   bool checked_units_;
   bool is_bar_only_game_;
+  bool is_no_bar_game_;
   int max_unit_size_;
 
   bool IsBar(const Unit& unit) {
@@ -345,20 +363,18 @@ public:
     if (!checked_units_) {
       checked_units_ = true;
 
+      is_no_bar_game_ = true;
+
       bool non_bar_found = false;
       for (const auto& unit : game.units()) {
         max_unit_size_ = std::max(max_unit_size_,
                                   static_cast<int>(unit.members().size()));
 
         if (!IsBar(unit)) {
-          non_bar_found = true;
+          is_bar_only_game_ = false;
+        } else {
+          is_no_bar_game_ = false;
         }
-      }
-
-      if (non_bar_found) {
-        is_bar_only_game_ = false;
-      } else {
-        is_bar_only_game_ = true;
       }
     }
 
@@ -375,12 +391,15 @@ public:
 
     const Board& board = game.GetBoard();
 
-    std::set<int> tetris_positions;
-    HexPoint target_position;
-    int highest_density = 0;
+    std::set<int> tetris_line;
+    HexPoint tetris_target;
+    HexPoint tetris_line_top;
+    int density_of_tetris_target_row = 0;
 
     //Board rboard(board.width(), board.height());
     //GetDotReachabilityFromTopAsMap(game, &rboard);
+
+    int reach_lines = 0;
 
     for (int y = 0; y < board.height(); ++y) {
       int density = 0;
@@ -397,50 +416,71 @@ public:
         }
       }
 
+      if (density == board.width() - 1)
+        ++reach_lines;
+
       if (bad)
         continue;
 
       for (int x = board.width() - 1; x >= 0; --x) {
-        if (!board(x, y)) {
-          HexPoint candidate(x, y);
-          std::set<int> candidate_positions =
-            GetTetrisPositions(board, candidate);
-          if (candidate_positions.size() == y + 1 && density > highest_density) {
-            highest_density = density;
-            target_position = candidate;
-            tetris_positions = candidate_positions;
-          }
+        if (board(x, y))
+          continue;
+
+        HexPoint tetris_target_candidate(x, y);
+        std::set<int> tetris_line_candidate;
+        HexPoint tetris_line_top_candidate(x, y);
+        GetTetrisPositions(board,
+                           tetris_target_candidate,
+                           &tetris_line_candidate,
+                           &tetris_line_top_candidate);
+        if (tetris_line_candidate.size() != y + 1)
+          continue;
+
+        if (density < density_of_tetris_target_row)
+          continue;
+
+        if (density == density_of_tetris_target_row) {
+          if (tetris_line_candidate.size() <= tetris_line.size())
+            continue;
         }
+
+        density_of_tetris_target_row = density;
+        tetris_target = tetris_target_candidate;
+        tetris_line = tetris_line_candidate;
+        tetris_line_top = tetris_line_top_candidate;
       }
     }
 
-    for (const auto &res: bfsresult) {
-      int cleared = game.GetBoard().LockPreview(res.first);
-      if (cleared >= 6 ||
-          (cleared > 0 && (game.units_remaining() < 3 ||
-                           game.prev_cleared_lines() > 1 ||
-                           !is_bar_only_game_ ||
-                           max_unit_size_ == 1)))
-        return Tetris(game, bfsresult, tetris_positions);
+    if (game.id() == 8) {
+      if (game.units_remaining() <= reach_lines)
+        return Tetris(game, bfsresult, tetris_line, tetris_line_top);
+    } else {
+      for (const auto &res: bfsresult) {
+        int cleared = game.GetBoard().LockPreview(res.first);
+        if (cleared >= 6 ||
+            (cleared > 1 && !is_bar_only_game_) ||
+            (cleared > 0 && (game.units_remaining() < 4 ||
+                             game.units_remaining() <= reach_lines ||
+                             game.prev_cleared_lines() > 1 ||
+                             is_no_bar_game_ ||
+                             max_unit_size_ == 1)))
+          return Tetris(game, bfsresult, tetris_line, tetris_line_top);
+      }
     }
 
+    bool found = false;
 
+    std::vector<Game::Command> ret;
+    int top_of_best = std::numeric_limits<int>::min();
+    int left_of_best = std::numeric_limits<int>::max();
+    //int score_of_best = std::numeric_limits<int>::min();
 
-
-        std::vector<Game::Command> ret;
-        int lowest_top = std::numeric_limits<int>::min();
-        int most_left = std::numeric_limits<int>::max();
-        int score_of_best = std::numeric_limits<int>::min();
-        bool found = false;
-
-
-    for (int y = target_position.y(); y >= 0; --y) {
+    for (int y = tetris_target.y(); y >= 0; --y) {
       for (int x = 0; x < board.width(); ++x) {
-        if (y <= 1 && x + game.current_unit().members().size() >= 5) {
-          //if (y <= 3 && x + game.current_unit().members().size() >= 5) {
-          DVLOG(1) << "TETRIS MODE";
-          return Tetris(game, bfsresult, tetris_positions);
-        }
+        // if (y <= 1 && x + game.current_unit().members().size() >= 5) {
+        //   //if (y <= 3 && x + game.current_unit().members().size() >= 5) {
+        //   return Tetris(game, bfsresult, tetris_line);
+        // }
 
         if (board(x, y))
           continue;
@@ -450,8 +490,8 @@ public:
           bool hit = false;
           for (const auto& member : res.first.members()) {
             int id = member.x() + member.y() * board.width();
-            if (tetris_positions.count(id) ||
-                IsForbidden(board, member)) {
+            if (tetris_line.count(id) ||
+                IsForbidden(game, member, tetris_line_top)) {
               conflict = true;
               break;
             }
@@ -470,40 +510,26 @@ public:
           int bottom = GetBottom(res.first);
           int left = GetLeft(res.first);
 
-          int score = 0;
-
           if (is_bar_only_game_) {
             if (game.units_remaining() >= 4 && top != bottom)
               continue;
           }
 
+          //int score = CountContact(board, res.first.members());
 
-          score = CountContact(board, res.first.members());
-          score *= 1;
-
-          score += y - x;
-
-
-          if (score < score_of_best)
+          if (top < top_of_best)
             continue;
 
-          if (score == score_of_best) {
-            if (is_bar_only_game_) {
-              if (top < lowest_top)
-                continue;
-
-              if (top == lowest_top) {
-                if (left > most_left)
-                  continue;
-              }
-            }
+          if (top == top_of_best) {
+            if (left >= left_of_best)
+              continue;
           }
 
           found = true;
 
-          lowest_top = top;
-          most_left = left;
-          score_of_best = score;
+          top_of_best = top;
+          left_of_best = left;
+          //score_of_best = score;
 
           ret = res.second;
         }
@@ -511,37 +537,36 @@ public:
         //if (!found)
         //  continue;
       }
-
-
-      if (found)
-        return Game::Commands2SimpleString(ret);
-
     }
 
-    return Tetris(game, bfsresult, tetris_positions);
+    if (found)
+      return Game::Commands2SimpleString(ret);
+
+    return Tetris(game, bfsresult, tetris_line, tetris_line_top);
   }
 
   std::string SouthWest(const Game& game,
                         const std::vector<Game::SearchResult>& bfsresult,
-                        const std::set<int> tetris_positions) {
+                        const std::set<int> tetris_line,
+                        const HexPoint& tetris_line_top) {
     std::vector<Game::Command> ret;
     ret.push_back(Game::Command::SW);
 
     int candidate_top = std::numeric_limits<int>::min();
-    int candidate_right = std::numeric_limits<int>::max();
+    int candidate_left = std::numeric_limits<int>::max();
 
     int score_of_best = 0;
 
     for (const auto &res: bfsresult) {
       int top = GetTop(res.first);
-      int right = GetRight(res.first);
+      int left = GetLeft(res.first);
 
       int score = 0;
       for (const auto& member : res.first.members()) {
         int id = member.x() + member.y() * game.GetBoard().width();
-        if (tetris_positions.count(id))
+        if (tetris_line.count(id))
           score = -1;
-        if (IsForbidden(game.GetBoard(), member))
+        if (IsForbidden(game, member, tetris_line_top))
           score = -2;
       }
 
@@ -553,17 +578,17 @@ public:
           continue;
 
         if (top == candidate_top) {
-          if (right > candidate_right)
+          if (left > candidate_left)
             continue;
 
-          if (right == candidate_right) {
+          if (left == candidate_left) {
             continue;
           }
         }
       }
 
       candidate_top = top;
-      candidate_right = right;
+      candidate_left = left;
 
       score_of_best = score;
 
