@@ -371,7 +371,8 @@ DEFINE_string(p,
   "yuggoth,"
   "ia! ia!,"
   "necronomiconi,"
-  "yogsothoth"
+  "yogsothoth,"
+  "planet 10"
   , "comma separted list of phrases");
 
 std::vector<std::string> split(const std::string& str, char sep=',') {
