@@ -57,11 +57,11 @@ public:
     }
   
     vector<EvalState> isgood(bfsresult.size(), Unevaluated);
+    int targety = -1;
     {
       // if impossible, try to add to denser, but solvable line
 
       // first select appropriate lines
-      int targety = -1;
       Board reachable;
       GetReachabilityMapByAnyHands(game, &reachable);
 
@@ -91,7 +91,7 @@ public:
       VLOG(1) << "No candidates found";
     }
 
-    // otherwise, put in highest y and highest distx from good list
+    // otherwise, put in lowest (biggest) y and highest distx from good list
     typedef tuple<int, int, int> scoretype;
     scoretype bestscore(-1, -1, -1);
     for(size_t i = 0; i < bfsresult.size(); ++i) {
@@ -107,8 +107,9 @@ public:
       }
       scoretype newscore_tentative(1, highesty, largestdx);
       if(newscore_tentative > bestscore) {
-        scoretype newscore(is_good(game, highesty,
-                                   bfsresult, i, &isgood),
+        scoretype newscore(targety == -1 ? 0 : 
+                           (is_good(game, targety,
+                                    bfsresult, i, &isgood) ? 1 : 0),
                            highesty, largestdx);
         if(newscore > bestscore) {
           ret = res.second;
@@ -169,6 +170,7 @@ private:
                size_t candidatenum,
                vector<EvalState> *eval_state) 
   {
+    CHECK(candidatenum < candidates.size());
     if((*eval_state)[candidatenum] == EvalState::Unevaluated) {
       const auto& c = candidates[candidatenum];
       Game newgame = game;
