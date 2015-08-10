@@ -199,6 +199,22 @@ std::string solve_on_graph(
   return result;
 }
 
+int estimate_pivot_overflow(const UnitLocation& u) {
+  int xm=0x7fffffff, xM=-0x7fffffff;
+  int ym=0x7fffffff, yM=-0x7fffffff;
+  for (const auto& pt: u.members()) {
+    xm = std::min(xm, pt.x());
+    xM = std::max(xM, pt.x());
+    ym = std::min(ym, pt.y());
+    yM = std::max(yM, pt.y());
+  }
+  xm = std::min(xm, u.pivot().x());
+  xM = std::max(xM, u.pivot().x());
+  ym = std::min(ym, u.pivot().y());
+  yM = std::max(yM, u.pivot().y());
+  return (2+std::max(xM-xm, yM-ym))*2;
+}
+
 // Construct the abstract graph structure and pass to the graph-based solver.
 std::string generate_powerful_sequence(
     const std::string& hint,
@@ -206,24 +222,13 @@ std::string generate_powerful_sequence(
     const UnitLocation& start,
     const UnitLocation& goal,
     const std::vector<std::string>& phrases) {
+  Graph graph;
 
-  // Unit to integer ID mapping.
-  int xm=0x7fffffff, xM=-0x7fffffff;
-  int ym=0x7fffffff, yM=-0x7fffffff;
-  for (const auto& pt: start.members()) {
-    xm = std::min(xm, pt.x());
-    xM = std::max(xM, pt.x());
-    ym = std::min(ym, pt.y());
-    yM = std::max(yM, pt.y());
-  }
-  xm = std::min(xm, start.pivot().x());
-  xM = std::max(xM, start.pivot().x());
-  ym = std::min(ym, start.pivot().y());
-  yM = std::max(yM, start.pivot().y());
-  int OFF = (2+std::max(xM-xm, yM-ym))*2;
-  int W = game.board().width();
-  int H = game.board().height();
-  int SIZE = (OFF+W+OFF)*(OFF+H+OFF)*6;
+  // Unit to node ID mapping.
+  const int OFF = estimate_pivot_overflow(start);
+  const int W = game.board().width();
+  const int H = game.board().height();
+  const int SIZE = (OFF+W+OFF)*(OFF+H+OFF)*6;
   std::vector<int> known_unit_id(SIZE, -1); 
   std::vector<UnitLocation> known_unit;
   auto unit_to_id = [&](const UnitLocation& u) {
@@ -233,21 +238,13 @@ std::string generate_powerful_sequence(
     int id = known_unit.size();
     known_unit_id[key] = id;
     known_unit.emplace_back(u);
+    graph.resize(id+1);
     return id;
   };
 
-  Graph graph(1);
-  Vert S = unit_to_id(start);
-  Vert G = unit_to_id(goal);
-
-  std::queue<int> Q;
-  Q.push(S);
-  std::set<int> V;
-  V.insert(S);
+  std::queue<int> Q; Q.push(unit_to_id(start));
   while (!Q.empty()) {
-    Vert v = Q.front();
-    Q.pop();
-
+    Vert v = Q.front(); Q.pop();
     for (Game::Command c = Game::Command::E; c != Game::Command::IGNORED; ++c) {
       if (HURRY_UP_MODE)
         return hint;
@@ -256,14 +253,11 @@ std::string generate_powerful_sequence(
         continue;
       if (game.GetBoard().IsConflicting(uu))
         continue;
-      Vert u = unit_to_id(uu);
-      if (graph.size() <= v) graph.resize(v+1);
+      int key = ((uu.pivot().x()+OFF)*(OFF+H+OFF)+(uu.pivot().y()+OFF))*6+uu.angle();
+      bool neo = (known_unit_id[key] == -1);
+      Vert u = unit_to_id(uu);  // modifies known_unit_id, so after neo.
       graph[v].emplace_back(c, u);
-      if (V.count(u))
-        continue;
-      Q.push(u);
-      V.insert(u);
-      if (graph.size() <= u) graph.resize(u+1);
+      if (neo) Q.push(u);
     }
   }
 
@@ -275,7 +269,7 @@ std::string generate_powerful_sequence(
   VLOG(1) << "  Graph Generated (" << graph.size() << " nodes)";
   if (HURRY_UP_MODE)
     return hint;
-  return solve_on_graph(hint, graph, depth, S, G, phrases);
+  return solve_on_graph(hint, graph, depth, unit_to_id(start), unit_to_id(goal), phrases);
 }
 
 void rewrite_main(
