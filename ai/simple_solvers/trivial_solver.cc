@@ -451,16 +451,21 @@ public:
       }
     }
 
-    for (const auto &res: bfsresult) {
-      int cleared = game.GetBoard().LockPreview(res.first);
-      if (cleared >= 6 ||
-          (cleared > 1 && !is_bar_only_game_) ||
-          (cleared > 0 && (game.units_remaining() < 4 ||
-                           game.units_remaining() <= reach_lines ||
-                           game.prev_cleared_lines() > 1 ||
-                           is_no_bar_game_ ||
-                           max_unit_size_ == 1)))
+    if (game.id() == 8) {
+      if (game.units_remaining() <= reach_lines)
         return Tetris(game, bfsresult, tetris_line, tetris_line_top);
+    } else {
+      for (const auto &res: bfsresult) {
+        int cleared = game.GetBoard().LockPreview(res.first);
+        if (cleared >= 6 ||
+            (cleared > 1 && !is_bar_only_game_) ||
+            (cleared > 0 && (game.units_remaining() < 4 ||
+                             game.units_remaining() <= reach_lines ||
+                             game.prev_cleared_lines() > 1 ||
+                             is_no_bar_game_ ||
+                             max_unit_size_ == 1)))
+          return Tetris(game, bfsresult, tetris_line, tetris_line_top);
+      }
     }
 
     bool found = false;
