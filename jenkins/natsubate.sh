@@ -9,10 +9,19 @@ make build
 
 mkdir -p out/
 
+power_args=()
+exec 3< power_phrases.txt
+while read -u 3 -r i; do
+  power_args+=(-p)
+  power_args+=("$i")
+done
+exec 3<&-
+
 ./play_icfp2015 \
   --logtostderr=debug \
   --disable_cgroup --show_scores --report --report_tag=shinku \
   -t 60 -m 1024 -c 4 \
+  "${power_args[@]}" \
   -f problems/problem_0.json \
   -f problems/problem_1.json \
   -f problems/problem_2.json \
