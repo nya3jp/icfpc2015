@@ -58,6 +58,16 @@ def index_handler():
       else
       sum(s['_score'] for s in entry['_solutions']) / problem_seed_sizes[problem_id])
 
+  best_tag_map = {}
+  for problem_id in problem_ids:
+    for tag in tags:
+      if tag not in ('rewrakkuma', 'handplay_viz'):
+        continue
+      if (problem_id not in best_tag_map or
+          solution_map[(problem_id, tag)]['_avg_score'] >
+          solution_map[(problem_id, best_tag_map[problem_id])]['_avg_score']):
+        best_tag_map[problem_id] = tag
+
   best_seed_map = collections.defaultdict(lambda: {'tag': 'nop', '_score': 0})
   for solution in db.solutions.find(sort=[('_id', pymongo.ASCENDING)]):
     key = (solution['problemId'], solution['seed'])
@@ -94,6 +104,7 @@ def index_handler():
     'problem_ids': problem_ids,
     'tags': tags,
     'solution_map': solution_map,
+    'best_tag_map': best_tag_map,
     'best_solution_map': best_solution_map,
     'total_rank': total_rank,
     'live_solution_map': live_solution_map,
