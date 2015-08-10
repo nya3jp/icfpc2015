@@ -36,3 +36,12 @@ Unit::Unit(const HexPoint& pivot, std::vector<HexPoint>&& members) {
   // Also pre-compute the order.
   order_ = GetOrder(members_);
 }
+
+bool Unit::isEquivalent(const Unit &other) const
+{
+  return 
+    (this->order_ == other.order_ &&
+     std::equal(this->members_.begin(), this->members_.end(),
+                other.members_.begin()));
+}
+                                      

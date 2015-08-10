@@ -101,6 +101,11 @@ void GetReachabilityMapByAnyHands(const Game& game, Board *ret_board)
 
   for(size_t index = 0; index < game.GetNumberOfUnits(); ++index) {
     const UnitLocation &u = game.GetUnitAtSpawnPosition(index);
+    for(size_t j = 0; j < index; ++j) {
+      if(u.isEquivalent(game.GetUnitAtSpawnPosition(j))) {
+        continue;
+      }
+    }
     std::stack<UnitLocation> todo;
     todo.push(u);
     std::set<UnitLocation, UnitLocationLess> covered;

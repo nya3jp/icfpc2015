@@ -14,6 +14,8 @@ class Unit {
   const std::vector<HexPoint>& members() const { return members_; }
   int order() const { return order_; }
 
+  bool isEquivalent(const Unit& other) const;
+
  private:
   std::vector<HexPoint> members_;
   int order_;
@@ -137,6 +139,13 @@ class UnitLocation {
     if (unit_ != other.unit_) return unit_ < other.unit_;
     if (angle_ != other.angle_) return angle_ < other.angle_;
     return HexPointLess()(pivot_, other.pivot_);
+  }
+
+  bool isEquivalent(const UnitLocation& other) const {
+    return 
+      (this->pivot_ == other.pivot_ &&
+       this->angle_ == other.angle_ &&
+       this->unit_->isEquivalent(*other.unit_));
   }
 
   struct Hash {
