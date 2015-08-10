@@ -121,39 +121,41 @@ public:
 
 private:
   // find solution that places at target y.
+  // in case of ties solution placing more items on =y
   // in case of ties solution placing less items on <y
   // in case of ties solution placing nearer to walls get the highest score
   int find_solutions_at(int targety,
                         const Game &game,
                         const std::vector<Game::SearchResult>& candidates,
                         vector<EvalState>* evalstate) {
-    typedef std::pair<int, int> score;
+    typedef std::tuple<int, int, int> score;
     std::vector<score> scores;
 
     for(size_t i = 0; i < candidates.size(); ++i) {
       const UnitLocation &u = candidates[i].first;
       bool y_ok = false;
       int lessy = 0;
+      int eqy = 0;
       int dist2wall = 1 << 30;
       for(const auto &m: u.members()) {
         if(m.y() < targety) {
           ++lessy;
         }else if(m.y() == targety) {
-          y_ok = true;
+          ++eqy;
           int dx = std::min(m.x(), game.GetBoard().width() - 1 - m.x());
           dist2wall = std::min(dist2wall, dx);
         }
       }
-      if(y_ok && is_good(game, targety, candidates, i, evalstate)) {
+      if(eqy > 0 && is_good(game, targety, candidates, i, evalstate)) {
         VLOG(2) << "candidate " << i << " pts: "  << lessy << " dist " << dist2wall;
-        scores.push_back(std::make_pair(lessy, dist2wall));
+        scores.push_back(std::make_tuple(-eqy, lessy, dist2wall));
       }else{
-        scores.push_back(score(1 << 30, 1 << 30));
+        scores.push_back(score(1 << 30, 1 << 30, 1 << 30));
       }
     }
 
     const auto& miniter = std::min_element(scores.begin(), scores.end());
-    if(miniter->second == 1 << 30) {
+    if(std::get<0>(*miniter) == 1 << 30) {
       return -1;
     }else{
       // XXX: this should be distance()
