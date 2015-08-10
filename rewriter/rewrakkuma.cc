@@ -485,7 +485,9 @@ int main(int argc, char* argv[]) {
     p = to_lower(p);
 
   // For each --output entry...
-  for (auto& entry : output.get<picojson::array>()) {
+  auto& entries = output.get<picojson::array>();
+  for (int i=0; i<entries.size(); ++i) {
+    auto& entry = entries[i];
     if (HURRY_UP_MODE)
       continue;
     // Load the corresponding problem.
@@ -499,8 +501,9 @@ int main(int argc, char* argv[]) {
       rewrite_main(problem, &entry, phrases);
     } else {
       int id = entry.get("problemId").get<int64_t>();
+      if (FLAGS_id==-1 && id==178116) continue;
       // id filtering.
-      if (id!=178116 && (FLAGS_id==-1 || FLAGS_id==id)) {
+      if (FLAGS_id==-1 || FLAGS_id==id) {
         std::stringstream ss;
         ss << FLAGS_problem << "problem_" << id << ".json";
         LOG(INFO) << "Problem=" << ss.str();
@@ -512,6 +515,8 @@ int main(int argc, char* argv[]) {
         } catch (...) {
           LOG(ERROR) << "ERROR: " << id;
         }
+      } else {
+        entries.erase(entries.begin() + i--);
       }
     }
   }
