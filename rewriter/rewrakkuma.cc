@@ -21,6 +21,7 @@
 #include "../../simulator/board.h"
 #include "../../simulator/game.h"
 #include "../../simulator/unit.h"
+#include "../../simulator/scorer.h"
 
 /////////////////////////////////////////////////////////////////////////////////
 // Signal handling.
@@ -52,24 +53,6 @@ class six_vector {
   std::array<T, 6> data;
   size_t size;
 };
-
-int count_occurrence(const std::string& heystack, const std::string& needle) {
-  int cnt = 0;
-  for(int s=0; s+needle.size()<=heystack.size(); ++s)
-    if(needle == heystack.substr(s, needle.size()))
-      ++cnt;
-  return cnt;
-}
-
-int score(const std::string& cmd, const std::vector<std::string>& phrases) {
-  int total_score = 0;
-  for(auto& p: phrases) {
-    int resp = count_occurrence(cmd, p);
-    int lenp = p.size();
-    total_score += 2 * lenp * resp + (resp ? 300 : 0);
-  }
-  return total_score;
-}
 
 const char* g_cmds[] = {
   "p'!.03", // W
@@ -125,19 +108,34 @@ std::vector<bool> calc_goal_reachability(const Graph& g, Vert goal) {
   return visited;
 }
 
-std::string solve_on_graph(
-    const std::string& hint,
-    const Graph& Graph,
-    const std::vector<int>& depth,
-    Vert Start,
-    Vert Goal,
-    const std::vector<std::string>& phrases) {
+class PhraseSet {
+ public:
+  PhraseSet(const std::vector<std::string>& phrases)
+      : phrases_(phrases) {
+    reset();
+  }
 
-  // preprocess.
-  const std::vector<bool> reachable_to_goal =
-    std::move(calc_goal_reachability(Graph, Goal));
+  void reset() {
+    unseen_.clear();
+    unseen_.insert(phrases_.begin(), phrases_.end());
+    seen_.clear();
+  }
+  struct iterator;
+  iterator begin() {
+    return iterator(unseen_.begin(), unseen_.end(), seen_.begin());
+  }
+  iterator end() {
+    return iterator(unseen_.end(), unseen_.end(), seen_.end());
+  }
+  void mark_as_used(const std::string& ph) {
+    unseen_.erase(ph);
+    seen_.insert(ph);
+  }
 
-  // preprocess.
+ private:
+  const std::vector<std::string> phrases_;
+
+ private:
   struct ByLength {
     static int count_south(const std::string& s) {
       int cnt = 0;
@@ -154,8 +152,38 @@ std::string solve_on_graph(
       return lhs < rhs;
     }
   };
-  std::set<std::string, ByLength> unseen_phrases(phrases.begin(), phrases.end()), seen_phrases;
+  std::set<std::string, ByLength> unseen_, seen_;
+  typedef typename std::set<std::string, ByLength>::const_iterator inner_iterator;
 
+ public:
+  struct iterator {
+    iterator(inner_iterator as, inner_iterator as_end, inner_iterator bs)
+        : as_(as), as_end_(as_end), bs_(bs) {}
+    void operator++() {
+      ++(as_ == as_end_ ? bs_ : as_);
+    }
+    const std::string& operator*() const {
+      return *(as_ == as_end_ ? bs_ : as_);
+    }
+    bool operator!=(const iterator& rhs) const {
+      return as_!=rhs.as_ || bs_!=rhs.bs_;
+    }
+    inner_iterator as_, as_end, as_end_, bs_;
+  };
+};
+
+std::string solve_on_graph(
+    const std::string& hint,
+    const Graph& Graph,
+    const std::vector<int>& depth,
+    Vert Start,
+    Vert Goal,
+    PhraseSet& phrases) {
+  // preprocess.
+  const std::vector<bool> reachable_to_goal =
+    std::move(calc_goal_reachability(Graph, Goal));
+
+  // preprocess.
   std::string result;
   std::vector<bool> visited(Graph.size());
   for (Vert v=0; v<visited.size(); ++ v)
@@ -214,20 +242,11 @@ std::string solve_on_graph(
     };
 
     bool phrase_succeeded = false;
-    for (const auto& ph: unseen_phrases) {
+    for (const auto& ph: phrases) {
       if (try_phrase(ph)) {
-        unseen_phrases.erase(ph);
-        seen_phrases.insert(ph);
+        phrases.mark_as_used(ph);
         phrase_succeeded = true;
         break;
-      }
-    }
-    if (!phrase_succeeded) {
-      for (const auto& ph: seen_phrases) {
-        if (try_phrase(ph)) {
-          phrase_succeeded = true;
-          break;
-        }
       }
     }
     if (!phrase_succeeded) {
@@ -262,7 +281,7 @@ std::string generate_powerful_sequence(
     Game& game,
     const UnitLocation& start,
     const UnitLocation& goal,
-    const std::vector<std::string>& phrases) {
+    PhraseSet& phrases) {
   Graph graph;
 
   // Unit to node ID mapping.
@@ -313,6 +332,7 @@ std::string generate_powerful_sequence(
   VLOG(1) << "  Graph Generated (" << graph.size() << " nodes)";
   if (HURRY_UP_MODE)
     return hint;
+  phrases.reset();
   return solve_on_graph(hint, graph, depth, unit_to_id(start), unit_to_id(goal), phrases);
 }
 
@@ -341,13 +361,16 @@ void rewrite_main(
   std::string after;
   const int64_t oldscore = (output_entry->contains("_score") ?
       output_entry->get("_score").get<int64_t>() : 0);
-  const int beforescore = score(before, phrases);
+  const int beforescore = PowerScore(before, phrases);
 
   // Initialize the game.
   GameData game_data;
   game_data.Load(problem);
   Game game;
   game.Init(&game_data, seed_index);
+
+  // Preprocess PhraseSet.
+  PhraseSet phrase_set(phrases);
 
   // Split to subsegments.
   for (int s=0; s<before.size(); ) {
@@ -369,7 +392,7 @@ void rewrite_main(
         // (Reinitialize RNG, for reproducibility.)
         g_rand = std::mt19937(178116);
         after += generate_powerful_sequence(
-           before.substr(s, i-s), game, start, u, phrases);
+           before.substr(s, i-s), game, start, u, phrase_set);
         after += before[i];
         game.Run(cmd);
         s = i+1;
@@ -381,7 +404,7 @@ void rewrite_main(
   }
 
   // Output metadata.
-  int afterscore = score(after, phrases);
+  int afterscore = PowerScore(after, phrases);
   LOG(INFO) << "Before: " << oldscore;
   LOG(INFO) << "After: " << oldscore + afterscore - beforescore << "(+" << afterscore << ")";
   output_entry->get("solution") = picojson::value(after);
@@ -394,15 +417,10 @@ void rewrite_main(
 DEFINE_string(problem, "", "problem file");
 DEFINE_string(output, "", "output file");
 DEFINE_int64(id, -1, "specific id");
-DEFINE_string(p,
-  "Ei!,"
-  "R'lyeh,"
-  "yuggoth,"
-  "ia! ia!,"
-  "necronomiconi,"
-  "yogsothoth,"
-  "planet 10"
-  , "comma separted list of phrases");
+DEFINE_string(
+      p, "ei!,r'lyeh,yuggoth,ia! ia!,necronomicon,yogsothoth,planet 10,"
+       "john bigboote",
+       "Power phrase");
 
 std::vector<std::string> split(const std::string& str, char sep=',') {
   std::vector<std::string> result;
@@ -445,7 +463,9 @@ int main(int argc, char* argv[]) {
     p = to_lower(p);
 
   // For each --output entry...
-  for (auto& entry : output.get<picojson::array>()) {
+  auto& entries = output.get<picojson::array>();
+  for (int i=0; i<entries.size(); ++i) {
+    auto& entry = entries[i];
     if (HURRY_UP_MODE)
       continue;
     // Load the corresponding problem.
@@ -459,8 +479,9 @@ int main(int argc, char* argv[]) {
       rewrite_main(problem, &entry, phrases);
     } else {
       int id = entry.get("problemId").get<int64_t>();
+      if (FLAGS_id==-1 && id==178116) continue;
       // id filtering.
-      if (id!=178116 && (FLAGS_id==-1 || FLAGS_id==id)) {
+      if (FLAGS_id==-1 || FLAGS_id==id) {
         std::stringstream ss;
         ss << FLAGS_problem << "problem_" << id << ".json";
         LOG(INFO) << "Problem=" << ss.str();
@@ -472,6 +493,8 @@ int main(int argc, char* argv[]) {
         } catch (...) {
           LOG(ERROR) << "ERROR: " << id;
         }
+      } else {
+        entries.erase(entries.begin() + i--);
       }
     }
   }

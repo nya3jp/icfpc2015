@@ -11,6 +11,16 @@
 
 using namespace std;
 
+namespace {
+
+enum EvalState {
+  Unevaluated,
+  Good,
+  Bad
+};
+
+} // namespace
+
 // yasaka: Hasuta4 + reachability check
 class Yasaka : public Solver {
 public:
@@ -46,7 +56,7 @@ public:
       }
     }
   
-    vector<bool> isgood;
+    vector<EvalState> isgood(bfsresult.size(), Unevaluated);
     {
       // if impossible, try to add to denser, but solvable line
 
@@ -72,10 +82,8 @@ public:
       }
       VLOG(1) << "target y = " << targety;
 
-      isgood = goodlist(game, targety, bfsresult);
-
       // if solvable, try to select the solution which places less items 
-      int candidate = find_solutions_at(targety, game, bfsresult, isgood);
+      int candidate = find_solutions_at(targety, game, bfsresult, &isgood);
       if(candidate >= 0) {
         VLOG(1) << "Candidate found";
         return Game::Commands2SimpleString(bfsresult[candidate].second);
@@ -97,10 +105,15 @@ public:
         int dx = std::min(m.x(), game.GetBoard().width() - 1 - m.x());
         largestdx = std::max(largestdx, dx);
       }
-      scoretype newscore(isgood[i] ? 1 : 0, highesty, largestdx);
-      if(newscore > bestscore) {
-        ret = res.second;
-        bestscore = newscore;
+      scoretype newscore_tentative(1, highesty, largestdx);
+      if(newscore_tentative > bestscore) {
+        scoretype newscore(is_good(game, highesty,
+                                   bfsresult, i, &isgood),
+                           highesty, largestdx);
+        if(newscore > bestscore) {
+          ret = res.second;
+          bestscore = newscore;
+        }
       }
     }
     return Game::Commands2SimpleString(ret);
@@ -113,31 +126,32 @@ private:
   int find_solutions_at(int targety,
                         const Game &game,
                         const std::vector<Game::SearchResult>& candidates,
-                        const vector<bool>& goodlist) {
+                        vector<EvalState>* evalstate) {
     typedef std::pair<int, int> score;
     std::vector<score> scores;
 
     for(size_t i = 0; i < candidates.size(); ++i) {
       const UnitLocation &u = candidates[i].first;
-      if(!goodlist[i]) {
-        scores.push_back(score(1 << 30, 1 << 30));
-        continue;
-      }
+      bool y_ok = false;
       int lessy = 0;
       int dist2wall = 1 << 30;
       for(const auto &m: u.members()) {
         if(m.y() < targety) {
           ++lessy;
         }else if(m.y() == targety) {
+          y_ok = true;
           int dx = std::min(m.x(), game.GetBoard().width() - 1 - m.x());
           dist2wall = std::min(dist2wall, dx);
         }
       }
-      VLOG(2) << "candidate " << i << " pts: "  << lessy << " dist " << dist2wall;
-      scores.push_back(std::make_pair(lessy, dist2wall));
+      if(y_ok && is_good(game, targety, candidates, i, evalstate)) {
+        VLOG(2) << "candidate " << i << " pts: "  << lessy << " dist " << dist2wall;
+        scores.push_back(std::make_pair(lessy, dist2wall));
+      }else{
+        scores.push_back(score(1 << 30, 1 << 30));
+      }
     }
 
-    
     const auto& miniter = std::min_element(scores.begin(), scores.end());
     if(miniter->second == 1 << 30) {
       return -1;
@@ -148,23 +162,26 @@ private:
   }
 
   // Test whether candidate sequence hinders targety
-  vector<bool> goodlist(const Game &game, int targety, const std::vector<Game::SearchResult>& candidates) {
-    vector<bool> ret(candidates.size(), true);
-    
-    for(size_t i = 0; i < candidates.size(); ++i) {
-      const auto& c = candidates[i];
+  bool is_good(const Game &game, int targety,
+               const std::vector<Game::SearchResult>& candidates,
+               size_t candidatenum,
+               vector<EvalState> *eval_state) 
+  {
+    if((*eval_state)[candidatenum] == EvalState::Unevaluated) {
+      const auto& c = candidates[candidatenum];
       Game newgame = game;
       newgame.RunSequence(c.second);
       Board reachability;
+      (*eval_state)[candidatenum] = EvalState::Good;
       GetDotReachabilityFromTopAsMap(newgame, &reachability);
       for(int x = 0; x < game.GetBoard().width(); ++x) {
         if((!newgame.GetBoard()(x, targety)) && (!reachability(x, targety))) {
-          ret[i] = false;
+          (*eval_state)[candidatenum] = EvalState::Bad;
           break;
         }
       }
     }
-    return ret;
+    return (*eval_state)[candidatenum] == EvalState::Good;
   }
 };
 
