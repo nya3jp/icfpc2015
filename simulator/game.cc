@@ -80,47 +80,44 @@ HexPoint GetSpawnPosition(const Unit& unit, int width) {
 }
 
 Bound GetPivotApploxBound(const Unit& unit, int width, int height) {
-  std::vector<HexPoint> members = unit.members();
   Bound result = { std::numeric_limits<int>::max(),
                    std::numeric_limits<int>::min(),
                    std::numeric_limits<int>::max(),
                    std::numeric_limits<int>::min() };
-  for (int i = 0; i < unit.order(); ++i) {
-    if (i) {
-      for (auto& member : members) {
-        member = member.RotateClockwise();
-      }
-    }
+  for (int angle = 0; angle < unit.order(); ++angle) {
+    UnitLocation base(&unit, HexPoint(0, 0), angle);
 
     // Top.
     {
       HexPoint top(0, std::numeric_limits<int>::max());
-      for (const auto& member : members) {
+      for (const auto& member : base.members()) {
         if (top.y() > member.y()) {
           top = member;
         }
       }
 
       {
-        UnitLocation location(&unit, HexPoint(0, 0).TranslateToOrigin(top));
+        UnitLocation location(
+            &unit, HexPoint(0, 0).TranslateToOrigin(top), angle);
+
         result.top = std::min(result.top, location.pivot().y());
         result.bottom = std::max(result.bottom, location.pivot().y());
-        int left = width;
-        int right = 0;
+        int left = std::numeric_limits<int>::max();
+        int right = std::numeric_limits<int>::min();
         for (const auto& member : location.members()) {
           left = std::min(left, member.x());
           right = std::max(right, member.x());
         }
         result.left = std::min(result.left, location.pivot().x() - left);
         result.right = std::max(
-            result.right, location.pivot().y() + (width - right - 1));
+            result.right, location.pivot().x() + (width - right - 1));
       }
     }
 
     // Bottom.
     {
       HexPoint bottom(0, std::numeric_limits<int>::min());
-      for (const auto& member : members) {
+      for (const auto& member : base.members()) {
         if (bottom.y() < member.y()) {
           bottom = member;
         }
@@ -131,19 +128,20 @@ Bound GetPivotApploxBound(const Unit& unit, int width, int height) {
             &unit,
             HexPoint(0, 0)
                 .TranslateToOrigin(bottom)
-                .TranslateFromOrigin(HexPoint(0, height - 1)));
+                .TranslateFromOrigin(HexPoint(0, height - 1)),
+            angle);
 
         result.top = std::min(result.top, location.pivot().y());
         result.bottom = std::max(result.bottom, location.pivot().y());
-        int left = width;
-        int right = 0;
+        int left = std::numeric_limits<int>::max();
+        int right = std::numeric_limits<int>::min();
         for (const auto& member : location.members()) {
           left = std::min(left, member.x());
           right = std::max(right, member.x());
         }
         result.left = std::min(result.left, location.pivot().x() - left);
         result.right = std::max(
-            result.right, location.pivot().y() + (width - right - 1));
+            result.right, location.pivot().x() + (width - right - 1));
       }
     }
   }
