@@ -36,3 +36,17 @@ int PowerScore(const std::string& solution,
   }
   return result;
 }
+
+int PowerCount(const std::string& solution,
+               const std::vector<std::string>& phrase_list) {
+  int result = 0;
+  for (const std::string& phrase : phrase_list) {
+    int reps = 0;
+    for (size_t pos = 0;
+         (pos = solution.find(phrase, pos)) != std::string::npos; ++pos) {
+      ++reps;
+    }
+    result += reps ? 1 : 0;
+  }
+  return result;
+}

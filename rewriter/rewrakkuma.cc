@@ -460,11 +460,14 @@ void rewrite_main(
   }
 
   // Output metadata.
-  int afterscore = PowerScore(after, phrases);
-  LOG(INFO) << "Before: " << oldscore;
-  LOG(INFO) << "After: " << oldscore + afterscore - beforescore << "(+" << afterscore << ")";
   output_entry->get("solution") = picojson::value(after);
   output_entry->get("tag") = picojson::value("rewrakkuma");
+  if (HURRY_UP_MODE)
+    return;
+  int afterscore = PowerScore(after, phrases);
+  LOG(INFO) << "Before: " << oldscore;
+  LOG(INFO) << "After: " << oldscore + afterscore - beforescore <<
+     " (+" << afterscore << " by " << PowerCount(after, phrases) << " phrases)";
   output_entry->get("_score") = picojson::value(oldscore + afterscore - beforescore);
 }
 
