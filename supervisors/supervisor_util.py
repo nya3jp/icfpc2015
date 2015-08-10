@@ -127,6 +127,7 @@ class HazukiJobBase(object):
     except Exception:
       pass
     self._proc.wait()
+    self._proc.stdout.close()
     self.end_time = time.time()
     logging.debug('Finished in %.3fs: %r', self.end_time - self.start_time, self)
     self._call_callbacks()
