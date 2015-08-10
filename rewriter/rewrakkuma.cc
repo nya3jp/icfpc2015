@@ -46,11 +46,11 @@ template<typename T>
 class six_vector {
  public:
   six_vector() : size(0) {}
-  typename std::array<T, 6>::const_iterator begin() const { return data.begin(); }
-  typename std::array<T, 6>::const_iterator end() const { return data.begin() + size; }
+  const T* begin() const { return data; }
+  const T* end() const { return data + size; }
   void push_back(const T& t) { data[size++] = t; }
  private:
-  std::array<T, 6> data;
+  T data[6];
   size_t size;
 };
 
@@ -62,8 +62,11 @@ const char* g_cmds[] = {
   "dqrvz1", // RC
   "kstuwx", // RCC
 };
+std::vector<std::string> default_moves = {
+  "d", "k", "p", "b", "a", "l",
+};
 std::mt19937 g_rand;
-
+/*
 std::vector<std::string> random_default_moves() {
   //Better not to fall down to try many passes.
   std::vector<int> idx = {4,5,0,1,2,3};
@@ -76,6 +79,7 @@ std::vector<std::string> random_default_moves() {
   }
   return result;
 }
+*/
 
 /////////////////////////////////////////////////////////////////////////////////
 // On-graph solver.
@@ -299,7 +303,7 @@ std::string solve_on_graph(
       }
     }
     if (!phrase_succeeded) {
-      for (const auto& ph: random_default_moves())
+      for (const auto& ph: default_moves) //random_default_moves())
         if (try_phrase(ph))
           break;
     }
