@@ -65,7 +65,7 @@ public:
         }
         if(nreach + nfill[y] != reachable.width()) continue;
         // now this line is solvable
-        if(nfill[y] > placed) {
+        if(nfill[y] >= placed) { // prefers lower place in case of tie
           targety = y;
           placed = nfill[y];
         }
