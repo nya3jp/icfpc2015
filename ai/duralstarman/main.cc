@@ -13,8 +13,6 @@ int main(int argc, char* argv[]) {
 
   FLAGS_logtostderr = true;
   KaminekoScorer base_scorer;
-  //DuralStarmanScorer dural(&base_scorer, FLAGS_dural_width, FLAGS_dural_depth);
-  //return RunSolver2(new Kamineko(&dural), "DuralStarman");
   return RunSolver(
       new DuralStarmanSolver(&base_scorer, FLAGS_dural_width, FLAGS_dural_depth),
       "DuralStarman");
