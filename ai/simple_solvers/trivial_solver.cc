@@ -318,35 +318,41 @@ public:
   bool is_bar_only_game_;
   int max_unit_size_;
 
+  bool IsBar(const Unit& unit) {
+    const HexPoint origin(0, 0);
+    UnitLocation loc(&unit, origin);
+
+    int top, right, bottom, left;
+
+    GetBoundBox(loc, &top, &right, &bottom, &left);
+    if (top == bottom)
+      return true;
+
+    loc.RotateClockwise();
+    GetBoundBox(loc, &top, &right, &bottom, &left);
+    if (top == bottom)
+      return true;
+
+    loc.RotateClockwise();
+    GetBoundBox(loc, &top, &right, &bottom, &left);
+    if (top == bottom)
+      return true;
+
+    return false;
+  }
+
   virtual std::string NextCommands(const Game& game) {
     if (!checked_units_) {
       checked_units_ = true;
 
       bool non_bar_found = false;
-      HexPoint origin(0, 0);
       for (const auto& unit : game.units()) {
         max_unit_size_ = std::max(max_unit_size_,
                                   static_cast<int>(unit.members().size()));
 
-        UnitLocation loc(&unit, origin);
-
-        int top, right, bottom, left;
-
-        GetBoundBox(loc, &top, &right, &bottom, &left);
-        if (top == bottom)
-          continue;
-
-        loc.RotateClockwise();
-        GetBoundBox(loc, &top, &right, &bottom, &left);
-        if (top == bottom)
-          continue;
-
-        loc.RotateClockwise();
-        GetBoundBox(loc, &top, &right, &bottom, &left);
-        if (top == bottom)
-          continue;
-
-        non_bar_found = true;
+        if (!IsBar(unit)) {
+          non_bar_found = true;
+        }
       }
 
       if (non_bar_found) {
@@ -367,10 +373,6 @@ public:
     std::vector<Game::SearchResult> bfsresult;
     game.ReachableUnits(&bfsresult);
 
-    //if (GetBottom(game.current_unit()) != GetTop(game.current_unit())) {
-    //return Tetris(game, bfsresult, tetris_positions);
-    //}
-
     const Board& board = game.GetBoard();
 
     std::set<int> tetris_positions;
@@ -380,7 +382,6 @@ public:
     //Board rboard(board.width(), board.height());
     //GetDotReachabilityFromTopAsMap(game, &rboard);
 
-    //for (int y = board.height() - 1; y >= 0; --y) {
     for (int y = 0; y < board.height(); ++y) {
       int density = 0;
 
@@ -411,8 +412,6 @@ public:
           }
         }
       }
-
-      //break;
     }
 
     for (const auto &res: bfsresult) {
@@ -511,10 +510,6 @@ public:
 
         //if (!found)
         //  continue;
-
-        DVLOG(1) << "MAKE TETRISABLE " << x << ", " << y;
-
-        //return Game::Commands2SimpleString(ret);
       }
 
 
