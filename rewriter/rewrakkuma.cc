@@ -242,6 +242,7 @@ std::string generate_powerful_sequence(
     return id;
   };
 
+  std::vector<int> is_conflicting_cache(SIZE, -1);
   std::queue<int> Q; Q.push(unit_to_id(start));
   while (!Q.empty()) {
     Vert v = Q.front(); Q.pop();
@@ -249,12 +250,14 @@ std::string generate_powerful_sequence(
       if (HURRY_UP_MODE)
         return hint;
       UnitLocation uu = Game::NextUnit(known_unit[v], c);
-      if (uu.pivot().y() > goal.pivot().y())
-        continue;
-      if (game.GetBoard().IsConflicting(uu))
-        continue;
       int key = ((uu.pivot().x()+OFF)*(OFF+H+OFF)+(uu.pivot().y()+OFF))*6+uu.angle();
       bool neo = (known_unit_id[key] == -1);
+      if (uu.pivot().y() > goal.pivot().y())
+        continue;
+      if (is_conflicting_cache[key] == -1)
+         is_conflicting_cache[key] = game.GetBoard().IsConflicting(uu) ? 1 : 0;
+      if (is_conflicting_cache[key])
+        continue;
       Vert u = unit_to_id(uu);  // modifies known_unit_id, so after neo.
       graph[v].emplace_back(c, u);
       if (neo) Q.push(u);
