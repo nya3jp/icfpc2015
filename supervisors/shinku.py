@@ -9,7 +9,9 @@ supervisors/shinku.py -f problem.json
 import time
 g_start_time = time.time()
 
+import collections
 import logging
+import os
 import sys
 import threading
 
@@ -28,7 +30,9 @@ gflags.DEFINE_integer('timelimit', 0, 'Time limit in seconds.', short_name='t')
 gflags.DEFINE_integer('memlimit', 0, 'Memory limit in megabytes.', short_name='m')
 
 gflags.DEFINE_bool('disable_cgroup', False, 'Disable cgroup.')
+gflags.DEFINE_bool('use_state_of_the_art', False, 'Use state-of-the-art.json.')
 gflags.DEFINE_multistring('quick_solver', [], 'Path to quick solver.')
+gflags.DEFINE_multistring('heavy_solver', [], 'Path to heavy solver.')
 gflags.DEFINE_string('rewriter', None, 'Path to rewriter.')
 gflags.DEFINE_bool('show_scores', False, 'Show scores.')
 gflags.DEFINE_bool('report', True, 'Report the result to log server.')
@@ -37,15 +41,101 @@ gflags.DEFINE_string('report_tag', None, 'Overrides tag on reporting.')
 CGROUP_NAME = 'natsubate'
 
 
+def load_state_of_the_art(tasks):
+  if not FLAGS.use_state_of_the_art:
+    return []
+
+  json_path = os.path.join(
+    os.path.dirname(__file__), '..', 'solutions', 'state-of-the-art.json')
+  with open(json_path) as f:
+    solutions = json.load(f)
+
+  known_problem_seeds = set((task['id'], task['sourceSeeds'][0]) for task in tasks)
+  solutions = [
+    solution for solution in solutions
+    if (solution['problemId'], solution['seed']) in known_problem_seeds]
+
+  for solution in solutions:
+    solution['tag'] = 'state-of-the-art'
+
+  return solutions
+
+
+def register_reschedule_callbacks(secondary_job, primary_jobs):
+  finished_primary_jobs = set()
+
+  def finish_callback(finishing_job):
+    finished_primary_jobs.add(finishing_job)
+    if len(finished_primary_jobs) != len(primary_jobs):
+      return
+    quick_jobs = [job for job in primary_jobs if job.data == 'quick']
+    heavy_jobs = [job for job in primary_jobs if job.data != 'quick']
+    quick_jobs.sort(key=lambda job: job.solution['_score'], reverse=True)
+    heavy_jobs.sort(key=lambda job: job.solution['_score'], reverse=True)
+    quick_score = quick_jobs[0].solution['_score']
+    heavy_score = heavy_jobs[0].solution['_score']
+    if heavy_score <= quick_score:
+      base_priority = 900
+    else:
+      base_priority = 300
+    for i, heavy_job in enumerate(heavy_jobs):
+      if secondary_job.args == heavy_job.args:
+        secondary_job.set_priority(base_priority + i)
+        break
+    else:
+        secondary_job.set_priority(283283283)
+
+  for job in primary_jobs:
+    job.register_finish_callback(finish_callback)
+
+
 def run_solvers(tasks, num_threads, deadline):
   jobs = []
+
+  primary_tasks = []
+  secondary_tasks = []
+  primary_task_map = {}
+  for task in tasks:
+    if task['id'] not in primary_task_map:
+      primary_task_map[task['id']] = task
+      primary_tasks.append(task)
+    else:
+      secondary_tasks.append(task)
+
+  primary_jobs_map = collections.defaultdict(list)
   for quick_solver in FLAGS.quick_solver:
     for task in tasks:
       job = supervisor_util.SolverJob(
         args=[quick_solver],
         task=task,
+        priority=100,
+        data='quick',
         cgroup=None if FLAGS.disable_cgroup else CGROUP_NAME)
       jobs.append(job)
+      if task is primary_task_map[job.problem_id]:
+        primary_jobs_map[job.problem_id].append(job)
+
+  for heavy_solver in FLAGS.heavy_solver:
+    for task in primary_tasks:
+      job = supervisor_util.SolverJob(
+        args=[heavy_solver],
+        task=task,
+        priority=200,
+        data='heavy',
+        cgroup=None if FLAGS.disable_cgroup else CGROUP_NAME)
+      jobs.append(job)
+      primary_jobs_map[job.problem_id].append(job)
+
+  for heavy_solver in FLAGS.heavy_solver:
+    for task in secondary_tasks:
+      job = supervisor_util.SolverJob(
+        args=[heavy_solver],
+        task=task,
+        priority=500,
+        data='heavy',
+        cgroup=None if FLAGS.disable_cgroup else CGROUP_NAME)
+      jobs.append(job)
+      register_reschedule_callbacks(job, primary_jobs_map[job.problem_id])
 
   soft_deadline = deadline - 0.5
 
@@ -126,9 +216,11 @@ def solve_tasks(tasks, num_threads, deadline):
   rewrite_time = min(max(3, 0.5 * len(tasks)), time_to_deadline / 5)
   solver_deadline = deadline - rewrite_time
 
-  solutions = run_solvers(tasks, num_threads, solver_deadline)
-  solutions += run_rewriter(solutions, tasks, num_threads, deadline)
-  return choose_best_solutions(solutions, tasks)
+  known_solutions = load_state_of_the_art(tasks)
+  plain_solutions = run_solvers(tasks, num_threads, solver_deadline)
+  rewritten_solutions = run_rewriter(plain_solutions, tasks, num_threads, deadline)
+  return choose_best_solutions(
+    known_solutions + plain_solutions + rewritten_solutions, tasks)
 
 
 def main(unused_argv):
@@ -141,6 +233,9 @@ def main(unused_argv):
     FLAGS.timelimit = 24 * 60 * 60
   if FLAGS.memlimit == 0:
     FLAGS.memlimit = supervisor_util.get_free_memory() - 64
+  if not FLAGS.powerphrase:
+    with open(os.path.join(os.path.dirname(__file__), '..', 'power_phrases.txt')) as f:
+      FLAGS.powerphrase = f.read().splitlines()
 
   logging.info(
     'Limits: %d cores, %d seconds, %d megabytes',
@@ -152,8 +247,7 @@ def main(unused_argv):
     'Input: %d problems, %d tasks',
     len(FLAGS.problem), len(tasks))
 
-  # Use at least two threads for efficiency.
-  num_threads = max(2, FLAGS.cores)
+  num_threads = FLAGS.cores * 2
 
   deadline = g_start_time + FLAGS.timelimit - 1
 

@@ -22,6 +22,7 @@ exec 3<&-
 time ./play_icfp2015 \
   --logtostderr=debug \
   --disable_cgroup --show_scores --report --report_tag=shinku \
+  --nouse_state_of_the_art \
   -t 60 -m 1024 -c 4 \
   "${power_args[@]}" \
   -f problems/problem_0.json \

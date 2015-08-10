@@ -5,7 +5,11 @@ root_dir="$(dirname "$0")"
 export LD_LIBRARY_PATH="$root_dir/googlelib/glog/.libs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 exec "$root_dir/supervisors/shinku.py" \
+  --use_state_of_the_art \
   --quick_solver=ai/simple_solvers/greedy_ai_3 \
+  --quick_solver=ai/simple_solvers/trivial_solver \
+  --heavy_solver=ai/simple_solvers/yasaka \
+  --heavy_solver=ai/kamineko/kamineko \
   --rewriter=rewriter/rewrakkuma \
   --noreport \
   "$@"

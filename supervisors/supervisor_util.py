@@ -18,10 +18,17 @@ FLAGS = gflags.FLAGS
 gflags.DEFINE_bool('enable_hazuki_proxy', False, '')
 
 
+DEFAULT_PRIORITY = -1
+
+
 class HazukiJobBase(object):
-  def __init__(self, problem_id, seed, cgroup=None):
-    self.problem_id = problem_id
-    self.seed = seed
+  def __init__(self, task, priority=DEFAULT_PRIORITY, data=None, cgroup=None):
+    self.problem_id = task['id']
+    self.seed = task['sourceSeeds'][0]
+    self.task = task
+    self.priority = priority
+    self.data = data
+    self.size = task['width'] * task['height']
     self._cgroup = cgroup
     self._proc = None
     self._reader_thread = None
@@ -33,6 +40,11 @@ class HazukiJobBase(object):
 
   def register_finish_callback(self, callback):
     self._finish_callbacks.append(callback)
+
+  def set_priority(self, new_priority):
+    if not self._proc:
+      self.priority = new_priority
+      logging.debug('Rescheduled priority: %r', self)
 
   def start(self):
     logging.debug('Starting: %r', self)
@@ -128,9 +140,8 @@ class HazukiJobBase(object):
 
 
 class SolverJob(HazukiJobBase):
-  def __init__(self, args, task, cgroup=None):
-    super(SolverJob, self).__init__(
-      problem_id=task['id'], seed=task['sourceSeeds'][0], cgroup=cgroup)
+  def __init__(self, args, task, priority=DEFAULT_PRIORITY, data=None, cgroup=None):
+    super(SolverJob, self).__init__(task=task, priority=priority, data=data, cgroup=cgroup)
     self.args = args
     self.task = task
     self._signal_thread = None
@@ -164,14 +175,13 @@ class SolverJob(HazukiJobBase):
         logging.exception('Uncaught exception in signal thread: %r', self)
 
   def __repr__(self):
-    return '<SolverJob p%d/s%d %s>' % (
-      self.problem_id, self.seed, os.path.basename(self.args[0]))
+    return '<SolverJob p%d/s%d pri=%d %s>' % (
+      self.problem_id, self.seed, self.priority, os.path.basename(self.args[0]))
 
 
 class RewriterJob(HazukiJobBase):
-  def __init__(self, args, solution, task, cgroup=None):
-    super(RewriterJob, self).__init__(
-      problem_id=solution['problemId'], seed=solution['seed'], cgroup=cgroup)
+  def __init__(self, args, solution, task, priority=DEFAULT_PRIORITY, data=None, cgroup=None):
+    super(RewriterJob, self).__init__(task=task, priority=priority, data=data, cgroup=cgroup)
     self.args = args
     self.original_solution = solution
     self.task = task
@@ -193,17 +203,20 @@ class RewriterJob(HazukiJobBase):
       task_f.close()
       solution_f.close()
     self.register_finish_callback(close_temp_files)
-    return subprocess.Popen(real_args, stdout=subprocess.PIPE)
+    with open(os.devnull, 'w') as devnull:
+      logging.debug('*** ARGS: %s', ' '.join(real_args))
+      return subprocess.Popen(real_args, stdout=subprocess.PIPE)
 
   def __repr__(self):
-    return '<RewriterJob p%d/s%d %s>' % (
-      self.problem_id, self.seed, os.path.basename(self.args[0]))
+    return '<RewriterJob p%d/s%d pri=%d %s>' % (
+      self.problem_id, self.seed, self.priority, os.path.basename(self.args[0]))
 
 
 def run_generic_jobs(jobs, num_threads, soft_deadline, hard_deadline):
   unstarted_jobs = list(jobs)
   started_jobs = []
   finished_jobs = []
+  job_order = []
   finish_queue = queue.Queue()
   soft_deadline_triggered = False
 
@@ -220,10 +233,12 @@ def run_generic_jobs(jobs, num_threads, soft_deadline, hard_deadline):
     # Start jobs as many as possible.
     if not soft_deadline_triggered:
       while unstarted_jobs and len(started_jobs) < num_threads:
-        new_job = unstarted_jobs.pop(0)
+        new_job = min(unstarted_jobs, key=lambda job: (job.priority, job.size))
+        unstarted_jobs.remove(new_job)
         new_job.register_finish_callback(lambda job: finish_queue.put(job))
         new_job.start()
         started_jobs.append(new_job)
+        job_order.append(new_job)
 
     # Wait for job finish.
     now = time.time()
@@ -253,6 +268,10 @@ def run_generic_jobs(jobs, num_threads, soft_deadline, hard_deadline):
   logging.info(
     'Job stats: %d finished, %d terminated, %d unstarted',
     len(finished_jobs), len(started_jobs), len(unstarted_jobs))
+
+  logging.debug('Job execution order:')
+  for job in job_order:
+    logging.debug('  %r score=%d', job, job.solution['_score'])
 
 
 def make_sentinel_solution(problem_id, seed):
