@@ -1,6 +1,10 @@
 #!/bin/bash
 
-exec "$(dirname "$0")/supervisors/shinku.py" \
+root_dir="$(dirname "$0")"
+
+export LD_LIBRARY_PATH="$root_dir/googlelib/glog/.libs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+exec "$root_dir/supervisors/shinku.py" \
   --quick_solver=ai/simple_solvers/greedy_ai_3 \
   --noreport \
   "$@"
