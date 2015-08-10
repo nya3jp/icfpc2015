@@ -102,6 +102,8 @@ class Game {
   }
   size_t GetNumberOfUnits() const { return data_->units().size(); }
 
+  const int prev_cleared_lines() const { return prev_cleared_lines_; }
+
  private:
   const GameData* data_;
   Board board_;
