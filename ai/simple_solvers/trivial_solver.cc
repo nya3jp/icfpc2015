@@ -227,8 +227,12 @@ public:
       }
 
       for (const auto& move : moves) {
-        if (!InBoard(board, move) || board(move.x(), move.y()))
-          ++score;
+        if (InBoard(board, move)) {
+          if (board(move.x(), move.y()))
+            score += 2;
+        } else {
+          score += 1;
+        }
       }
     }
 
