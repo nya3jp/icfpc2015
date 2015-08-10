@@ -229,10 +229,11 @@ def choose_best_solutions(solutions, tasks):
 
 
 def solve_tasks(tasks, num_threads, deadline):
+  task_size_total = sum(task['width'] * task['height'] for task in tasks)
+
   now = time.time()
-  # Give the rewriter 0.5 * #tasks (max 1/5 of allowed time, min 3sec).
   time_to_deadline = deadline - now
-  rewrite_time = min(max(3, 0.5 * len(tasks)), time_to_deadline / 5)
+  rewrite_time = min(max(3, 0.001 * task_size_total), time_to_deadline / 5)
   solver_deadline = deadline - rewrite_time
 
   known_solutions = load_state_of_the_art(tasks)
