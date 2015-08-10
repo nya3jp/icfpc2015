@@ -88,6 +88,7 @@ def index_handler():
   tag_class_map = collections.defaultdict(str)
   tag_class_map['handplay_viz'] = 'warning'
   tag_class_map['rewrakkuma'] = 'success'
+  tag_class_map['shinku'] = 'danger'
 
   template_values = {
     'problem_ids': problem_ids,
