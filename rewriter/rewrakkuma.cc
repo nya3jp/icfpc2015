@@ -199,22 +199,39 @@ std::string solve_on_graph(
   return result;
 }
 
+// Construct the abstract graph structure and pass to the graph-based solver.
 std::string generate_powerful_sequence(
     const std::string& hint,
     Game& game,
     const UnitLocation& start,
     const UnitLocation& goal,
     const std::vector<std::string>& phrases) {
-  // Construct the abstract graph structure. 
-  std::unordered_map<UnitLocation, int, UnitLocation::Hash> known_unit_id;
-  //std::map<UnitLocation, int> known_unit_id;
+
+  // Unit to integer ID mapping.
+  int xm=0x7fffffff, xM=-0x7fffffff;
+  int ym=0x7fffffff, yM=-0x7fffffff;
+  for (const auto& pt: start.members()) {
+    xm = std::min(xm, pt.x());
+    xM = std::max(xM, pt.x());
+    ym = std::min(ym, pt.y());
+    yM = std::max(yM, pt.y());
+  }
+  xm = std::min(xm, start.pivot().x());
+  xM = std::max(xM, start.pivot().x());
+  ym = std::min(ym, start.pivot().y());
+  yM = std::max(yM, start.pivot().y());
+  int OFF = (2+std::max(xM-xm, yM-ym))*2;
+  int W = game.board().width();
+  int H = game.board().height();
+  int SIZE = (OFF+W+OFF)*(OFF+H+OFF)*6;
+  std::vector<int> known_unit_id(SIZE, -1); 
   std::vector<UnitLocation> known_unit;
   auto unit_to_id = [&](const UnitLocation& u) {
-    auto it = known_unit_id.find(u);
-    if (it != known_unit_id.end())
-      return it->second;
+    int key = ((u.pivot().x()+OFF)*(OFF+H+OFF)+(u.pivot().y()+OFF))*6+u.angle();
+    if (known_unit_id[key] != -1)
+      return known_unit_id[key];
     int id = known_unit.size();
-    known_unit_id[u] = id;
+    known_unit_id[key] = id;
     known_unit.emplace_back(u);
     return id;
   };
