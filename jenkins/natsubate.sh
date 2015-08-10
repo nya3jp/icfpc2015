@@ -4,8 +4,10 @@ export LANG=C
 cd "$(dirname "$0")/.."
 set -ex
 
-touch .deps
-make build
+if [[ "--nobuild" != "$1" ]]; then
+  touch .deps
+  make build
+fi
 
 mkdir -p out/
 

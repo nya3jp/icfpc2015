@@ -168,6 +168,38 @@ class SolverJob(HazukiJobBase):
       self.problem_id, self.seed, os.path.basename(self.args[0]))
 
 
+class RewriterJob(HazukiJobBase):
+  def __init__(self, args, solution, task, cgroup=None):
+    super(RewriterJob, self).__init__(
+      problem_id=solution['problemId'], seed=solution['seed'], cgroup=cgroup)
+    self.args = args
+    self.original_solution = solution
+    self.task = task
+
+  def _make_process(self):
+    task_f = tempfile.NamedTemporaryFile()
+    json.dump(self.task, task_f)
+    task_f.flush()
+    task_f.seek(0)
+    solution_f = tempfile.NamedTemporaryFile()
+    json.dump([self.original_solution], solution_f)
+    solution_f.flush()
+    solution_f.seek(0)
+    real_args = list(self.args) + [
+      '--problem=%s' % task_f.name,
+      '--output=%s' % solution_f.name,
+    ]
+    def close_temp_files(self):
+      task_f.close()
+      solution_f.close()
+    self.register_finish_callback(close_temp_files)
+    return subprocess.Popen(real_args, stdout=subprocess.PIPE)
+
+  def __repr__(self):
+    return '<RewriterJob p%d/s%d %s>' % (
+      self.problem_id, self.seed, os.path.basename(self.args[0]))
+
+
 def run_generic_jobs(jobs, num_threads, soft_deadline, hard_deadline):
   unstarted_jobs = list(jobs)
   started_jobs = []
