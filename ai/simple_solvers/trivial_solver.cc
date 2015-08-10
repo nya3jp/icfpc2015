@@ -68,6 +68,7 @@ public:
   TrivialSolver()
     : checked_units_(false),
       is_bar_only_game_(true),
+      is_no_bar_game_(true),
       max_unit_size_(0) {}
   virtual ~TrivialSolver() {}
 
@@ -332,6 +333,7 @@ public:
 
   bool checked_units_;
   bool is_bar_only_game_;
+  bool is_no_bar_game_;
   int max_unit_size_;
 
   bool IsBar(const Unit& unit) {
@@ -361,6 +363,8 @@ public:
     if (!checked_units_) {
       checked_units_ = true;
 
+      is_no_bar_game_ = true;
+
       bool non_bar_found = false;
       for (const auto& unit : game.units()) {
         max_unit_size_ = std::max(max_unit_size_,
@@ -368,6 +372,8 @@ public:
 
         if (!IsBar(unit)) {
           is_bar_only_game_ = false;
+        } else {
+          is_no_bar_game_ = false;
         }
       }
     }
@@ -393,6 +399,8 @@ public:
     //Board rboard(board.width(), board.height());
     //GetDotReachabilityFromTopAsMap(game, &rboard);
 
+    int reach_lines = 0;
+
     for (int y = 0; y < board.height(); ++y) {
       int density = 0;
 
@@ -407,6 +415,9 @@ public:
           // }
         }
       }
+
+      if (density == board.width() - 1)
+        ++reach_lines;
 
       if (bad)
         continue;
@@ -443,9 +454,11 @@ public:
     for (const auto &res: bfsresult) {
       int cleared = game.GetBoard().LockPreview(res.first);
       if (cleared >= 6 ||
+          (cleared > 1 && !is_bar_only_game_) ||
           (cleared > 0 && (game.units_remaining() < 4 ||
+                           game.units_remaining() <= reach_lines ||
                            game.prev_cleared_lines() > 1 ||
-                           !is_bar_only_game_ ||
+                           is_no_bar_game_ ||
                            max_unit_size_ == 1)))
         return Tetris(game, bfsresult, tetris_line, tetris_line_top);
     }
