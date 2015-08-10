@@ -88,6 +88,7 @@ typedef std::pair<Game::Command, Vert> Edge;
 typedef six_vector<Edge> Edges;
 typedef std::vector<Edges> Graph;
 
+// Backward reachability... flags all the nodes reachable to goal.
 std::vector<bool> calc_goal_reachability(const Graph& g, Vert goal) {
   std::vector<six_vector<int>> r(g.size());
   for (int v=0; v<g.size(); ++v)
@@ -108,6 +109,8 @@ std::vector<bool> calc_goal_reachability(const Graph& g, Vert goal) {
   return visited;
 }
 
+// A data structure to maintain the set of phrases.
+// Determines the ordering which phrase to prefer.
 class PhraseSet {
  public:
   PhraseSet(const std::vector<std::string>& phrases)
@@ -152,13 +155,16 @@ class PhraseSet {
  private:
   void update_order() {
     std::sort(order_.begin(), order_.end(), [&](int a, int b) {
+      // prefer unseen
       if(seen_[a] != seen_[b]) return seen_[a] < seen_[b];
       const std::string& lhs = phrases_[a];
       const std::string& rhs = phrases_[b];
       if (last_phrase_ != -1) {
+        // prefer less {SE,SW}.
         int sa = overwrap_south_[last_phrase_][a];
         int sb = overwrap_south_[last_phrase_][b];
         if(sa!=sb) return sa<sb;
+        // prefer shorter.
         int la = phrases_[a].size() - overwrap_[last_phrase_][a];
         int lb = phrases_[b].size() - overwrap_[last_phrase_][b];
         if(la!=lb) return la<lb;
@@ -166,6 +172,7 @@ class PhraseSet {
         if (south_[a] != south_[b]) return south_[a] < south_[b];
         if (lhs.size() != rhs.size()) return lhs.size() < rhs.size();
       }
+      // whatever
       return lhs < rhs;
     });
   }
@@ -226,7 +233,6 @@ std::string solve_on_graph(
   const std::vector<bool> reachable_to_goal =
     std::move(calc_goal_reachability(Graph, Goal));
 
-  // preprocess.
   std::string result;
   std::vector<bool> visited(Graph.size());
   for (Vert v=0; v<visited.size(); ++ v)
@@ -302,6 +308,7 @@ std::string solve_on_graph(
   return result;
 }
 
+// To put it in an array.
 int estimate_pivot_overflow(const UnitLocation& u) {
   int xm=0x7fffffff, xM=-0x7fffffff;
   int ym=0x7fffffff, yM=-0x7fffffff;
@@ -345,6 +352,7 @@ std::string generate_powerful_sequence(
     return id;
   };
 
+  // Generate graph.
   std::vector<int> is_conflicting_cache(SIZE, -1);
   std::queue<int> Q; Q.push(unit_to_id(start));
   while (!Q.empty()) {
@@ -367,6 +375,7 @@ std::string generate_powerful_sequence(
     }
   }
 
+  // Remember depth.
   std::vector<int> depth(graph.size());
   for (int v=0; v<graph.size(); ++v)
     depth[v] = known_unit[v].pivot().y();
@@ -510,7 +519,7 @@ int main(int argc, char* argv[]) {
   for (int i=0; i<entries.size(); ++i) {
     auto& entry = entries[i];
     if (HURRY_UP_MODE)
-      continue;
+      break;
     // Load the corresponding problem.
     // If --problem points to a json file, open it.
     // Otherwise assume it to be a directory and find read problem_%d.json.

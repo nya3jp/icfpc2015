@@ -9,7 +9,7 @@ LIBS = -L../googlelib/glog/.libs -lglog \
        -lpthread
 TEST_LIBS = -L../googlelib/gtest -lgtest_main -lgtest
 
-CFLAGS=-O3 -DPICOJSON_USE_INT64 -g --std=c++11 $(INCLUDE)
+CFLAGS=-O3 -DPICOJSON_USE_INT64 -pg -g --std=c++11 $(INCLUDE)
 
 .PHONY: clean
 
