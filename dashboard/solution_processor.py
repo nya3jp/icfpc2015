@@ -54,7 +54,8 @@ def compute_score(db, solution):
         output = subprocess.check_output(
           [FLAGS.scorer,
            '--problem=%s' % problem_f.name,
-           '--output=%s' % solution_f.name],
+           '--output=%s' % solution_f.name,
+           '--minloglevel=4'],
           stderr=devnull)
   return int(output.strip())
 
