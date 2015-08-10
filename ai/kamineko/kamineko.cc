@@ -46,16 +46,12 @@ static int64_t Score(const Game& game, std::ostream& os) {
       }
     }
   }
-  int reachable = GetDotReachabilityFromTop(game);
-  int hole = board.width() * board.height() - reachable - block;
 
   int64_t height_score = GetHeightPenalty(height);
   int64_t result = game.score()
     - height_score * 100 - shade * 2000;
   os << "height:" << DumpV(height) << "(score:" << height_score
-     << ") hole:" << hole
      << " shade:" << shade
-     << " reachable:" << reachable
      << " score:" << game.score()
      << " total:" << result;
   return result;
