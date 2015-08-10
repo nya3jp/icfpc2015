@@ -18,6 +18,7 @@ bottle.TEMPLATE_PATH = [os.path.join(os.path.dirname(__file__), 'views')]
 
 
 def ensure_index():
+  db.solutions.ensure_index([('_id', pymongo.ASCENDING)])
   db.problems.ensure_index([('id', pymongo.ASCENDING)])
   db.leaderboard.ensure_index([('time', pymongo.ASCENDING)])
 
@@ -42,9 +43,10 @@ def index_handler():
     problem_seed_sizes[problem_id] = len(problem['sourceSeeds'])
 
   seed_map = collections.defaultdict(lambda: {'tag': 'nop', '_score': 0})
-  for solution in db.solutions.find():
+  for solution in db.solutions.find(sort=[('_id', pymongo.ASCENDING)]):
     key = (solution['problemId'], solution['seed'], solution['tag'])
-    if solution.get('_score', -1) > seed_map[key]['_score']:
+    if (solution['tag'] == 'shinku' or  # Shinku is ephemeral
+        solution.get('_score', -1) > seed_map[key]['_score']):
       seed_map[key] = solution
   tags = sorted(set(tag for (_, _, tag) in seed_map.iterkeys()))
   solution_map = collections.defaultdict(lambda: {'_solutions': [], '_avg_score': 0})
@@ -57,7 +59,7 @@ def index_handler():
       sum(s['_score'] for s in entry['_solutions']) / problem_seed_sizes[problem_id])
 
   best_seed_map = collections.defaultdict(lambda: {'tag': 'nop', '_score': 0})
-  for solution in db.solutions.find():
+  for solution in db.solutions.find(sort=[('_id', pymongo.ASCENDING)]):
     key = (solution['problemId'], solution['seed'])
     if solution.get('_score', -1) > best_seed_map[key]['_score']:
       best_seed_map[key] = solution
