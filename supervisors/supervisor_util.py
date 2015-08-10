@@ -38,7 +38,8 @@ class HazukiJobBase(object):
     self._proc = self._make_process()
     if self._cgroup:
       subprocess.call(
-        ['sudo', 'cgclassify', '-g', 'memory:%s' % self._cgroup, str(self._proc.pid)])
+        ['sudo', '-n', 'cgclassify', '-g', 'memory:%s' % self._cgroup,
+         str(self._proc.pid)])
     self._start_time = time.time()
     self._reader_thread = threading.Thread(target=self._reader_thread_main)
     self._reader_thread.daemon = True
@@ -104,6 +105,7 @@ class HazukiJobBase(object):
             solution['problemId'] = self.problem_id
             solution['seed'] = self.seed
             self.solution = solution
+            logging.info('score=%d: %r', solution['_score'], self)
     except Exception:
       logging.exception('Uncaught exception in output reader thread: %r', self)
     else:

@@ -6,14 +6,16 @@ clean:
 	rm -f .build .googlelib .deps
 
 setup:
-	sudo -l | grep -q NOPASSWD:
+	sudo -k
+	sudo -n -l | grep -q NOPASSWD:
 	sudo cgcreate -g memory:natsubate -a $(USER)
 	sudo swapoff -a
 
 force:
 
 build: .googlelib .deps force
-	#$(MAKE) -C ai/simple_solvers
+	$(MAKE) -C ai/simple_solvers clean
+	$(MAKE) -C ai/simple_solvers
 
 .googlelib:
 	python tools/build_googlelib.py

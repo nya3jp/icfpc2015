@@ -27,6 +27,7 @@ gflags.DEFINE_integer('cores', 0, 'Number of CPU cores.', short_name='c')
 gflags.DEFINE_integer('timelimit', 0, 'Time limit in seconds.', short_name='t')
 gflags.DEFINE_integer('memlimit', 0, 'Memory limit in megabytes.', short_name='m')
 
+gflags.DEFINE_bool('disable_cgroup', False, 'Disable cgroup.')
 gflags.DEFINE_multistring('quick_solver', [], 'Path to quick solver.')
 gflags.DEFINE_bool('show_scores', False, 'Show scores.')
 gflags.DEFINE_bool('report', True, 'Report the result to log server.')
@@ -41,7 +42,7 @@ def run_solvers(tasks, quick_solvers, num_threads, deadline):
       job = supervisor_util.SolverJob(
         args=[quick_solver],
         task=task,
-        cgroup=CGROUP_NAME)
+        cgroup=None if FLAGS.disable_cgroup else CGROUP_NAME)
       jobs.append(job)
 
   soft_deadline = deadline - 0.5
@@ -124,11 +125,17 @@ def main(unused_argv):
   deadline = g_start_time + FLAGS.timelimit - 1
 
   # Impose memory limit with cgroup.
-  solver_memlimit = max(1, FLAGS.memlimit - 128)
-  cgroup_memlimit_path = (
-    '/sys/fs/cgroup/memory/%s/memory.limit_in_bytes' % CGROUP_NAME)
-  with open(cgroup_memlimit_path, 'w') as f:
-    f.write(str(solver_memlimit * 1024 * 1024))
+  if not FLAGS.disable_cgroup:
+    solver_memlimit = max(1, FLAGS.memlimit - 128)
+    cgroup_memlimit_path = (
+      '/sys/fs/cgroup/memory/%s/memory.limit_in_bytes' % CGROUP_NAME)
+    try:
+      with open(cgroup_memlimit_path, 'w') as f:
+        f.write(str(solver_memlimit * 1024 * 1024))
+    except Exception:
+      logging.exception(
+        'Failed to set cgroup limit. Maybe you have not run "make"? '
+        'If you want to run without cgroup, specify --disable_cgroup.')
 
   solutions = solve_tasks(
     tasks,
