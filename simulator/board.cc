@@ -24,9 +24,10 @@ void Board::Load(const picojson::value& parsed) {
 
 bool Board::IsConflicting(const UnitLocation& unit) const {
   for (const auto& member : unit.members()) {
-    // Hack.
-    if (member.y() < 0 || height_ <= member.y() ||
-        member.x() < 0 || width_ <= member.x()) {
+    // Hack!!! The following operation is equivalent to
+    // (y < 0 || height_ <= y) || (x < 0 || width_ <= x)
+    if (height_ <= static_cast<unsigned int>(member.y()) ||
+        width_ <= static_cast<unsigned int>(member.x())) {
       return true;
     }
     if (cells_[member.y() * width_ + member.x()]) {
