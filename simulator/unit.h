@@ -145,7 +145,7 @@ class UnitLocation {
        return reinterpret_cast<size_t>(u.unit_)
           ^ (u.pivot().x()<<16)
           ^ (u.pivot().y()<<16)
-          ^ (u.angle());
+          ^ (u.angle()<<13);
     }
   };
   friend struct UnitLocation::Hash;
