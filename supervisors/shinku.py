@@ -167,11 +167,19 @@ def run_rewriter(original_solutions, tasks, num_threads, deadline):
   for task in tasks:
     task_map[(task['id'], task['sourceSeeds'][0])] = task
 
+  original_solutions = sorted(
+    original_solutions, key=lambda solution: solution['_score'], reverse=True)
+  solution_rank_map = collections.defaultdict(lambda: 0)
+
   jobs = []
   for solution in original_solutions:
+    key = (solution['problemId'], solution['seed'])
+    priority = solution_rank_map[key]
+    solution_rank_map[key] += 1
     job = supervisor_util.RewriterJob(
       args=rewriter_args,
       solution=solution,
+      priority=priority,
       task=task_map[(solution['problemId'], solution['seed'])],
       cgroup=None if FLAGS.disable_cgroup else CGROUP_NAME)
     jobs.append(job)
