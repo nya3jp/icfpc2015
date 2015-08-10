@@ -301,6 +301,8 @@ std::string solve_on_graph(
         phrase_succeeded = true;
         break;
       }
+      if (HURRY_UP_MODE)
+        return hint;
     }
     if (!phrase_succeeded) {
       for (const auto& ph: default_moves) //random_default_moves())
