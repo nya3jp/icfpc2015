@@ -69,51 +69,54 @@ static int64_t MinScore(const Game& game) {
     2 * (height * width * height * 100 + height * width * 2000);
 }
 
-void AddNewPath(std::vector<Kamineko::GamePath>* pathp,
-                const Kamineko::GamePath& next,
+Kamineko::GamePath* AddNewPath(std::vector<Kamineko::GamePath*>* pathp,
+                               Kamineko::GamePath* next,
                 int width) {
-  std::vector<Kamineko::GamePath>& path = *pathp;
+  std::vector<Kamineko::GamePath*>& path = *pathp;
   if (path.size() < width) {
     path.emplace_back(next);
-    return;
+    return nullptr;
   }
   int min_index = 0;
-  int min_score = path[0].score;
+  int min_score = path[0]->score;
   for (int i = 1; i < path.size(); ++i) {
-    if (min_score > path[i].score) {
+    if (min_score > path[i]->score) {
       min_index = i;
-      min_score = path[i].score;
+      min_score = path[i]->score;
     }
   }
-  if (min_score < next.score) {
+  if (min_score < next->score) {
+    Kamineko::GamePath* result = path[min_index];
     path[min_index] = next;
+    return result;
   }
+  return next;
 }
 
-const Kamineko::GamePath& GetBest(std::vector<Kamineko::GamePath>& path) {
+const Kamineko::GamePath& GetBest(std::vector<Kamineko::GamePath*>& path) {
   int max_index = 0;
-  int max_score = path[0].score;
+  int max_score = path[0]->score;
   for (int i = 1; i < path.size(); ++i) {
-    if (max_score < path[i].score) {
+    if (max_score < path[i]->score) {
       max_index = i;
-      max_score = path[i].score;
+      max_score = path[i]->score;
     }
   }
-  return path[max_index];
+  return *path[max_index];
 }
 
 void Kamineko::AddGame(const Game& game) {
   path_.clear();
-  path_.emplace_back(game, false, 0, "");
+  path_.emplace_back(new GamePath(game, false, 0, "", ""));
 }
 
 bool Kamineko::Next(std::string* best_command, int* res_score) {
-  std::vector<Kamineko::GamePath> next_path;
+  std::vector<Kamineko::GamePath*> next_path;
   for (const auto& p0 : path_) {
-    if (p0.finished) {
+    if (p0->finished) {
       continue;
     }
-    const Game& cur_game = p0.game;
+    const Game& cur_game = p0->game;
 
     std::vector<Game::SearchResult> bfsresult;
     cur_game.ReachableUnits(&bfsresult);
@@ -127,15 +130,28 @@ bool Kamineko::Next(std::string* best_command, int* res_score) {
       } else {
         score = Score(ng, os);
       }
-      AddNewPath(
-          &next_path,
-          Kamineko::GamePath(
-              ng, finished, score,
-              p0.commands + Game::Commands2SimpleString(res.second)),
-          FLAGS_kamineko_hands);
+      Kamineko::GamePath* weak =
+        AddNewPath(
+            &next_path,
+            new Kamineko::GamePath(
+                ng, finished, score,
+                p0->commands + Game::Commands2SimpleString(res.second),
+                os.str()),
+            FLAGS_kamineko_hands);
+      if (weak) {
+        delete weak;
+      }
     }
   }
   path_.swap(next_path);
+  for (int i = 0; i < next_path.size(); ++i) {
+    delete next_path[i];
+  }
+  for (const auto& p : path_) {
+    VLOG(1) << "G#" << p->score
+            << " \ngame:\n" << p->game
+            << "\ndebug:" << p->debug;
+  }
   const Kamineko::GamePath& p = GetBest(path_);
   *res_score = p.game.score();
   *best_command = p.commands;

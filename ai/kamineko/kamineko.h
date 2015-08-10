@@ -2,6 +2,7 @@
 #define KAMINEKO_H__
 
 #include <string>
+#include <vector>
 
 #include "../../simulator/game.h"
 #include "../../simulator/solver.h"
@@ -14,16 +15,19 @@ class Kamineko: public Solver2 {
   virtual bool Next(std::string* best_command, int* res_score);
   struct GamePath {
     Game game;
+    bool finished;
     int64_t score;
     std::string commands;
-    bool finished;
+    std::string debug;
     GamePath() {}
     GamePath(const Game& game, bool finished,
-             int64_t score, const std::string& commands)
-      : game(game), finished(finished), score(score), commands(commands) {}
+             int64_t score, const std::string& commands,
+             const std::string& debug)
+      : game(game), finished(finished), score(score), commands(commands),
+        debug(debug) {}
   };
  private:
-  std::vector<GamePath> path_;
+  std::vector<GamePath*> path_;
 };
 
 #endif  // KAMINEKO_H__
