@@ -74,8 +74,8 @@ int64_t GetDotReachabilityFromTopAsMap(const Game& game, Board *b)
       int newy = y + movepattern[i + 1];
       newx += movepattern[i + 1] * (y & 1);
       
-      if((newx < 0) || (newx >= width) || 
-         (newy < 0) || (newy >= height)) {
+      if (static_cast<unsigned int>(newx) >= width ||
+          static_cast<unsigned int>(newy) >= height) {
         continue;
       }
       if(board(newx, newy) || (*b)(newx, newy)) {
