@@ -8,14 +8,6 @@
 #include "../../simulator/game.h"
 #include "../../simulator/solver.h"
 
-class GameScorer {
- public:
-  GameScorer();
-  virtual ~GameScorer();
-  virtual int64_t Score(const Game& game, bool finished,
-                        std::string* debug) = 0;
-};
-
 class KaminekoScorer : public GameScorer {
  public:
   KaminekoScorer();

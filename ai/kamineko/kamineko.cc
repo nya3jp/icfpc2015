@@ -29,9 +29,6 @@ std::string DumpV(const std::vector<T>& seq) {
   return ofs.str();
 }
 
-GameScorer::GameScorer() {}
-GameScorer::~GameScorer() {}
-
 KaminekoScorer::KaminekoScorer() {}
 KaminekoScorer::~KaminekoScorer() {}
 int64_t KaminekoScorer::Score(const Game& game, bool finished,

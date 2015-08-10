@@ -46,6 +46,9 @@ Solver::~Solver() {}
 Solver2::Solver2() {}
 Solver2::~Solver2() {}
 
+GameScorer::GameScorer() {}
+GameScorer::~GameScorer() {}
+
 class Solver12Converter : public Solver2 {
 public:
   Solver12Converter(Solver* solver)

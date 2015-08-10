@@ -30,4 +30,12 @@ Solver2* ConvertS12(Solver* solver);
 int RunSolver(Solver* solver, std::string solver_tag);
 int RunSolver2(Solver2* solver, std::string solver_tag);
 
+class GameScorer {
+ public:
+  GameScorer();
+  virtual ~GameScorer();
+  virtual int64_t Score(const Game& game, bool finished,
+                        std::string* debug) = 0;
+};
+
 #endif  // SOLVER_H__
