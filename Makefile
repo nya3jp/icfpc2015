@@ -16,6 +16,8 @@ force:
 build: .googlelib .deps force
 	$(MAKE) -C ai/simple_solvers clean
 	$(MAKE) -C ai/simple_solvers
+	$(MAKE) -C rewriter clean
+	$(MAKE) -C rewriter
 
 .googlelib:
 	python tools/build_googlelib.py

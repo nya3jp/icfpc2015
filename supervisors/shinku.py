@@ -29,6 +29,7 @@ gflags.DEFINE_integer('memlimit', 0, 'Memory limit in megabytes.', short_name='m
 
 gflags.DEFINE_bool('disable_cgroup', False, 'Disable cgroup.')
 gflags.DEFINE_multistring('quick_solver', [], 'Path to quick solver.')
+gflags.DEFINE_string('rewriter', None, 'Path to rewriter.')
 gflags.DEFINE_bool('show_scores', False, 'Show scores.')
 gflags.DEFINE_bool('report', True, 'Report the result to log server.')
 gflags.DEFINE_string('report_tag', None, 'Overrides tag on reporting.')
@@ -36,9 +37,9 @@ gflags.DEFINE_string('report_tag', None, 'Overrides tag on reporting.')
 CGROUP_NAME = 'natsubate'
 
 
-def run_solvers(tasks, quick_solvers, num_threads, deadline):
+def run_solvers(tasks, num_threads, deadline):
   jobs = []
-  for quick_solver in quick_solvers:
+  for quick_solver in FLAGS.quick_solver:
     for task in tasks:
       job = supervisor_util.SolverJob(
         args=[quick_solver],
@@ -64,12 +65,43 @@ def run_solvers(tasks, quick_solvers, num_threads, deadline):
   return solutions
 
 
-def run_rewriter(solutions, num_threads, deadline):
-  # TODO: IMPLMENT THIS!
-  now = time.time()
-  time_to_deadline = deadline - now
-  time.sleep(time_to_deadline)
-  return []
+def run_rewriter(original_solutions, tasks, num_threads, deadline):
+  if not FLAGS.rewriter:
+    logging.warning('Rewriter not available. Scores will suffer.')
+    return []
+
+  rewriter_args = [FLAGS.rewriter]
+  rewriter_args.extend(['-p', ','.join(FLAGS.powerphrase)])
+
+  task_map = {}
+  for task in tasks:
+    task_map[(task['id'], task['sourceSeeds'][0])] = task
+
+  jobs = []
+  for solution in original_solutions:
+    job = supervisor_util.RewriterJob(
+      args=rewriter_args,
+      solution=solution,
+      task=task_map[(solution['problemId'], solution['seed'])],
+      cgroup=None if FLAGS.disable_cgroup else CGROUP_NAME)
+    jobs.append(job)
+
+  soft_deadline = deadline - 0.5
+
+  start_time = time.time()
+  logging.info(
+    'Start rewriter phase: jobs=%d, soft_deadline=%.1fs hard_deadline=%.1fs',
+    len(jobs), soft_deadline - start_time, deadline - start_time)
+
+  supervisor_util.run_generic_jobs(jobs, num_threads, soft_deadline, deadline)
+  solutions = [job.solution for job in jobs if job.solution['_score'] > 0]
+
+  end_time = time.time()
+  logging.info(
+    'End rewriter phase: solutions=%d, time=%.1fs',
+    len(solutions), end_time - start_time)
+
+  return solutions
 
 
 def choose_best_solutions(solutions, tasks):
@@ -87,15 +119,15 @@ def choose_best_solutions(solutions, tasks):
   return solution_map.values()
 
 
-def solve_tasks(tasks, quick_solvers, num_threads, deadline):
+def solve_tasks(tasks, num_threads, deadline):
   now = time.time()
   # Give the rewriter 0.5 * #tasks (max 1/5 of allowed time, min 3sec).
   time_to_deadline = deadline - now
   rewrite_time = min(max(3, 0.5 * len(tasks)), time_to_deadline / 5)
   solver_deadline = deadline - rewrite_time
 
-  solutions = run_solvers(tasks, quick_solvers, num_threads, solver_deadline)
-  solutions += run_rewriter(solutions, num_threads, deadline)
+  solutions = run_solvers(tasks, num_threads, solver_deadline)
+  solutions += run_rewriter(solutions, tasks, num_threads, deadline)
   return choose_best_solutions(solutions, tasks)
 
 
@@ -138,11 +170,7 @@ def main(unused_argv):
         'Failed to set cgroup limit. Maybe you have not run "make"? '
         'If you want to run without cgroup, specify --disable_cgroup.')
 
-  solutions = solve_tasks(
-    tasks,
-    FLAGS.quick_solver,
-    num_threads,
-    deadline)
+  solutions = solve_tasks(tasks, num_threads, deadline)
 
   json.dump(solutions, sys.stdout)
   sys.stdout.flush()

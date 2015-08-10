@@ -72,7 +72,7 @@ def index_handler():
       else
       sum(s['_score'] for s in entry['_solutions']) / problem_seed_sizes[problem_id])
 
-  leaderboard = db.leaderboard.find_one({}, sort=[('time', pymongo.DESCENDING)])
+  leaderboard = db.leaderboard.find_one({'time': {'$regex': '^Mon'}}, sort=[('time', pymongo.DESCENDING)])
   for team in leaderboard['data']['rankings']:
     if team['teamId'] == 116:
       total_rank = team['rank']

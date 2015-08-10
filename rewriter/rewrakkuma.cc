@@ -41,6 +41,18 @@ void install_signal_handlers() {
 // Super tenuki utilities.
 /////////////////////////////////////////////////////////////////////////////////
 
+template<typename T>
+class six_vector {
+ public:
+  six_vector() : size(0) {}
+  typename std::array<T, 6>::const_iterator begin() const { return data.begin(); }
+  typename std::array<T, 6>::const_iterator end() const { return data.begin() + size; }
+  void push_back(const T& t) { data[size++] = t; }
+ private:
+  std::array<T, 6> data;
+  size_t size;
+};
+
 int count_occurrence(const std::string& heystack, const std::string& needle) {
   int cnt = 0;
   for(int s=0; s+needle.size()<=heystack.size(); ++s)
@@ -90,21 +102,20 @@ std::vector<std::string> random_default_moves() {
 
 typedef int Vert;
 typedef std::pair<Game::Command, Vert> Edge;
-typedef std::vector<Edge> Edges;
+typedef six_vector<Edge> Edges;
 typedef std::vector<Edges> Graph;
 
 std::vector<bool> calc_goal_reachability(const Graph& g, Vert goal) {
-  Graph r(g.size());
+  std::vector<six_vector<int>> r(g.size());
   for (int v=0; v<g.size(); ++v)
     for (auto& cu: g[v])
-      r[cu.second].emplace_back(cu.first, v);
+      r[cu.second].push_back(v);
 
   std::vector<bool> visited(g.size()); visited[goal]=true;
   std::queue<Vert> Q; Q.push(goal);
   while (!Q.empty()) {
     Vert v = Q.front(); Q.pop();
-    for (auto& cu: r[v]) {
-      Vert u = cu.second;
+    for (int u: r[v]) {
       if (!visited[u]) {
          visited[u] = true;
          Q.push(u);
@@ -123,7 +134,8 @@ std::string solve_on_graph(
     std::vector<std::string> phrases) {
   std::string result;
 
-  const std::vector<bool> reachable_to_goal = calc_goal_reachability(Graph, Goal);
+  const std::vector<bool> reachable_to_goal =
+    std::move(calc_goal_reachability(Graph, Goal));
 
   std::vector<bool> visited(Graph.size());
   for (Vert v=0; v<visited.size(); ++ v)
@@ -242,6 +254,7 @@ std::string generate_powerful_sequence(
     return id;
   };
 
+  std::vector<int> is_conflicting_cache(SIZE, -1);
   std::queue<int> Q; Q.push(unit_to_id(start));
   while (!Q.empty()) {
     Vert v = Q.front(); Q.pop();
@@ -249,14 +262,16 @@ std::string generate_powerful_sequence(
       if (HURRY_UP_MODE)
         return hint;
       UnitLocation uu = Game::NextUnit(known_unit[v], c);
-      if (uu.pivot().y() > goal.pivot().y())
-        continue;
-      if (game.GetBoard().IsConflicting(uu))
-        continue;
       int key = ((uu.pivot().x()+OFF)*(OFF+H+OFF)+(uu.pivot().y()+OFF))*6+uu.angle();
       bool neo = (known_unit_id[key] == -1);
+      if (uu.pivot().y() > goal.pivot().y())
+        continue;
+      if (is_conflicting_cache[key] == -1)
+         is_conflicting_cache[key] = game.GetBoard().IsConflicting(uu) ? 1 : 0;
+      if (is_conflicting_cache[key])
+        continue;
       Vert u = unit_to_id(uu);  // modifies known_unit_id, so after neo.
-      graph[v].emplace_back(c, u);
+      graph[v].push_back(std::make_pair(c, u));
       if (neo) Q.push(u);
     }
   }
@@ -407,7 +422,7 @@ int main(int argc, char* argv[]) {
     // If --problem points to a json file, open it.
     // Otherwise assume it to be a directory and find read problem_%d.json.
     picojson::value problem;
-    if (FLAGS_problem.size()>=4 && FLAGS_problem.substr(FLAGS_problem.size()-4)=="json") {
+    if (!FLAGS_problem.empty() && FLAGS_problem.back()!='/') {
       std::ifstream stream(FLAGS_problem);
       stream >> problem;
       CHECK(stream.good()) << picojson::get_last_error();
@@ -417,7 +432,7 @@ int main(int argc, char* argv[]) {
       // id filtering.
       if (id!=178116 && (FLAGS_id==-1 || FLAGS_id==id)) {
         std::stringstream ss;
-        ss << FLAGS_problem << "/problem_" << id << ".json";
+        ss << FLAGS_problem << "problem_" << id << ".json";
         LOG(INFO) << "Problem=" << ss.str();
         try {
           std::ifstream stream(ss.str());
