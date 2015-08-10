@@ -43,6 +43,52 @@ void WriteOneJsonResult(int problemid,
 Solver::Solver() {}
 Solver::~Solver() {}
 
+Solver2::Solver2() {}
+Solver2::~Solver2() {}
+
+class Solver12Converter : public Solver2 {
+public:
+  Solver12Converter(Solver* solver)
+    : solver_(solver) {}
+  ~Solver12Converter() {}
+
+  virtual void AddGame(const Game& game) {
+    game_ = game;
+    final_commands_ = "";
+  }
+
+  virtual bool Next(std::string* best_command, int* score) {
+    VLOG(1) << game_;
+    // get sequence from AI
+    bool is_finished = false;
+    const std::string instructions = solver_->NextCommands(game_);
+    for(const auto& c: instructions) {
+      final_commands_.push_back(c);
+      if (!game_.Run(Game::Char2Command(c))) {
+        is_finished = true;
+      }
+      if (is_finished) {
+        break;
+      }
+    }
+    if (score) {
+      *score = game_.score();
+    }
+    if (best_command) {
+      *best_command = final_commands_;
+    }
+    return is_finished;
+  }
+private:
+  Solver* solver_;
+  Game game_;
+  std::string final_commands_;
+};
+
+Solver2* ConvertS12(Solver* solver) {
+  return new Solver12Converter(solver);
+}
+
 volatile sig_atomic_t sig_sig_ = 0;
 
 void SigHandler(int num) {
@@ -58,7 +104,15 @@ void SigHandler(int num) {
   }
 }
 
+// TODO: make this a wrapper of RunSolver2.
 int RunSolver(Solver* solver, std::string solver_tag) {
+  Solver2 *s2 = ConvertS12(solver);
+  RunSolver2(s2, solver_tag);
+  delete s2;
+  return 0;
+}
+
+int RunSolver2(Solver2* solver, std::string solver_tag) {
   if (!FLAGS_ai_tag.empty()) {
     solver_tag = FLAGS_ai_tag;
   }
@@ -77,32 +131,22 @@ int RunSolver(Solver* solver, std::string solver_tag) {
   game_data.Load(problem);
   VLOG(1) << game_data;
 
+  {
+    Game game;
+    game.Init(&game_data, 0);
+    solver->AddGame(game);
+  }
   // Record signal handler
   CHECK(std::signal(SIGUSR1, SigHandler) != SIG_ERR);
   CHECK(std::signal(SIGINT, SigHandler) != SIG_ERR);
 
   std::string final_commands;
-  bool is_finished = false;
-  bool error = false;
-  Game game;
-  game.Init(&game_data, 0);
+  int score;
   while(true) {
-    VLOG(1) << game;
-    // get sequence from AI
-    const std::string instructions = solver->NextCommands(game);
-    for(const auto& c: instructions) {
-      final_commands.push_back(c);
-      if (!game.Run(Game::Char2Command(c))) {
-        is_finished = true;
-      }
-      if (is_finished) {
-        break;
-      }
-    }
-    if(is_finished || error) {
+    bool is_finished = solver->Next(&final_commands, &score);
+    if(is_finished) {
       break;
     }
-    const int score = game.score();
     if (sig_sig_ == 2) {
       VLOG(1) << "Shutting down:" << seed << ", " << score;
       break;
@@ -114,7 +158,6 @@ int RunSolver(Solver* solver, std::string solver_tag) {
       sig_sig_ = 0;
     }
   }
-  int score = error ? 0 : game.score();
   WriteOneJsonResult(problem.get("id").get<int64_t>(), solver_tag,
                      seed, score, final_commands);
   return 0;
