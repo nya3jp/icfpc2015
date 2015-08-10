@@ -41,6 +41,18 @@ void install_signal_handlers() {
 // Super tenuki utilities.
 /////////////////////////////////////////////////////////////////////////////////
 
+template<typename T>
+class six_vector {
+ public:
+  six_vector() : size(0) {}
+  typename std::array<T, 6>::const_iterator begin() const { return data.begin(); }
+  typename std::array<T, 6>::const_iterator end() const { return data.begin() + size; }
+  void push_back(const T& t) { data[size++] = t; }
+ private:
+  std::array<T, 6> data;
+  size_t size;
+};
+
 int count_occurrence(const std::string& heystack, const std::string& needle) {
   int cnt = 0;
   for(int s=0; s+needle.size()<=heystack.size(); ++s)
@@ -90,21 +102,20 @@ std::vector<std::string> random_default_moves() {
 
 typedef int Vert;
 typedef std::pair<Game::Command, Vert> Edge;
-typedef std::vector<Edge> Edges;
+typedef six_vector<Edge> Edges;
 typedef std::vector<Edges> Graph;
 
 std::vector<bool> calc_goal_reachability(const Graph& g, Vert goal) {
-  Graph r(g.size());
+  std::vector<six_vector<int>> r(g.size());
   for (int v=0; v<g.size(); ++v)
     for (auto& cu: g[v])
-      r[cu.second].emplace_back(cu.first, v);
+      r[cu.second].push_back(v);
 
   std::vector<bool> visited(g.size()); visited[goal]=true;
   std::queue<Vert> Q; Q.push(goal);
   while (!Q.empty()) {
     Vert v = Q.front(); Q.pop();
-    for (auto& cu: r[v]) {
-      Vert u = cu.second;
+    for (int u: r[v]) {
       if (!visited[u]) {
          visited[u] = true;
          Q.push(u);
@@ -259,7 +270,7 @@ std::string generate_powerful_sequence(
       if (is_conflicting_cache[key])
         continue;
       Vert u = unit_to_id(uu);  // modifies known_unit_id, so after neo.
-      graph[v].emplace_back(c, u);
+      graph[v].push_back(std::make_pair(c, u));
       if (neo) Q.push(u);
     }
   }
