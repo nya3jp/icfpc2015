@@ -16,6 +16,8 @@
 #include "../../simulator/solver.h"
 #include "../../simulator/unit.h"
 
+#define ENABLE_DEBUG_LOG 0
+
 DEFINE_int32(kamineko_hands, 3, "");
 
 template<typename T>
@@ -32,7 +34,7 @@ Kamineko::Kamineko() {
 }
 Kamineko::~Kamineko() {}
 
-static int64_t Score(const Game& game, std::ostream& os) {
+static int64_t Score(const Game& game, std::ostream* os) {
   const Board& board(game.board());
   std::vector<int> height(GetHeightLine(game));
   int shade = 0;
@@ -50,10 +52,12 @@ static int64_t Score(const Game& game, std::ostream& os) {
   int64_t height_score = GetHeightPenalty(height);
   int64_t result = game.score()
     - height_score * 100 - shade * 2000;
-  os << "height:" << DumpV(height) << "(score:" << height_score
-     << " shade:" << shade
-     << " score:" << game.score()
-     << " total:" << result;
+#if ENABLE_DEBUG_LOG
+  *os << "height:" << DumpV(height) << "(score:" << height_score
+      << " shade:" << shade
+      << " score:" << game.score()
+      << " total:" << result;
+#endif
   return result;
 }
 
@@ -65,12 +69,13 @@ static int64_t MinScore(const Game& game) {
     2 * (height * width * height * 100 + height * width * 2000);
 }
 
-Kamineko::GamePath* AddNewPath(std::vector<Kamineko::GamePath*>* pathp,
-                               Kamineko::GamePath* next,
-                int width) {
-  std::vector<Kamineko::GamePath*>& path = *pathp;
+std::unique_ptr<Kamineko::GamePath> AddNewPath(
+    std::vector<std::unique_ptr<Kamineko::GamePath> >* pathp,
+    std::unique_ptr<Kamineko::GamePath> next,
+    int width) {
+  std::vector<std::unique_ptr<Kamineko::GamePath> >& path = *pathp;
   if (path.size() < width) {
-    path.emplace_back(next);
+    path.emplace_back(std::move(next));
     return nullptr;
   }
   int min_index = 0;
@@ -82,14 +87,13 @@ Kamineko::GamePath* AddNewPath(std::vector<Kamineko::GamePath*>* pathp,
     }
   }
   if (min_score < next->score) {
-    Kamineko::GamePath* result = path[min_index];
-    path[min_index] = next;
-    return result;
+    std::swap(path[min_index], next);
   }
   return next;
 }
 
-const Kamineko::GamePath& GetBest(std::vector<Kamineko::GamePath*>& path) {
+const Kamineko::GamePath& GetBest(
+    const std::vector<std::unique_ptr<Kamineko::GamePath> >& path) {
   int max_index = 0;
   int max_score = path[0]->score;
   for (int i = 1; i < path.size(); ++i) {
@@ -107,7 +111,7 @@ void Kamineko::AddGame(const Game& game) {
 }
 
 bool Kamineko::Next(std::string* best_command, int* res_score) {
-  std::vector<Kamineko::GamePath*> next_path;
+  std::vector<std::unique_ptr<Kamineko::GamePath> > next_path;
   for (const auto& p0 : path_) {
     if (p0->finished) {
       continue;
@@ -119,34 +123,40 @@ bool Kamineko::Next(std::string* best_command, int* res_score) {
     for(const auto &res: bfsresult) {
       Game ng(cur_game);
       int64_t score = 0;
+#if ENABLE_DEBUG_LOG
       std::ostringstream os;
+#endif
       bool finished = !ng.RunSequence(res.second);
       if (finished) {
         score = MinScore(ng);
       } else {
-        score = Score(ng, os);
+#if ENABLE_DEBUG_LOG
+        score = Score(ng, &os);
+#else
+        score = Score(ng, nullptr);
+#endif
       }
-      Kamineko::GamePath* weak =
-        AddNewPath(
-            &next_path,
-            new Kamineko::GamePath(
-                ng, finished, score,
-                p0->commands + Game::Commands2SimpleString(res.second),
-                os.str()),
-            FLAGS_kamineko_hands);
-      if (weak) {
-        delete weak;
-      }
+      AddNewPath(
+          &next_path,
+          std::unique_ptr<Kamineko::GamePath>(new Kamineko::GamePath(
+              ng, finished, score,
+              p0->commands + Game::Commands2SimpleString(res.second),
+#if ENABLE_DEBUG_LOG
+              os.str()
+#else
+              ""
+#endif
+              )),
+          FLAGS_kamineko_hands);
     }
   }
   path_.swap(next_path);
-  for (int i = 0; i < next_path.size(); ++i) {
-    delete next_path[i];
-  }
-  for (const auto& p : path_) {
-    VLOG(1) << "G#" << p->score
-            << " \ngame:\n" << p->game
-            << "\ndebug:" << p->debug;
+  if (VLOG_IS_ON(1)) {
+    for (const auto& p : path_) {
+      VLOG(1) << "G#" << p->score
+              << " \ngame:\n" << p->game
+              << "\ndebug:" << p->debug;
+    }
   }
   const Kamineko::GamePath& p = GetBest(path_);
   *res_score = p.game.score();

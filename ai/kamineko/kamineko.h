@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 
 #include "../../simulator/game.h"
 #include "../../simulator/solver.h"
@@ -27,7 +28,7 @@ class Kamineko: public Solver2 {
         debug(debug) {}
   };
  private:
-  std::vector<GamePath*> path_;
+  std::vector<std::unique_ptr<GamePath> > path_;
 };
 
 #endif  // KAMINEKO_H__
