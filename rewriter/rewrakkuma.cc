@@ -125,19 +125,34 @@ std::vector<bool> calc_goal_reachability(const Graph& g, Vert goal) {
   return visited;
 }
 
-std::string solve_on_graph(
-    const std::string& hint,
-    const Graph& Graph,
-    const std::vector<int>& depth,
-    Vert Start,
-    Vert Goal,
-    const std::vector<std::string>& phrases) {
+class PhraseSet {
+ public:
+  PhraseSet(const std::vector<std::string>& phrases)
+      : phrases_(phrases) {
+    reset();
+  }
 
-  // preprocess.
-  const std::vector<bool> reachable_to_goal =
-    std::move(calc_goal_reachability(Graph, Goal));
+  void reset() {
+    unseen_.clear();
+    unseen_.insert(phrases_.begin(), phrases_.end());
+    seen_.clear();
+  }
+  struct iterator;
+  iterator begin() {
+    return iterator(unseen_.begin(), unseen_.end(), seen_.begin());
+  }
+  iterator end() {
+    return iterator(unseen_.end(), unseen_.end(), seen_.end());
+  }
+  void mark_as_used(const std::string& ph) {
+    unseen_.erase(ph);
+    seen_.insert(ph);
+  }
 
-  // preprocess.
+ private:
+  const std::vector<std::string> phrases_;
+
+ private:
   struct ByLength {
     static int count_south(const std::string& s) {
       int cnt = 0;
@@ -154,8 +169,38 @@ std::string solve_on_graph(
       return lhs < rhs;
     }
   };
-  std::set<std::string, ByLength> unseen_phrases(phrases.begin(), phrases.end()), seen_phrases;
+  std::set<std::string, ByLength> unseen_, seen_;
+  typedef typename std::set<std::string, ByLength>::const_iterator inner_iterator;
 
+ public:
+  struct iterator {
+    iterator(inner_iterator as, inner_iterator as_end, inner_iterator bs)
+        : as_(as), as_end_(as_end), bs_(bs) {}
+    void operator++() {
+      ++(as_ == as_end_ ? bs_ : as_);
+    }
+    const std::string& operator*() const {
+      return *(as_ == as_end_ ? bs_ : as_);
+    }
+    bool operator!=(const iterator& rhs) const {
+      return as_!=rhs.as_ || bs_!=rhs.bs_;
+    }
+    inner_iterator as_, as_end, as_end_, bs_;
+  };
+};
+
+std::string solve_on_graph(
+    const std::string& hint,
+    const Graph& Graph,
+    const std::vector<int>& depth,
+    Vert Start,
+    Vert Goal,
+    PhraseSet& phrases) {
+  // preprocess.
+  const std::vector<bool> reachable_to_goal =
+    std::move(calc_goal_reachability(Graph, Goal));
+
+  // preprocess.
   std::string result;
   std::vector<bool> visited(Graph.size());
   for (Vert v=0; v<visited.size(); ++ v)
@@ -214,20 +259,11 @@ std::string solve_on_graph(
     };
 
     bool phrase_succeeded = false;
-    for (const auto& ph: unseen_phrases) {
+    for (const auto& ph: phrases) {
       if (try_phrase(ph)) {
-        unseen_phrases.erase(ph);
-        seen_phrases.insert(ph);
+        phrases.mark_as_used(ph);
         phrase_succeeded = true;
         break;
-      }
-    }
-    if (!phrase_succeeded) {
-      for (const auto& ph: seen_phrases) {
-        if (try_phrase(ph)) {
-          phrase_succeeded = true;
-          break;
-        }
       }
     }
     if (!phrase_succeeded) {
@@ -262,7 +298,7 @@ std::string generate_powerful_sequence(
     Game& game,
     const UnitLocation& start,
     const UnitLocation& goal,
-    const std::vector<std::string>& phrases) {
+    PhraseSet& phrases) {
   Graph graph;
 
   // Unit to node ID mapping.
@@ -313,6 +349,7 @@ std::string generate_powerful_sequence(
   VLOG(1) << "  Graph Generated (" << graph.size() << " nodes)";
   if (HURRY_UP_MODE)
     return hint;
+  phrases.reset();
   return solve_on_graph(hint, graph, depth, unit_to_id(start), unit_to_id(goal), phrases);
 }
 
@@ -349,6 +386,9 @@ void rewrite_main(
   Game game;
   game.Init(&game_data, seed_index);
 
+  // Preprocess PhraseSet.
+  PhraseSet phrase_set(phrases);
+
   // Split to subsegments.
   for (int s=0; s<before.size(); ) {
     if (HURRY_UP_MODE) {
@@ -369,7 +409,7 @@ void rewrite_main(
         // (Reinitialize RNG, for reproducibility.)
         g_rand = std::mt19937(178116);
         after += generate_powerful_sequence(
-           before.substr(s, i-s), game, start, u, phrases);
+           before.substr(s, i-s), game, start, u, phrase_set);
         after += before[i];
         game.Run(cmd);
         s = i+1;
