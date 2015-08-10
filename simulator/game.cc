@@ -439,7 +439,7 @@ void Game::ReachableUnits(std::vector<SearchResult>* result) const {
 #endif
   while (!todo.empty()) {
     UnitLocation current = todo.front().first;
-    std::vector<Command> moves = todo.front().second;
+    std::vector<Command> moves = std::move(todo.front().second);
     todo.pop();
     for (Command c = Command::E; c != Command::IGNORED; ++c) {
       UnitLocation next = Game::NextUnit(current, c);
