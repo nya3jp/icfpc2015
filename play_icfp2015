@@ -12,6 +12,11 @@ exec "$root_dir/supervisors/shinku.py" \
   --heavy_solver=ai/simple_solvers/yasaka \
   --heavy_solver=ai/kamineko/kamineko \
   --extra_solver=ai/duralstarman/duralstarman \
+  --extra_solver=ai/duralstarman/ds_3 \
+  --extra_solver=ai/duralstarman/ds_5 \
+  --extra_solver=ai/duralstarman/ds_7 \
+  --extra_solver=ai/duralstarman/ds_13 \
+  --extra_solver=ai/duralstarman/ds_19 \
   --rewriter=rewriter/rewrakkuma \
   --strip_extra_fields \
   --noreport \
