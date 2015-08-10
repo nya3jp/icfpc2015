@@ -131,12 +131,32 @@ std::string solve_on_graph(
     const std::vector<int>& depth,
     Vert Start,
     Vert Goal,
-    std::vector<std::string> phrases) {
-  std::string result;
+    const std::vector<std::string>& phrases) {
 
+  // preprocess.
   const std::vector<bool> reachable_to_goal =
     std::move(calc_goal_reachability(Graph, Goal));
 
+  // preprocess.
+  struct ByLength {
+    static int count_south(const std::string& s) {
+      int cnt = 0;
+      for (char ch: s) {
+        auto c = Game::Char2Command(ch);
+        cnt += (c==Game::Command::SE || c==Game::Command::SW);
+      }
+      return cnt;
+    }
+    bool operator()(const std::string& lhs, const std::string& rhs) const {
+      int sl = count_south(lhs), sr = count_south(rhs);
+      if (sl != sr) return sl < sr;
+      if (lhs.size() != rhs.size()) return lhs.size() < rhs.size();
+      return lhs < rhs;
+    }
+  };
+  std::set<std::string, ByLength> unseen_phrases(phrases.begin(), phrases.end()), seen_phrases;
+
+  std::string result;
   std::vector<bool> visited(Graph.size());
   for (Vert v=0; v<visited.size(); ++ v)
     visited[v] = !reachable_to_goal[v];
@@ -192,19 +212,28 @@ std::string solve_on_graph(
       result += ph;
       return true;
     };
-    auto try_phrases = [&](std::vector<std::string>& phrases) {
-      for (int i=0; i<phrases.size(); ++i) {
-        if (try_phrase(phrases[i])) {
-          std::rotate(phrases.begin()+i, phrases.begin()+i+1, phrases.end());
-          return true;
+
+    bool phrase_succeeded = false;
+    for (const auto& ph: unseen_phrases) {
+      if (try_phrase(ph)) {
+        unseen_phrases.erase(ph);
+        seen_phrases.insert(ph);
+        phrase_succeeded = true;
+        break;
+      }
+    }
+    if (!phrase_succeeded) {
+      for (const auto& ph: seen_phrases) {
+        if (try_phrase(ph)) {
+          phrase_succeeded = true;
+          break;
         }
       }
-      return false;
-    };
-
-    if (!try_phrases(phrases)) {
-      std::vector<std::string> allmove = random_default_moves();
-      try_phrases(allmove);
+    }
+    if (!phrase_succeeded) {
+      for (const auto& ph: random_default_moves())
+        if (try_phrase(ph))
+          break;
     }
   }
 
