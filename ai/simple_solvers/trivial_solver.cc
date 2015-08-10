@@ -11,6 +11,7 @@
 #include "../../simulator/game.h"
 #include "../../simulator/solver.h"
 #include "../../simulator/unit.h"
+#include "../../simulator/ai_util.h"
 
 namespace {
 
@@ -108,7 +109,7 @@ public:
                                 std::set<int> covered,
                                 std::queue<int> todo,
                                 int& score) {
-    if (p.x() < 0 || p.x() >= board.width() || p.y() < 0 || p.y() >= board.height()) {
+    if (!InBoard(board, p)) {
       //++score;
       return -1;
     }
@@ -169,7 +170,7 @@ public:
       if (!found)
         break;
 
-      ++score;
+      //++score;
 
       int id = y * board.width() + x;
       todo.push(id);
@@ -183,47 +184,104 @@ public:
 
         int count = 0;
 
-        {
-          HexPoint p(xx, yy);
-          p.MoveEast();
-          GetEmptyLocationID(board, members, p, covered, todo, count);
-        }
-
-        {
-          HexPoint p(xx, yy);
-          p.MoveWest();
-          GetEmptyLocationID(board, members, p, covered, todo, count);
-        }
-
-        {
-          HexPoint p(xx, yy);
-          p.MoveNorthEast();
-          GetEmptyLocationID(board, members, p, covered, todo, count);
-        }
-
-        {
-          HexPoint p(xx, yy);
-          p.MoveNorthWest();
-          GetEmptyLocationID(board, members, p, covered, todo, count);
-        }
-
-        {
-          HexPoint p(xx, yy);
-          p.MoveSouthEast();
-          GetEmptyLocationID(board, members, p, covered, todo, count);
-        }
-
-        {
-          HexPoint p(xx, yy);
-          p.MoveSouthWest();
-          GetEmptyLocationID(board, members, p, covered, todo, count);
-        }
+        CheckNeighbor(xx, yy, board, members, covered, todo, count);
 
         //score += count * count;
       }
     }
 
     return -score;
+  }
+
+  int CountContact(const Board& board, const UnitLocation::Members& members) {
+    int score = 0;
+
+    for (const auto& member : members) {
+      int xx = member.x();
+      int yy = member.y();
+
+      {
+        HexPoint p(xx, yy);
+        p.MoveEast();
+        if (!InBoard(board, p) || board(p.x(), p.y()))
+          ++score;
+      }
+      {
+        HexPoint p(xx, yy);
+        p.MoveWest();
+        if (!InBoard(board, p) || board(p.x(), p.y()))
+          ++score;
+      }
+      {
+        HexPoint p(xx, yy);
+        p.MoveNorthEast();
+        if (!InBoard(board, p) || board(p.x(), p.y()))
+          ++score;
+      }
+      {
+        HexPoint p(xx, yy);
+        p.MoveNorthWest();
+        if (!InBoard(board, p) || board(p.x(), p.y()))
+          ++score;
+      }
+      {
+        HexPoint p(xx, yy);
+        p.MoveSouthEast();
+        if (!InBoard(board, p) || board(p.x(), p.y()))
+          ++score;
+      }
+      {
+        HexPoint p(xx, yy);
+        p.MoveSouthWest();
+        if (!InBoard(board, p) || board(p.x(), p.y()))
+          ++score;
+      }
+    }
+
+    return score;
+  }
+
+  void CheckNeighbor(int xx, int yy,
+                     const Board& board,
+                     const UnitLocation::Members& members,
+                     std::set<int> covered,
+                     std::queue<int> todo,
+                     int& count) {
+    {
+      HexPoint p(xx, yy);
+      p.MoveEast();
+      GetEmptyLocationID(board, members, p, covered, todo, count);
+    }
+
+    {
+      HexPoint p(xx, yy);
+      p.MoveWest();
+      GetEmptyLocationID(board, members, p, covered, todo, count);
+    }
+
+    {
+      HexPoint p(xx, yy);
+      p.MoveNorthEast();
+      GetEmptyLocationID(board, members, p, covered, todo, count);
+    }
+
+    {
+      HexPoint p(xx, yy);
+      p.MoveNorthWest();
+      GetEmptyLocationID(board, members, p, covered, todo, count);
+    }
+
+    {
+      HexPoint p(xx, yy);
+      p.MoveSouthEast();
+      GetEmptyLocationID(board, members, p, covered, todo, count);
+    }
+
+    {
+      HexPoint p(xx, yy);
+      p.MoveSouthWest();
+      GetEmptyLocationID(board, members, p, covered, todo, count);
+    }
   }
 
   std::string Tetris(const Game& game,
@@ -301,9 +359,13 @@ public:
     }
 
     if (!is_appropriate_) {
-      std::vector<Game::Command> ret;
-      ret.push_back(Game::Command::SW);
-      return Game::Commands2SimpleString(ret);
+      if (false) {
+        std::vector<Game::Command> ret;
+        ret.push_back(Game::Command::SW);
+        return Game::Commands2SimpleString(ret);
+      }
+
+      max_size_ = 1;
     }
 
     std::vector<Game::SearchResult> bfsresult;
@@ -315,33 +377,48 @@ public:
 
     const Board& board = game.GetBoard();
 
+    std::set<int> tetris_positions;
+    HexPoint target_position;
     int highest_density = 0;
-    int most_dense_y = -1;
-    int most_dense_right_most_empty_x = -1;
+
+    Board rboard(board.width(), board.height());
+    GetDotReachabilityFromTopAsMap(game, &rboard);
 
     //for (int y = board.height() - 1; y >= 0; --y) {
     for (int y = 0; y < board.height(); ++y) {
       int density = 0;
-      int right_most_empty_x = -1;
+
+      bool bad = false;
       for (int x = board.width() - 1; x >= 0; --x) {
         if (board(x, y)) {
           ++density;
         } else {
-          if (right_most_empty_x == -1)
-            right_most_empty_x = x;
+          if (!rboard(x, y)) {
+            bad = true;
+            break;
+          }
         }
       }
 
-      if (density > highest_density) {
-        highest_density = density;
-        most_dense_y = y;
-        most_dense_right_most_empty_x = right_most_empty_x;
+      if (bad)
+        continue;
+
+      for (int x = board.width() - 1; x >= 0; --x) {
+        if (!board(x, y)) {
+          HexPoint candidate(x, y);
+          std::set<int> candidate_positions =
+            GetTetrisPositions(board, candidate);
+          if (candidate_positions.size() == y + 1 && density > highest_density) {
+            highest_density = density;
+            target_position = candidate;
+            tetris_positions = candidate_positions;
+          }
+        }
       }
+
       //break;
     }
 
-    const HexPoint target_position(most_dense_right_most_empty_x, most_dense_y);
-    const std::set<int> tetris_positions = GetTetrisPositions(board, target_position);
     const std::set<int> forbidden_area = GetForbiddenArea(board);
 
     for (const auto &res: bfsresult) {
@@ -354,7 +431,16 @@ public:
       return Tetris(game, bfsresult, tetris_positions, forbidden_area);
     }
 
-    for (int y = most_dense_y; y >= 0; --y) {
+
+
+        std::vector<Game::Command> ret;
+        int lowest_top = std::numeric_limits<int>::min();
+        int most_left = std::numeric_limits<int>::max();
+        int score_of_best = std::numeric_limits<int>::min();
+        bool found = false;
+
+
+    for (int y = target_position.y(); y >= 0; --y) {
       for (int x = 0; x < board.width(); ++x) {
         if (y <= 1 && x + game.current_unit().members().size() >= 5) {
           //if (y <= 3 && x + game.current_unit().members().size() >= 5) {
@@ -364,14 +450,6 @@ public:
 
         if (board(x, y))
           continue;
-
-        std::vector<Game::Command> ret;
-
-        int lowest_top = std::numeric_limits<int>::min();
-        int most_left = std::numeric_limits<int>::max();
-        int score_of_best = std::numeric_limits<int>::min();
-
-        bool found = false;
 
         for (const auto &res: bfsresult) {
           bool conflict = false;
@@ -398,7 +476,11 @@ public:
           int bottom = GetBottom(res.first);
           int left = GetLeft(res.first);
 
-          int score = CountSections(board, res.first.members());
+          int score = CountContact(board, res.first.members());
+
+
+          score += y - x;
+
 
           //if (top != bottom)
           //  continue;
@@ -420,16 +502,23 @@ public:
 
           lowest_top = top;
           most_left = left;
+          score_of_best = score;
+
           ret = res.second;
         }
 
-        if (!found)
-          continue;
+        //if (!found)
+        //  continue;
 
         DVLOG(1) << "MAKE TETRISABLE " << x << ", " << y;
 
-        return Game::Commands2SimpleString(ret);
+        //return Game::Commands2SimpleString(ret);
       }
+
+
+      if (found)
+        return Game::Commands2SimpleString(ret);
+
     }
 
     return Tetris(game, bfsresult, tetris_positions, forbidden_area);

@@ -29,7 +29,7 @@ greedy_ai_3: greedy_ai_3.o board.o game.o solver.o scorer.o unit.o
 greedy_ai_2: greedy_ai_2.o board.o game.o solver.o scorer.o unit.o
 	g++ -Wl,-rpath=$(PWD)/../../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 
-trivial_solver: trivial_solver.o board.o game.o solver.o scorer.o unit.o
+trivial_solver: trivial_solver.o board.o game.o solver.o scorer.o unit.o ai_util.o
 	g++ -Wl,-rpath=$(PWD)/../../googlelib/glog/.libs $(CFLAGS) -o $@ $^ $(LIBS)
 
 yasaka: yasaka.o board.o game.o solver.o scorer.o ai_util.o unit.o 
