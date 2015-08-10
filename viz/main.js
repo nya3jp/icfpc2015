@@ -1145,7 +1145,7 @@ function spawnNewUnit() {
 }
 
 function getPowerScores(commands) {
-  var phrasesOfPower = ["r'lyeh", 'yuggoth', 'ia! ia!', 'ei!', 'necronomicon', 'yogsothoth', 'planet 10'];
+  var phrasesOfPower = ["r'lyeh", 'yuggoth', 'ia! ia!', 'ei!', 'necronomicon', 'yogsothoth', 'planet 10', 'john bigboote'];
   var score = 0;
   for (var i = 0; i < phrasesOfPower.length; ++i) {
     var phrase = phrasesOfPower[i];

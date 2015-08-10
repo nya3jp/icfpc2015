@@ -125,18 +125,83 @@ std::vector<bool> calc_goal_reachability(const Graph& g, Vert goal) {
   return visited;
 }
 
+class PhraseSet {
+ public:
+  PhraseSet(const std::vector<std::string>& phrases)
+      : phrases_(phrases) {
+    reset();
+  }
+
+  void reset() {
+    unseen_.clear();
+    unseen_.insert(phrases_.begin(), phrases_.end());
+    seen_.clear();
+  }
+  struct iterator;
+  iterator begin() {
+    return iterator(unseen_.begin(), unseen_.end(), seen_.begin());
+  }
+  iterator end() {
+    return iterator(unseen_.end(), unseen_.end(), seen_.end());
+  }
+  void mark_as_used(const std::string& ph) {
+    unseen_.erase(ph);
+    seen_.insert(ph);
+  }
+
+ private:
+  const std::vector<std::string> phrases_;
+
+ private:
+  struct ByLength {
+    static int count_south(const std::string& s) {
+      int cnt = 0;
+      for (char ch: s) {
+        auto c = Game::Char2Command(ch);
+        cnt += (c==Game::Command::SE || c==Game::Command::SW);
+      }
+      return cnt;
+    }
+    bool operator()(const std::string& lhs, const std::string& rhs) const {
+      int sl = count_south(lhs), sr = count_south(rhs);
+      if (sl != sr) return sl < sr;
+      if (lhs.size() != rhs.size()) return lhs.size() < rhs.size();
+      return lhs < rhs;
+    }
+  };
+  std::set<std::string, ByLength> unseen_, seen_;
+  typedef typename std::set<std::string, ByLength>::const_iterator inner_iterator;
+
+ public:
+  struct iterator {
+    iterator(inner_iterator as, inner_iterator as_end, inner_iterator bs)
+        : as_(as), as_end_(as_end), bs_(bs) {}
+    void operator++() {
+      ++(as_ == as_end_ ? bs_ : as_);
+    }
+    const std::string& operator*() const {
+      return *(as_ == as_end_ ? bs_ : as_);
+    }
+    bool operator!=(const iterator& rhs) const {
+      return as_!=rhs.as_ || bs_!=rhs.bs_;
+    }
+    inner_iterator as_, as_end, as_end_, bs_;
+  };
+};
+
 std::string solve_on_graph(
     const std::string& hint,
     const Graph& Graph,
     const std::vector<int>& depth,
     Vert Start,
     Vert Goal,
-    std::vector<std::string> phrases) {
-  std::string result;
-
+    PhraseSet& phrases) {
+  // preprocess.
   const std::vector<bool> reachable_to_goal =
     std::move(calc_goal_reachability(Graph, Goal));
 
+  // preprocess.
+  std::string result;
   std::vector<bool> visited(Graph.size());
   for (Vert v=0; v<visited.size(); ++ v)
     visited[v] = !reachable_to_goal[v];
@@ -192,19 +257,19 @@ std::string solve_on_graph(
       result += ph;
       return true;
     };
-    auto try_phrases = [&](std::vector<std::string>& phrases) {
-      for (int i=0; i<phrases.size(); ++i) {
-        if (try_phrase(phrases[i])) {
-          std::rotate(phrases.begin()+i, phrases.begin()+i+1, phrases.end());
-          return true;
-        }
-      }
-      return false;
-    };
 
-    if (!try_phrases(phrases)) {
-      std::vector<std::string> allmove = random_default_moves();
-      try_phrases(allmove);
+    bool phrase_succeeded = false;
+    for (const auto& ph: phrases) {
+      if (try_phrase(ph)) {
+        phrases.mark_as_used(ph);
+        phrase_succeeded = true;
+        break;
+      }
+    }
+    if (!phrase_succeeded) {
+      for (const auto& ph: random_default_moves())
+        if (try_phrase(ph))
+          break;
     }
   }
 
@@ -233,7 +298,7 @@ std::string generate_powerful_sequence(
     Game& game,
     const UnitLocation& start,
     const UnitLocation& goal,
-    const std::vector<std::string>& phrases) {
+    PhraseSet& phrases) {
   Graph graph;
 
   // Unit to node ID mapping.
@@ -284,6 +349,7 @@ std::string generate_powerful_sequence(
   VLOG(1) << "  Graph Generated (" << graph.size() << " nodes)";
   if (HURRY_UP_MODE)
     return hint;
+  phrases.reset();
   return solve_on_graph(hint, graph, depth, unit_to_id(start), unit_to_id(goal), phrases);
 }
 
@@ -320,6 +386,9 @@ void rewrite_main(
   Game game;
   game.Init(&game_data, seed_index);
 
+  // Preprocess PhraseSet.
+  PhraseSet phrase_set(phrases);
+
   // Split to subsegments.
   for (int s=0; s<before.size(); ) {
     if (HURRY_UP_MODE) {
@@ -340,7 +409,7 @@ void rewrite_main(
         // (Reinitialize RNG, for reproducibility.)
         g_rand = std::mt19937(178116);
         after += generate_powerful_sequence(
-           before.substr(s, i-s), game, start, u, phrases);
+           before.substr(s, i-s), game, start, u, phrase_set);
         after += before[i];
         game.Run(cmd);
         s = i+1;
@@ -416,7 +485,9 @@ int main(int argc, char* argv[]) {
     p = to_lower(p);
 
   // For each --output entry...
-  for (auto& entry : output.get<picojson::array>()) {
+  auto& entries = output.get<picojson::array>();
+  for (int i=0; i<entries.size(); ++i) {
+    auto& entry = entries[i];
     if (HURRY_UP_MODE)
       continue;
     // Load the corresponding problem.
@@ -430,8 +501,9 @@ int main(int argc, char* argv[]) {
       rewrite_main(problem, &entry, phrases);
     } else {
       int id = entry.get("problemId").get<int64_t>();
+      if (FLAGS_id==-1 && id==178116) continue;
       // id filtering.
-      if (id!=178116 && (FLAGS_id==-1 || FLAGS_id==id)) {
+      if (FLAGS_id==-1 || FLAGS_id==id) {
         std::stringstream ss;
         ss << FLAGS_problem << "problem_" << id << ".json";
         LOG(INFO) << "Problem=" << ss.str();
@@ -443,6 +515,8 @@ int main(int argc, char* argv[]) {
         } catch (...) {
           LOG(ERROR) << "ERROR: " << id;
         }
+      } else {
+        entries.erase(entries.begin() + i--);
       }
     }
   }

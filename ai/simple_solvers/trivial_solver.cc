@@ -13,6 +13,21 @@
 #include "../../simulator/unit.h"
 
 namespace {
+
+  void GetBoundBox(const UnitLocation& unit,
+                  int* top, int* right, int* bottom, int* left) {
+    *top = std::numeric_limits<int>::max();
+    *bottom = -1;
+    *left = std::numeric_limits<int>::max();
+    *right = -1;
+    for (const auto& member : unit.members()) {
+      *top = std::min(*top, member.y());
+      *bottom = std::max(*bottom, member.y());
+      *left = std::min(*left, member.x());
+      *right = std::max(*right, member.x());
+    }
+  }
+
 int GetTop(const UnitLocation& unit) {
   int top = std::numeric_limits<int>::max();
   for (const auto& member : unit.members()) {
@@ -49,8 +64,30 @@ int GetRight(const UnitLocation& unit) {
 
 class TrivialSolver : public Solver {
 public:
-  TrivialSolver() {}
+  TrivialSolver()
+    : checked_units_(false),
+      is_appropriate_(false),
+      max_size_(0) {}
   virtual ~TrivialSolver() {}
+
+  std::set<int> GetForbiddenArea(const Board& board) {
+    std::set<int> result;
+    for (int x = -2; x <= 2; ++x) {
+      for (int y = 0; y <= 2; ++y) {
+        HexPoint p(board.width() / 2 + x, y);
+        if (!InBoard(board, p))
+          continue;
+        result.insert(p.x() + p.y() * board.width());
+      }
+    }
+    return result;
+  }
+
+  static bool InBoard(const Board& board, const HexPoint& p) {
+    return
+      p.x() >= 0 && p.x() < board.width() &&
+                            p.y() >= 0 && p.y() < board.height();
+  }
 
   std::set<int> GetTetrisPositions(const Board& board, const HexPoint& target) {
     std::set<int> result;
@@ -58,7 +95,7 @@ public:
     HexPoint p(target.x(), target.y());
     for (int i = 0; i < target.y(); ++i) {
       p.MoveNorthWest();
-      if (p.x() < 0 || p.x() >= board.width() || p.y() < 0 || p.y() >= board.height())
+      if (!InBoard(board, p))
         break;
       result.insert(p.x() + p.y() * board.width());
     }
@@ -132,6 +169,8 @@ public:
       if (!found)
         break;
 
+      ++score;
+
       int id = y * board.width() + x;
       todo.push(id);
       covered.insert(id);
@@ -180,7 +219,7 @@ public:
           GetEmptyLocationID(board, members, p, covered, todo, count);
         }
 
-        score += count * count;
+        //score += count * count;
       }
     }
 
@@ -188,7 +227,9 @@ public:
   }
 
   std::string Tetris(const Game& game,
-                     const std::vector<Game::SearchResult>& bfsresult) {
+                     const std::vector<Game::SearchResult>& bfsresult,
+                     const std::set<int> tetris_positions,
+                     const std::set<int> forbidden_area) {
     std::vector<Game::Command> ret;
 
     int max_cleared = -1;
@@ -207,23 +248,70 @@ public:
 
       max_cleared = cleared;
       highest_top = top;
+
       ret = res.second;
     }
 
     if (max_cleared <= 0) {
-      return SouthWest(game, bfsresult);
+      return SouthWest(game, bfsresult, tetris_positions, forbidden_area);
     }
 
     return Game::Commands2SimpleString(ret);
   }
 
+  bool checked_units_;
+  bool is_appropriate_;
+  int max_size_;
+
   virtual std::string NextCommands(const Game& game) {
+    if (!checked_units_) {
+      checked_units_ = true;
+
+      bool non_bar_found = false;
+      HexPoint origin(0, 0);
+      for (const auto& unit : game.units()) {
+        max_size_ = std::max(max_size_, static_cast<int>(unit.members().size()));
+
+        UnitLocation loc(&unit, origin);
+
+        int top, right, bottom, left;
+
+        GetBoundBox(loc, &top, &right, &bottom, &left);
+        if (top == bottom)
+          continue;
+
+        loc.RotateClockwise();
+        GetBoundBox(loc, &top, &right, &bottom, &left);
+        if (top == bottom)
+          continue;
+
+        loc.RotateClockwise();
+        GetBoundBox(loc, &top, &right, &bottom, &left);
+        if (top == bottom)
+          continue;
+
+        non_bar_found = true;
+      }
+
+      if (non_bar_found) {
+        is_appropriate_ = false;
+      } else {
+        is_appropriate_ = true;
+      }
+    }
+
+    if (!is_appropriate_) {
+      std::vector<Game::Command> ret;
+      ret.push_back(Game::Command::SW);
+      return Game::Commands2SimpleString(ret);
+    }
+
     std::vector<Game::SearchResult> bfsresult;
     game.ReachableUnits(&bfsresult);
 
-    if (GetBottom(game.current_unit()) != GetTop(game.current_unit())) {
-      return Tetris(game, bfsresult);
-    }
+    //if (GetBottom(game.current_unit()) != GetTop(game.current_unit())) {
+    //return Tetris(game, bfsresult, tetris_positions, forbidden_area);
+    //}
 
     const Board& board = game.GetBoard();
 
@@ -231,7 +319,8 @@ public:
     int most_dense_y = -1;
     int most_dense_right_most_empty_x = -1;
 
-    for (int y = board.height() - 1; y >= 0; --y) {
+    //for (int y = board.height() - 1; y >= 0; --y) {
+    for (int y = 0; y < board.height(); ++y) {
       int density = 0;
       int right_most_empty_x = -1;
       for (int x = board.width() - 1; x >= 0; --x) {
@@ -248,26 +337,29 @@ public:
         most_dense_y = y;
         most_dense_right_most_empty_x = right_most_empty_x;
       }
-    }
-
-    for (const auto &res: bfsresult) {
-      int cleared = game.GetBoard().LockPreview(res.first);
-      if (cleared > 5)
-        return Tetris(game, bfsresult);
-    }
-
-    if (game.prev_cleared_lines() > 1) {
-      return Tetris(game, bfsresult);
+      //break;
     }
 
     const HexPoint target_position(most_dense_right_most_empty_x, most_dense_y);
     const std::set<int> tetris_positions = GetTetrisPositions(board, target_position);
+    const std::set<int> forbidden_area = GetForbiddenArea(board);
+
+    for (const auto &res: bfsresult) {
+      int cleared = game.GetBoard().LockPreview(res.first);
+      if ((cleared == 1 && max_size_ == 1) || cleared > 5)
+        return Tetris(game, bfsresult, tetris_positions, forbidden_area);
+    }
+
+    if (game.prev_cleared_lines() > 1) {
+      return Tetris(game, bfsresult, tetris_positions, forbidden_area);
+    }
 
     for (int y = most_dense_y; y >= 0; --y) {
       for (int x = 0; x < board.width(); ++x) {
         if (y <= 1 && x + game.current_unit().members().size() >= 5) {
+          //if (y <= 3 && x + game.current_unit().members().size() >= 5) {
           DVLOG(1) << "TETRIS MODE";
-          return Tetris(game, bfsresult);
+          return Tetris(game, bfsresult, tetris_positions, forbidden_area);
         }
 
         if (board(x, y))
@@ -277,6 +369,7 @@ public:
 
         int lowest_top = std::numeric_limits<int>::min();
         int most_left = std::numeric_limits<int>::max();
+        int score_of_best = std::numeric_limits<int>::min();
 
         bool found = false;
 
@@ -284,7 +377,9 @@ public:
           bool conflict = false;
           bool hit = false;
           for (const auto& member : res.first.members()) {
-            if (tetris_positions.count(member.x() + member.y() * board.width())) {
+            int id = member.x() + member.y() * board.width();
+            if (tetris_positions.count(id) ||
+                forbidden_area.count(id)) {
               conflict = true;
               break;
             }
@@ -303,15 +398,22 @@ public:
           int bottom = GetBottom(res.first);
           int left = GetLeft(res.first);
 
-          if (top != bottom)
+          int score = CountSections(board, res.first.members());
+
+          //if (top != bottom)
+          //  continue;
+
+          if (score < score_of_best)
             continue;
 
-          if (top < lowest_top)
-            continue;
-
-          if (top == lowest_top) {
-            if (left > most_left)
+          if (score == score_of_best) {
+            if (top < lowest_top)
               continue;
+
+            if (top == lowest_top) {
+              if (left > most_left)
+                continue;
+            }
           }
 
           found = true;
@@ -330,35 +432,55 @@ public:
       }
     }
 
-    return SouthWest(game, bfsresult);
+    return Tetris(game, bfsresult, tetris_positions, forbidden_area);
   }
 
   std::string SouthWest(const Game& game,
-                        const std::vector<Game::SearchResult>& bfsresult) {
+                        const std::vector<Game::SearchResult>& bfsresult,
+                        const std::set<int> tetris_positions,
+                        const std::set<int> forbidden_area) {
     std::vector<Game::Command> ret;
     ret.push_back(Game::Command::SW);
 
     int candidate_top = std::numeric_limits<int>::min();
     int candidate_right = std::numeric_limits<int>::max();
 
+    int score_of_best = 0;
+
     for (const auto &res: bfsresult) {
       int top = GetTop(res.first);
       int right = GetRight(res.first);
 
-      if (top < candidate_top)
+      int score = 0;
+      for (const auto& member : res.first.members()) {
+        int id = member.x() + member.y() * game.GetBoard().width();
+        if (tetris_positions.count(id))
+          score = -1;
+        if (forbidden_area.count(id))
+          score = -2;
+      }
+
+      if (score < score_of_best)
         continue;
 
-      if (top == candidate_top) {
-        if (right > candidate_right)
+      if (score == score_of_best) {
+        if (top < candidate_top)
           continue;
 
-        if (right == candidate_right) {
-          continue;
+        if (top == candidate_top) {
+          if (right > candidate_right)
+            continue;
+
+          if (right == candidate_right) {
+            continue;
+          }
         }
       }
 
       candidate_top = top;
       candidate_right = right;
+
+      score_of_best = score;
 
       ret = res.second;
     }

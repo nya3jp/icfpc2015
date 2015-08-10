@@ -47,11 +47,9 @@ class Game {
   ~Game();
 
   int score() const { return score_; }
-  bool error() const { return error_; }
   int current_index() const { return current_index_; }
-  bool is_finished() const {
-    return current_index_ > data_->source_length() || error_;
-  }
+  bool is_finished() const { return is_finished_; }
+  bool error() const { return error_; }
 
   void Init(const GameData* data, int rand_seed_index);
   void Dump(std::ostream* os) const;
@@ -101,6 +99,7 @@ class Game {
                         data_->spawn_position()[index]);
   }
   size_t GetNumberOfUnits() const { return data_->units().size(); }
+  const std::vector<Unit>& units() const { return data_->units(); }
 
   const int prev_cleared_lines() const { return prev_cleared_lines_; }
 
@@ -113,6 +112,7 @@ class Game {
   std::vector<UnitLocation> history_;
   int score_;
   int prev_cleared_lines_;
+  bool is_finished_;
   bool error_;
 };
 
