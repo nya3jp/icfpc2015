@@ -57,43 +57,31 @@ public:
     }
   
     vector<EvalState> isgood(bfsresult.size(), Unevaluated);
-    int targety = -1;
-    {
-      // if impossible, try to add to denser, but solvable line
-
-      // first select appropriate lines
-      Board reachable;
-      GetReachabilityMapByAnyHands(game, &reachable);
-
-      VLOG(2) << reachable;
-
-      int placed = -1;
-      for(int y = 0; y < reachable.height(); ++y) {
-        int nreach = 0;
-        for(int x = 0; x < reachable.width(); ++x) {
-          if(reachable(x, y)) ++nreach;
-        }
-        if(nreach + nfill[y] != reachable.width()) continue;
-        // now this line is solvable
-        if(nfill[y] >= placed) { // prefers lower place in case of tie
-          targety = y;
-          placed = nfill[y];
-        }
-      }
-      VLOG(1) << "target y = " << targety;
-
+    // if impossible, try to add to denser, but solvable line
+    int targety = get_target_y(game, nfill, isgood);
+    VLOG(1) << "target y = " << targety;
+    
+    if(targety >= 0) {
       // if solvable, try to select the solution which places less items 
       int candidate = find_solutions_at(targety, game, bfsresult, &isgood);
       if(candidate >= 0) {
         VLOG(1) << "Candidate found";
         return Game::Commands2SimpleString(bfsresult[candidate].second);
       }
-      VLOG(1) << "No candidates found";
     }
 
-    // otherwise, put in lowest (biggest) y and highest distx from good list
+    VLOG(1) << "No candidates found";
+
+    // There can be two possiblities:
+    // 1) target y == -1. this means it'll be game over very soon.
+    // 2) target y >= 0. This means it is sovable but you need to place current unit somewhere else.
+    // Basically, put items accordign to lowest (biggest) y and highest distx from good list,
+    // but you need to be sure
+    // that it doesn't hinder current unit placement path. (in the case of y >= 0)
+    
+    // score: (good_status_hack, smallest (highest) y, distance from wall). larger in tuple is the better
     typedef tuple<int, int, int> scoretype;
-    scoretype bestscore(-1, -1, -1);
+    vector<scoretype> scores(bfsresult.size(), make_tuple<int, int, int>(-1, -1, -1));
     for(size_t i = 0; i < bfsresult.size(); ++i) {
       const Game::SearchResult &res = bfsresult[i];
       const UnitLocation &u = res.first;
@@ -105,15 +93,27 @@ public:
         int dx = std::min(m.x(), game.GetBoard().width() - 1 - m.x());
         largestdx = std::max(largestdx, dx);
       }
-      scoretype newscore_tentative(1, highesty, largestdx);
-      if(newscore_tentative > bestscore) {
-        scoretype newscore(targety == -1 ? 0 : 
-                           (is_good(game, targety,
-                                    bfsresult, i, &isgood) ? 1 : 0),
-                           highesty, largestdx);
-        if(newscore > bestscore) {
-          ret = res.second;
-          bestscore = newscore;
+      scores[i] = make_tuple(-1, highesty, largestdx);
+    }
+
+    if(targety == -1) {
+      // survive mode, forget about targety
+      const auto it = std::max_element(scores.begin(), scores.end());
+      ssize_t d = it - scores.begin();
+      return Game::Commands2SimpleString(bfsresult[d].second);
+    }else {
+      while(true) {
+        const int invalid = -100; // hack
+        const auto it = std::max_element(scores.begin(), scores.end());
+        ssize_t d = it - scores.begin();
+        if(std::get<0>(*it) == invalid) {
+          return Game::Commands2SimpleString(bfsresult[d].second);
+        }
+        bool f = is_good(game, targety, bfsresult, d, &isgood);
+        if(f) {
+          return Game::Commands2SimpleString(bfsresult[d].second);
+        }else{
+          get<0>(*it) = invalid;
         }
       }
     }
@@ -121,6 +121,32 @@ public:
   }
 
 private:
+
+  // Get target Y line - dense line is preferred, but should be solvable
+  int get_target_y(const Game &game, const vector<int> &nfill, vector<EvalState>& evalstate) {
+    // first select appropriate lines
+    Board reachable;
+    GetReachabilityMapByAnyHands(game, &reachable);
+    
+    VLOG(2) << reachable;
+    
+    int ret;
+    int placed = -1;
+    for(int y = 0; y < reachable.height(); ++y) {
+      int nreach = 0;
+      for(int x = 0; x < reachable.width(); ++x) {
+        if(reachable(x, y)) ++nreach;
+      }
+      if(nreach + nfill[y] != reachable.width()) continue;
+      // now this line is solvable
+      if(nfill[y] >= placed) { // prefers lower place in case of tie
+        ret = y;
+        placed = nfill[y];
+      }
+    }
+    return ret;
+  }
+
   // find solution that places at target y.
   // in case of ties solution placing more items on =y
   // in case of ties solution placing less items on <y
