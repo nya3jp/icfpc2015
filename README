@@ -8,8 +8,8 @@ We developed various AIs and mixed them at the run-time to get better scores.
 * Kamineko uses beam search.
 * Yasaka tries to find appropriate line to erase units.
 Final output from these AIs are merged by the control program `shinku`, and
-`rewrakkuma` embeds names of unspekables, preserving the move output from AIs.
-
+`rewrakkuma` embeds names of unspeakables, preserving the move output from AIs.
+* Trivial tries to fill rows leaving one line for inserting a bar empty.
 
 Install
 ----------
@@ -26,6 +26,7 @@ Environment
 
 Members
 -----------
+@nya3jp
 @kinaba
 @phoenixstarhiro
 @riesz
