@@ -152,6 +152,7 @@ void Game::Init(const GameData* data, int rand_seed_index) {
   history_.clear();
   score_ = 0;
   prev_cleared_lines_ = 0;
+  is_finished_ = false;
   error_ = false;
   SpawnNewUnit();
 }
@@ -162,7 +163,8 @@ bool Game::SpawnNewUnit() {
   }
   ++current_index_;
   if (current_index_ > data_->source_length()) {
-    // Game over.
+    // All units are used.
+    is_finished_ = true;
     return false;
   }
 
@@ -171,7 +173,8 @@ bool Game::SpawnNewUnit() {
 
   // Check if it is put to the available space.
   if (board_.IsConflicting(current_unit_)) {
-    // No space left.
+    // New unit conclicts with board.
+    is_finished_ = true;
     return false;
   }
 
@@ -245,7 +248,7 @@ bool Game::Run(Command command) {
     // If the state is already in error, do nothing.
     return false;
   }
-  if (current_index_ > data_->source_length()) {
+  if (is_finished_) {
     // Running a step after the finish, causes an error.
     error_ = true;
     score_ = 0;
@@ -259,6 +262,7 @@ bool Game::Run(Command command) {
 
   if (Contains(history_, new_unit)) {
     // Error.
+    is_finished_ = true;
     error_ = true;
     score_ = 0;
     return false;
