@@ -8,9 +8,18 @@
 #include "../../simulator/game.h"
 #include "../../simulator/solver.h"
 
+class GameScorer {
+ public:
+  GameScorer();
+  virtual ~GameScorer();
+  virtual int64_t Score(const Game& game, bool finished,
+                        std::string* debug) = 0;
+};
+
 class Kamineko: public Solver2 {
  public:
   Kamineko();
+  explicit Kamineko(GameScorer* scorer);
   virtual ~Kamineko();
   virtual void AddGame(const Game& game);
   virtual bool Next(std::string* best_command, int* res_score);
@@ -28,6 +37,7 @@ class Kamineko: public Solver2 {
         debug(debug) {}
   };
  private:
+  GameScorer* scorer_;
   std::vector<std::unique_ptr<GamePath> > path_;
 };
 

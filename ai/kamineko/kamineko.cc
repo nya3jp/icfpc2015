@@ -16,7 +16,7 @@
 #include "../../simulator/solver.h"
 #include "../../simulator/unit.h"
 
-#define ENABLE_DEBUG_LOG 0
+#define ENABLE_DEBUG_LOG 1
 
 DEFINE_int32(kamineko_hands, 3, "");
 
@@ -29,37 +29,61 @@ std::string DumpV(const std::vector<T>& seq) {
   return ofs.str();
 }
 
-Kamineko::Kamineko() {
-  path_.reserve(FLAGS_kamineko_hands + 1);
-}
-Kamineko::~Kamineko() {}
+GameScorer::GameScorer() {}
+GameScorer::~GameScorer() {}
 
-static int64_t Score(const Game& game, std::ostream* os) {
-  const Board& board(game.board());
-  std::vector<int> height(GetHeightLine(game));
-  int shade = 0;
-  int block = 0;
-  for (int i = 0; i < board.width(); ++i) {
-    for (int j = height[i]; j < board.height(); ++j) {
-      if (!board(i, j)) {
-        shade ++; //= (j - height[i]) * (j - height[i]);
-      } else {
-        ++block;
+class KaminekoScorer : public GameScorer {
+public:
+  int64_t Score(const Game& game, bool finished,
+                std::string* debug) {
+    const Board& board(game.board());
+    if (finished) {
+      const int64_t height = board.height();
+      const int64_t width = board.width();
+      return game.score() -
+        2 * (height * width * height * 100 + height * width * 2000);
+    }
+    std::vector<int> height(GetHeightLine(game));
+    int shade = 0;
+    int block = 0;
+    for (int i = 0; i < board.width(); ++i) {
+      for (int j = height[i]; j < board.height(); ++j) {
+        if (!board(i, j)) {
+          shade ++; //= (j - height[i]) * (j - height[i]);
+        } else {
+          ++block;
+        }
       }
     }
-  }
 
-  int64_t height_score = GetHeightPenalty(height);
-  int64_t result = game.score()
-    - height_score * 100 - shade * 2000;
+    int64_t height_score = GetHeightPenalty(height);
+    int64_t result = game.score()
+      - height_score * 100 - shade * 2000;
 #if ENABLE_DEBUG_LOG
-  *os << "height:" << DumpV(height) << "(score:" << height_score
-      << " shade:" << shade
-      << " score:" << game.score()
-      << " total:" << result;
+    if (debug) {
+      std::ostringstream os;
+      os << "height:" << DumpV(height) << "(score:" << height_score
+         << " shade:" << shade
+         << " score:" << game.score()
+         << " total:" << result;
+      *debug = os.str();
+     }
 #endif
-  return result;
+    return result;
+  }
+};
+
+Kamineko::Kamineko()
+  : scorer_(new KaminekoScorer()) {
+  path_.reserve(FLAGS_kamineko_hands + 1);
 }
+
+Kamineko::Kamineko(GameScorer* scorer)
+  : scorer_(scorer) {
+  path_.reserve(FLAGS_kamineko_hands + 1);
+}
+
+Kamineko::~Kamineko() {}
 
 static int64_t MinScore(const Game& game) {
   const Board& board(game.board());
@@ -120,33 +144,21 @@ bool Kamineko::Next(std::string* best_command, int* res_score) {
 
     std::vector<Game::SearchResult> bfsresult;
     cur_game.ReachableUnits(&bfsresult);
-    for(const auto &res: bfsresult) {
+    for (const auto &res : bfsresult) {
       Game ng(cur_game);
-      int64_t score = 0;
-#if ENABLE_DEBUG_LOG
-      std::ostringstream os;
-#endif
+      std::string debug;
       bool finished = !ng.RunSequence(res.second);
-      if (finished) {
-        score = MinScore(ng);
-      } else {
 #if ENABLE_DEBUG_LOG
-        score = Score(ng, &os);
+      const int64_t score = scorer_->Score(ng, finished, &debug);
 #else
-        score = Score(ng, nullptr);
+      const int64_t score = scorer_->Score(ng, finished, nullptr);
 #endif
-      }
       AddNewPath(
           &next_path,
           std::unique_ptr<Kamineko::GamePath>(new Kamineko::GamePath(
               ng, finished, score,
               p0->commands + Game::Commands2SimpleString(res.second),
-#if ENABLE_DEBUG_LOG
-              os.str()
-#else
-              ""
-#endif
-              )),
+              debug)),
           FLAGS_kamineko_hands);
     }
   }
