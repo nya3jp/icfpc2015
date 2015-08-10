@@ -363,7 +363,7 @@ public:
     }
 
     if (!is_bar_only_game_) {
-      if (false) {
+      if (true) {
         std::vector<Game::Command> ret;
         ret.push_back(Game::Command::SW);
         return Game::Commands2SimpleString(ret);
