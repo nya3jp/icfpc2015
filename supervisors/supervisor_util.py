@@ -204,7 +204,6 @@ class RewriterJob(HazukiJobBase):
       solution_f.close()
     self.register_finish_callback(close_temp_files)
     with open(os.devnull, 'w') as devnull:
-      logging.debug('*** ARGS: %s', ' '.join(real_args))
       return subprocess.Popen(real_args, stdout=subprocess.PIPE)
 
   def __repr__(self):
