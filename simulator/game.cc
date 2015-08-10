@@ -419,7 +419,10 @@ void Game::ReachableUnits(std::vector<SearchResult>* result) const {
   }
 
   int pivot_top = bound.top;
+  int pivot_bottom = bound.bottom;
   int pivot_left = bound.left;
+  int pivot_right =  bound.right;
+
   int pivot_width = bound.right - bound.left + 1;
   int pivot_height = bound.bottom - bound.top + 1;
   int unit_order = current_unit_.unit()->order();
@@ -441,29 +444,36 @@ void Game::ReachableUnits(std::vector<SearchResult>* result) const {
     todo.pop();
     for (Command c = Command::E; c != Command::IGNORED; ++c) {
       UnitLocation next = Game::NextUnit(current, c);
-      if (board_.IsConflicting(next)) {
-        continue;
-      }
       // TODO: performance improvement using set and such.
 #if USE_BIT_MAP
       int x = next.pivot().x() - pivot_left;
       int y = next.pivot().y() - pivot_top;
+      // Preliminary check. If the "next" pivot in the wrong position, it means
+      // the "current" unit will be locked, which is processed in the previous
+      // iteration. So, we are not interested in such cases.
+      // Note that surely, this is just a rough check, so we need precise
+      // check later.
+      if (static_cast<unsigned int>(x) >= pivot_width ||
+          static_cast<unsigned int>(y) >= pivot_height) {
+        continue;
+      }
       int index = (y * pivot_width + x) * unit_order + next.angle();
       if (covered[index]) {
         continue;
       }
+      covered[index] = true;
 #else
       if (covered.count(UnitLocation(next))) {
         continue;
       }
-#endif
-      moves.emplace_back(c);
-      todo.push(SearchResult(next, moves));
-#if USE_BIT_MAP
-      covered[index] = true;
-#else
       covered.insert(UnitLocation(next));
 #endif
+      if (board_.IsConflicting(next)) {
+        continue;
+      }
+
+      moves.emplace_back(c);
+      todo.push(SearchResult(next, moves));
       Command lock_command = GetLockCommand(next);
       if (lock_command != Command::IGNORED) {
         moves.emplace_back(lock_command);

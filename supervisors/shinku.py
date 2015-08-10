@@ -10,6 +10,7 @@ import time
 g_start_time = time.time()
 
 import collections
+import copy
 import logging
 import os
 import sys
@@ -38,6 +39,7 @@ gflags.DEFINE_string('rewriter', None, 'Path to rewriter.')
 gflags.DEFINE_bool('show_scores', False, 'Show scores.')
 gflags.DEFINE_bool('report', True, 'Report the result to log server.')
 gflags.DEFINE_string('report_tag', None, 'Overrides tag on reporting.')
+gflags.DEFINE_bool('strip_extra_fields', False, 'Strips non-official fields.')
 
 CGROUP_NAME = 'natsubate'
 
@@ -286,7 +288,15 @@ def main(unused_argv):
 
   solutions = solve_tasks(tasks, num_threads, deadline)
 
-  json.dump(solutions, sys.stdout)
+  output_solutions = solutions
+  if FLAGS.strip_extra_fields:
+    output_solutions = copy.deepcopy(output_solutions)
+    for solution in output_solutions:
+      for key in solution.keys():
+        if key.startswith('_'):
+          del solution[key]
+
+  json.dump(output_solutions, sys.stdout)
   sys.stdout.flush()
 
   if FLAGS.show_scores:
