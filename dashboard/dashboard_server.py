@@ -138,7 +138,7 @@ def state_of_the_art_json_handler():
 def state_of_the_art_without_rewrite_json_handler():
   best_solution_map = {}
   for solution in db.solutions.find():
-    if solution['tag'] == 'rewrakkuma':
+    if solution['tag'] in ('rewrakkuma', 'shinku'):
       continue
     key = (solution['problemId'], solution['seed'])
     if (key not in best_solution_map or
