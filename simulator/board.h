@@ -12,6 +12,10 @@
 class Board {
  public:
   Board();
+  Board(int width, int height)
+    : width_(width),
+      height_(height),
+      cells_(width * height, false) {}
   ~Board();
 
   int width() const { return width_; }

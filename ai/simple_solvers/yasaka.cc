@@ -1,5 +1,6 @@
 #include <vector>
 #include <algorithm>
+#include <tuple>
 
 #include <glog/logging.h>
 
@@ -7,6 +8,8 @@
 #include "../../simulator/solver.h"
 #include "../../simulator/unit.h"
 #include "../../simulator/ai_util.h"
+
+using namespace std;
 
 // yasaka: Hasuta4 + reachability check
 class Yasaka : public Solver {
@@ -43,6 +46,7 @@ public:
       }
     }
   
+    vector<bool> isgood;
     {
       // if impossible, try to add to denser, but solvable line
 
@@ -68,8 +72,10 @@ public:
       }
       VLOG(1) << "target y = " << targety;
 
+      isgood = goodlist(game, targety, bfsresult);
+
       // if solvable, try to select the solution which places less items 
-      int candidate = find_solutions_at(targety, game, bfsresult);
+      int candidate = find_solutions_at(targety, game, bfsresult, isgood);
       if(candidate >= 0) {
         VLOG(1) << "Candidate found";
         return Game::Commands2SimpleString(bfsresult[candidate].second);
@@ -77,17 +83,18 @@ public:
       VLOG(1) << "No candidates found";
     }
 
-    // otherwise, put in lowest y and lowest distx
-    int distx = 1 << 30;
-    int maxy = -1;
-    for(const auto &res: bfsresult) {
+    // otherwise, put in highest y and highest distx from good list
+    typedef tuple<int, int, int> scoretype;
+    scoretype bestscore(-1, -1, -1);
+    for(size_t i = 0; i < bfsresult.size(); ++i) {
+      const Game::SearchResult &res = bfsresult[i];
       const UnitLocation &u = res.first;
       for(const auto &m: u.members()) {
-        int dx = std::min(m.x(), game.GetBoard().width() - 1 - m.x());
-        if(m.y() > maxy || (m.y() == maxy && dx < distx)) {
+        int dx = std::abs(m.x() - (game.GetBoard().width() >> 1));
+        scoretype newscore(isgood[i] ? 1 : 0, m.y(), dx);
+        if(newscore > bestscore) {
           ret = res.second;
-          maxy = m.y();
-          distx = dx;
+          bestscore = newscore;
         }
       }
     }
@@ -100,12 +107,17 @@ private:
   // in case of ties solution placing nearer to walls get the highest score
   int find_solutions_at(int targety,
                         const Game &game,
-                        const std::vector<Game::SearchResult>& candidates) {
+                        const std::vector<Game::SearchResult>& candidates,
+                        const vector<bool>& goodlist) {
     typedef std::pair<int, int> score;
     std::vector<score> scores;
 
     for(size_t i = 0; i < candidates.size(); ++i) {
       const UnitLocation &u = candidates[i].first;
+      if(!goodlist[i]) {
+        scores.push_back(score(1 << 30, 1 << 30));
+        continue;
+      }
       int lessy = 0;
       int dist2wall = 1 << 30;
       for(const auto &m: u.members()) {
@@ -128,6 +140,26 @@ private:
       // XXX: this should be distance()
       return int(miniter - scores.begin());
     }
+  }
+
+  // Test whether candidate sequence hinders targety
+  vector<bool> goodlist(const Game &game, int targety, const std::vector<Game::SearchResult>& candidates) {
+    vector<bool> ret(candidates.size(), true);
+    
+    for(size_t i = 0; i < candidates.size(); ++i) {
+      const auto& c = candidates[i];
+      Game newgame = game;
+      newgame.RunSequence(c.second);
+      Board reachability;
+      GetDotReachabilityFromTopAsMap(newgame, &reachability);
+      for(int x = 0; x < game.GetBoard().width(); ++x) {
+        if((!newgame.GetBoard()(x, targety)) && (!reachability(x, targety))) {
+          ret[i] = false;
+          break;
+        }
+      }
+    }
+    return ret;
   }
 };
 

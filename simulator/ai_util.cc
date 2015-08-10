@@ -34,18 +34,23 @@ int64_t GetHeightPenaltyFromGame(const Game& game) {
   return GetHeightPenalty(GetHeightLine(game));
 }
 
-int64_t GetDotReachabilityFromTop(const Game& game)
+int64_t GetDotReachabilityFromTop(const Game& game) {
+  Board b;
+  return GetDotReachabilityFromTopAsMap(game, &b);
+}
+
+int64_t GetDotReachabilityFromTopAsMap(const Game& game, Board *b)
 {
   int64_t ret = 0;
   int width = game.GetBoard().width();
   int height = game.GetBoard().height();
+  *b = Board(width, height);
 
   int movepattern[] = { -1, 0,
                         1, 0,
                         -1, 1,
                         0, 1};
 
-  std::vector<bool> visited(width * height, false);
   const Board& board = game.GetBoard();
 
   std::stack<std::pair<int, int> > dfs;
@@ -60,9 +65,9 @@ int64_t GetDotReachabilityFromTop(const Game& game)
     int x = dfs.top().first;
     int y = dfs.top().second;
     dfs.pop();
-    if(visited[y * width + x]) continue;
+    if((*b)(x, y)) continue;
     ret++;
-    visited[y * width + x] = true;
+    (*b).Set(x, y, true);
     
     for(int i = 0; i < 8; i += 2) {
       int newx = x + movepattern[i];
@@ -75,7 +80,7 @@ int64_t GetDotReachabilityFromTop(const Game& game)
          (newy < 0) || (newy >= height)) {
         continue;
       }
-      if(board(newx, newy) || visited[newy * width + newx]) {
+      if(board(newx, newy) || (*b)(newx, newy)) {
         continue;
       }
       dfs.push(std::make_pair(newx, newy));

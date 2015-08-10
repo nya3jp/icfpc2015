@@ -17,6 +17,13 @@ int64_t GetHeightPenaltyFromGame(const Game& game);
 int64_t GetDotReachabilityFromTop(const Game& game);
 
 /**
+   Returns the map of reachable points from the top of the board
+
+   @return The number of reachable points from the top
+ */
+int64_t GetDotReachabilityFromTopAsMap(const Game& game, Board* b);
+
+/**
    Returns the board which is filled if that point is reachable by any of its hand
 */
 void GetReachabilityMapByAnyHands(const Game& game, Board *ret_board);
