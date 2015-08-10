@@ -101,6 +101,7 @@ class Game {
                         data_->spawn_position()[index]);
   }
   size_t GetNumberOfUnits() const { return data_->units().size(); }
+  const std::vector<Unit>& units() const { return data_->units(); }
 
   const int prev_cleared_lines() const { return prev_cleared_lines_; }
 
