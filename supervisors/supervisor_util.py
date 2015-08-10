@@ -1,5 +1,6 @@
 import collections
 import copy
+import errno
 import logging
 import os
 import Queue as queue
@@ -105,11 +106,9 @@ class HazukiJobBase(object):
             solution['problemId'] = self.problem_id
             solution['seed'] = self.seed
             self.solution = solution
-            logging.info('score=%d: %r', solution['_score'], self)
+            logging.info('Got score=%d: %r', solution['_score'], self)
     except Exception:
       logging.exception('Uncaught exception in output reader thread: %r', self)
-    else:
-      logging.debug('Finished: %r', self)
 
     try:
       self._proc.terminate()
@@ -117,7 +116,7 @@ class HazukiJobBase(object):
       pass
     self._proc.wait()
     self._end_time = time.time()
-    logging.debug('Elapsed %.3fs: %r', self._end_time - self._start_time, self)
+    logging.debug('Finished in %.3fs: %r', self._end_time - self._start_time, self)
     self._call_callbacks()
 
   def _call_callbacks(self):
@@ -150,17 +149,19 @@ class SolverJob(HazukiJobBase):
       json.dump(self.task, f)
       f.flush()
       f.seek(0)
-      logging.debug('Launching AI: command line: %s', ' '.join(real_args))
+      #logging.debug('Launching AI: command line: %s', ' '.join(real_args))
       return subprocess.Popen(real_args, stdin=f, stdout=subprocess.PIPE)
 
   def _signal_thread_main(self):
     try:
       while True:
         time.sleep(1)
-        logging.debug('Sending SIGUSR1: %r', self)
         self._proc.send_signal(signal.SIGUSR1)
     except Exception as e:
-      logging.debug('Signal thread stopped: %r: %r', self, e)
+      if isinstance(e, OSError) and e.errno == errno.ESRCH:
+        pass
+      else:
+        logging.exception('Uncaught exception in signal thread: %r', self)
 
   def __repr__(self):
     return '<SolverJob p%d/s%d %s>' % (
@@ -273,7 +274,11 @@ def show_scores(solutions):
     logging.info('p%d/avg score=%d', problem_id, sum(scores) / len(scores))
 
 
-def report_to_log_server(solutions):
+def report_to_log_server(solutions, override_tag=None):
+  if override_tag:
+    solutions = copy.deepcopy(solutions)
+    for solution in solutions:
+      solution['tag'] = override_tag
   import requests  # Defer loading the module to speed up the boot in prod
   try:
     requests.post(

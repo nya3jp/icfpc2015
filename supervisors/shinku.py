@@ -31,6 +31,7 @@ gflags.DEFINE_bool('disable_cgroup', False, 'Disable cgroup.')
 gflags.DEFINE_multistring('quick_solver', [], 'Path to quick solver.')
 gflags.DEFINE_bool('show_scores', False, 'Show scores.')
 gflags.DEFINE_bool('report', True, 'Report the result to log server.')
+gflags.DEFINE_string('report_tag', None, 'Overrides tag on reporting.')
 
 CGROUP_NAME = 'natsubate'
 
@@ -150,7 +151,7 @@ def main(unused_argv):
     supervisor_util.show_scores(solutions)
 
   if FLAGS.report:
-    supervisor_util.report_to_log_server(solutions)
+    supervisor_util.report_to_log_server(solutions, override_tag=FLAGS.report_tag)
 
 
 if __name__ == '__main__':

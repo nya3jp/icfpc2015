@@ -11,7 +11,7 @@ mkdir -p out/
 
 ./play_icfp2015 \
   --logtostderr=debug \
-  --disable_cgroup --show_scores --noreport \
+  --disable_cgroup --show_scores --report --report_tag=shinku \
   -t 60 -m 1024 -c 4 \
   -f problems/problem_0.json \
   -f problems/problem_1.json \
