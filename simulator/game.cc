@@ -79,6 +79,81 @@ HexPoint GetSpawnPosition(const Unit& unit, int width) {
   return location.pivot();
 }
 
+Bound GetPivotApploxBound(const Unit& unit, int width, int height) {
+  std::vector<HexPoint> members = unit.members();
+  Bound result = { std::numeric_limits<int>::max(),
+                   std::numeric_limits<int>::min(),
+                   std::numeric_limits<int>::max(),
+                   std::numeric_limits<int>::min() };
+  for (int i = 0; i < unit.order(); ++i) {
+    if (i) {
+      for (auto& member : members) {
+        member = member.RotateClockwise();
+      }
+    }
+
+    // Top.
+    {
+      HexPoint top(0, std::numeric_limits<int>::max());
+      for (const auto& member : members) {
+        if (top.y() > member.y()) {
+          top = member;
+        }
+      }
+
+      {
+        UnitLocation location(&unit, HexPoint(0, 0).TranslateToOrigin(top));
+        result.top = std::min(result.top, location.pivot().y());
+        result.bottom = std::max(result.bottom, location.pivot().y());
+        int left = width;
+        int right = 0;
+        for (const auto& member : location.members()) {
+          left = std::min(left, member.x());
+          right = std::max(right, member.x());
+        }
+        result.left = std::min(result.left, location.pivot().x() - left);
+        result.right = std::max(
+            result.right, location.pivot().y() + (width - right - 1));
+      }
+    }
+
+    // Bottom.
+    {
+      HexPoint bottom(0, std::numeric_limits<int>::min());
+      for (const auto& member : members) {
+        if (bottom.y() < member.y()) {
+          bottom = member;
+        }
+      }
+
+      {
+        UnitLocation location(
+            &unit,
+            HexPoint(0, 0)
+                .TranslateToOrigin(bottom)
+                .TranslateFromOrigin(HexPoint(0, height - 1)));
+
+        result.top = std::min(result.top, location.pivot().y());
+        result.bottom = std::max(result.bottom, location.pivot().y());
+        int left = width;
+        int right = 0;
+        for (const auto& member : location.members()) {
+          left = std::min(left, member.x());
+          right = std::max(right, member.x());
+        }
+        result.left = std::min(result.left, location.pivot().x() - left);
+        result.right = std::max(
+            result.right, location.pivot().y() + (width - right - 1));
+      }
+    }
+  }
+
+  // Hack for hex cell.
+  result.left -= 1;
+  result.right += 1;
+  return result;
+}
+
 }
 
 GameData::GameData() : id_(-1), source_length_(-1) {
@@ -103,6 +178,8 @@ void GameData::Load(const picojson::value& parsed) {
     }
     units_.emplace_back(pivot, std::move(members));
     spawn_position_.push_back(GetSpawnPosition(units_.back(), board_.width()));
+    unit_pivot_bounds_.push_back(GetPivotApploxBound(
+        units_.back(), board_.width(), board_.height()));
   }
 
   // Parse sourceLength.
@@ -334,24 +411,61 @@ void Game::ReachableUnits(std::vector<SearchResult>* result) const {
   // TODO: Don't copy vector<command> too much. Use dfs instead?
   std::queue<SearchResult> todo;
   todo.push(SearchResult(current_unit_, {}));
+#define USE_BIT_MAP 1
+#if USE_BIT_MAP
+  Bound bound;
+  for (int i = 0; i < data_->units().size(); ++i) {
+    if (current_unit_.unit() == &data_->units()[i]) {
+      bound = data_->unit_pivot_bounds()[i];
+    }
+  }
+
+  int pivot_top = bound.top;
+  int pivot_left = bound.left;
+  int pivot_width = bound.right - bound.left + 1;
+  int pivot_height = bound.bottom - bound.top + 1;
+  int unit_order = current_unit_.unit()->order();
+  int pivot_size = pivot_width * pivot_height * unit_order;
+  std::vector<bool> covered(pivot_size, false);
+  {
+    int x = current_unit_.pivot().x() - pivot_left;
+    int y = current_unit_.pivot().y() - pivot_top;
+    int index = (y * pivot_width + x) * unit_order + current_unit_.angle();
+    covered[index] = true;
+  }
+#else
   std::set<UnitLocation, UnitLocationLess> covered;
   covered.insert(current_unit_);
+#endif
   while (!todo.empty()) {
     UnitLocation current = todo.front().first;
     std::vector<Command> moves = todo.front().second;
     todo.pop();
     for (Command c = Command::E; c != Command::IGNORED; ++c) {
       UnitLocation next = Game::NextUnit(current, c);
-      // TODO: performance improvement using set and such.
-      if (covered.count(UnitLocation(next))) {
-        continue;
-      }
       if (board_.IsConflicting(next)) {
         continue;
       }
+      // TODO: performance improvement using set and such.
+#if USE_BIT_MAP
+      int x = next.pivot().x() - pivot_left;
+      int y = next.pivot().y() - pivot_top;
+      int index = (y * pivot_width + x) * unit_order + next.angle();
+      if (covered[index]) {
+        continue;
+      }
+#else
+      if (covered.count(UnitLocation(next))) {
+        continue;
+      }
+#endif
       moves.emplace_back(c);
       todo.push(SearchResult(next, moves));
+#if USE_BIT_MAP
+      covered[index] = true;
+#else
       covered.insert(UnitLocation(next));
+#endif
       Command lock_command = GetLockCommand(next);
       if (lock_command != Command::IGNORED) {
         moves.emplace_back(lock_command);

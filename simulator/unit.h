@@ -97,6 +97,7 @@ class UnitLocation {
       : unit_(unit), pivot_(pivot), angle_(angle % unit->order()) {
   }
 
+  const Unit* unit() const { return unit_; }
   const HexPoint& pivot() const { return pivot_; }
   int angle() const { return angle_; }
   Members members() const { return Members(this); }

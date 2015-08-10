@@ -10,6 +10,10 @@
 #include "unit.h"
 #include "rand_generator.h"
 
+struct Bound {
+  int top, bottom, left, right;
+};
+
 class GameData {
  public:
   GameData();
@@ -23,6 +27,10 @@ class GameData {
   int source_length() const { return source_length_; }
   const std::vector<int>& source_seeds() const { return source_seeds_; }
 
+  const std::vector<Bound>& unit_pivot_bounds() const {
+    return unit_pivot_bounds_;
+  }
+
   void Load(const picojson::value& parsed);
   void Dump(std::ostream* os) const;
 
@@ -34,6 +42,8 @@ class GameData {
   Board board_;
   int source_length_;
   std::vector<int> source_seeds_;
+
+  std::vector<Bound> unit_pivot_bounds_;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const GameData& data) {
