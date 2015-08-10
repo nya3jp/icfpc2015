@@ -190,43 +190,44 @@ public:
     int score = 0;
 
     for (const auto& member : members) {
-      int xx = member.x();
-      int yy = member.y();
+      int x = member.x();
+      int y = member.y();
+
+      std::vector<HexPoint> moves;
 
       {
-        HexPoint p(xx, yy);
+        HexPoint p(x, y);
         p.MoveEast();
-        if (!InBoard(board, p) || board(p.x(), p.y()))
-          ++score;
+        moves.push_back(p);
       }
       {
-        HexPoint p(xx, yy);
+        HexPoint p(x, y);
         p.MoveWest();
-        if (!InBoard(board, p) || board(p.x(), p.y()))
-          ++score;
+        moves.push_back(p);
       }
       {
-        HexPoint p(xx, yy);
+        HexPoint p(x, y);
         p.MoveNorthEast();
-        if (!InBoard(board, p) || board(p.x(), p.y()))
-          ++score;
+        moves.push_back(p);
       }
       {
-        HexPoint p(xx, yy);
+        HexPoint p(x, y);
         p.MoveNorthWest();
-        if (!InBoard(board, p) || board(p.x(), p.y()))
-          ++score;
+        moves.push_back(p);
       }
       {
-        HexPoint p(xx, yy);
+        HexPoint p(x, y);
         p.MoveSouthEast();
-        if (!InBoard(board, p) || board(p.x(), p.y()))
-          ++score;
+        moves.push_back(p);
       }
       {
-        HexPoint p(xx, yy);
+        HexPoint p(x, y);
         p.MoveSouthWest();
-        if (!InBoard(board, p) || board(p.x(), p.y()))
+        moves.push_back(p);
+      }
+
+      for (const auto& move : moves) {
+        if (!InBoard(board, move) || board(move.x(), move.y()))
           ++score;
       }
     }
