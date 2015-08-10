@@ -120,16 +120,17 @@ class PhraseSet {
   PhraseSet(const std::vector<std::string>& phrases)
       : phrases_(phrases) {
     precompute();
-    reset();
-  }
-
-  void reset() {
     seen_.assign(phrases_.size(), false);
     order_.clear();
     for (int i=0; i<phrases_.size(); ++i)
       order_.push_back(i);
+    reset();
+  }
+
+  void reset() {
     update_order();
     last_phrase_ = -1;
+    semai_ = false;
   }
 
   std::vector<int>::const_iterator begin() const {
@@ -156,6 +157,10 @@ class PhraseSet {
     last_phrase_ = -1;
   }
 
+  void set_semai_mode(bool semai) {
+    semai_ = semai;
+  }
+
  private:
   void update_order() {
     std::sort(order_.begin(), order_.end(), [&](int a, int b) {
@@ -163,18 +168,24 @@ class PhraseSet {
       if(seen_[a] != seen_[b]) return seen_[a] < seen_[b];
       const std::string& lhs = phrases_[a];
       const std::string& rhs = phrases_[b];
-      if (last_phrase_ != -1) {
-        // prefer less {SE,SW}.
-        int sa = overwrap_south_[last_phrase_][a];
-        int sb = overwrap_south_[last_phrase_][b];
-        if(sa!=sb) return sa<sb;
-        // prefer shorter.
-        int la = phrases_[a].size() - overwrap_[last_phrase_][a];
-        int lb = phrases_[b].size() - overwrap_[last_phrase_][b];
-        if(la!=lb) return la<lb;
+      if (semai_) {
+        // try longer first, because they may have less chance to be used.
+        if (south_[a] != south_[b]) return south_[a] > south_[b];
+        if (lhs.size() != rhs.size()) return lhs.size() > rhs.size();
       } else {
-        if (south_[a] != south_[b]) return south_[a] < south_[b];
-        if (lhs.size() != rhs.size()) return lhs.size() < rhs.size();
+        if (last_phrase_ != -1) {
+          // prefer less {SE,SW}.
+          int sa = overwrap_south_[last_phrase_][a];
+          int sb = overwrap_south_[last_phrase_][b];
+          if(sa!=sb) return sa<sb;
+          // prefer shorter.
+          int la = phrases_[a].size() - overwrap_[last_phrase_][a];
+          int lb = phrases_[b].size() - overwrap_[last_phrase_][b];
+          if(la!=lb) return la<lb;
+        } else {
+          if (south_[a] != south_[b]) return south_[a] < south_[b];
+          if (lhs.size() != rhs.size()) return lhs.size() < rhs.size();
+        }
       }
       // whatever
       return lhs < rhs;
@@ -224,6 +235,7 @@ class PhraseSet {
   std::vector<int> order_;
   std::vector<bool> seen_;
   int last_phrase_;
+  bool semai_;
 };
 
 std::string solve_on_graph(
@@ -391,6 +403,8 @@ std::string generate_powerful_sequence(
   if (HURRY_UP_MODE)
     return hint;
   phrases.reset();
+  //if (graph.size() <= 500)
+  //  phrases.set_semai_mode(true);
   return solve_on_graph(hint, graph, depth, unit_to_id(start), unit_to_id(goal), phrases);
 }
 
