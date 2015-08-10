@@ -112,6 +112,7 @@ class PhraseSet {
  public:
   PhraseSet(const std::vector<std::string>& phrases)
       : phrases_(phrases) {
+    precompute();
     reset();
   }
 
@@ -121,6 +122,7 @@ class PhraseSet {
     for (int i=0; i<phrases_.size(); ++i)
       order_.push_back(i);
     update_order();
+    last_phrase_ = -1;
   }
 
   std::vector<int>::const_iterator begin() const {
@@ -131,27 +133,57 @@ class PhraseSet {
     return order_.end();
   }
 
-  const std::string& get(int id) {
-    return phrases_[id];
+  std::string get(int id) {
+    if (last_phrase_ == -1)
+      return phrases_[id];
+    return phrases_[id].substr(overwrap_[last_phrase_][id]);
   }
 
   void log_used(int id) {
     seen_[id] = true;
+    last_phrase_ = id;
     update_order();
+  }
+
+  void log_phrase_not_used() {
+    last_phrase_ = -1;
   }
 
  private:
   void update_order() {
     std::sort(order_.begin(), order_.end(), [&](int a, int b) {
-      if(seen_[a] != seen_[b])
-        return seen_[a] < seen_[b];
+      if(seen_[a] != seen_[b]) return seen_[a] < seen_[b];
       const std::string& lhs = phrases_[a];
       const std::string& rhs = phrases_[b];
-      int sl = count_south(lhs), sr = count_south(rhs);
-      if (sl != sr) return sl < sr;
-      if (lhs.size() != rhs.size()) return lhs.size() < rhs.size();
+      if (last_phrase_ != -1) {
+        int sa = overwrap_south_[last_phrase_][a];
+        int sb = overwrap_south_[last_phrase_][b];
+        if(sa!=sb) return sa<sb;
+        int la = phrases_[a].size() - overwrap_[last_phrase_][a];
+        int lb = phrases_[b].size() - overwrap_[last_phrase_][b];
+        if(la!=lb) return la<lb;
+      } else {
+        if (south_[a] != south_[b]) return south_[a] < south_[b];
+        if (lhs.size() != rhs.size()) return lhs.size() < rhs.size();
+      }
       return lhs < rhs;
     });
+  }
+
+  void precompute() {
+    // south_
+    south_.clear();
+    for (const std::string& s: phrases_)
+      south_.push_back(count_south(s));
+
+    // overwrap
+    overwrap_.assign(phrases_.size(), std::vector<int>(phrases_.size(), 0));
+    overwrap_south_.assign(phrases_.size(), std::vector<int>(phrases_.size(), 0));
+    for (int b=0; b<phrases_.size(); ++b)
+    for (int a=0; a<phrases_.size(); ++a) {
+      overwrap_[b][a] = count_overwrap(phrases_[b], phrases_[a]);
+      overwrap_south_[b][a] = count_south(phrases_[a].substr(overwrap_[b][a]));
+    }
   }
 
   static int count_south(const std::string& s) {
@@ -163,10 +195,24 @@ class PhraseSet {
     return cnt;
   }
 
+  static int count_overwrap(const std::string& b, const std::string& a) {
+    for(int l=std::min(b.size(), a.size())-1; l>=1; --l)
+      if(std::equal(b.end()-l, b.end(), a.begin()))
+        return l;
+    return 0;
+  }
+
  private:
+  // static component
   const std::vector<std::string> phrases_;
-  std::vector<bool> seen_;
+  std::vector<int> south_;
+  std::vector<std::vector<int>> overwrap_;
+  std::vector<std::vector<int>> overwrap_south_;
+
+  // dynamic component
   std::vector<int> order_;
+  std::vector<bool> seen_;
+  int last_phrase_;
 };
 
 std::string solve_on_graph(
