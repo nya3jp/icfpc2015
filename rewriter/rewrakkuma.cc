@@ -54,17 +54,6 @@ class six_vector {
   size_t size;
 };
 
-const char* g_cmds[] = {
-  "p'!.03", // W
-  "bcefy2", // E
-  "aghij4", // SW
-  "lmno 5", // SE
-  "dqrvz1", // RC
-  "kstuwx", // RCC
-};
-std::vector<std::string> default_moves = {
-  "d", "k", "p", "b", "a", "l",
-};
 std::mt19937 g_rand;
 /*
 std::vector<std::string> random_default_moves() {
@@ -121,6 +110,7 @@ class PhraseSet {
       : phrases_(phrases) {
     precompute();
     seen_.assign(phrases_.size(), false);
+    seen_count_ = 0;
     order_.clear();
     for (int i=0; i<phrases_.size(); ++i)
       order_.push_back(i);
@@ -148,6 +138,8 @@ class PhraseSet {
   }
 
   void log_used(int id) {
+    if (!seen_[id])
+      seen_count_++;
     seen_[id] = true;
     last_phrase_ = id;
     update_order();
@@ -161,6 +153,24 @@ class PhraseSet {
     semai_ = semai;
   }
 
+  std::vector<std::string> default_moves() {
+    const char* g_cmds[] = {
+      "p'!.03", // W
+      "bcefy2", // E
+      "aghij4", // SW
+      "lmno 5", // SE
+      "dqrvz1", // RC
+      "kstuwx", // RCC
+    };
+    std::vector<std::string> dm = {
+      "d", "k", "p", "b", "a", "l",
+    };
+    return dm;
+  }
+
+  void percentage_passed(int p) {
+  }
+
  private:
   void update_order() {
     std::sort(order_.begin(), order_.end(), [&](int a, int b) {
@@ -168,10 +178,10 @@ class PhraseSet {
       if(seen_[a] != seen_[b]) return seen_[a] < seen_[b];
       const std::string& lhs = phrases_[a];
       const std::string& rhs = phrases_[b];
-      if (semai_) {
+      if (semai_ && !seen_[a]) {
         // try longer first, because they may have less chance to be used.
-        if (south_[a] != south_[b]) return south_[a] > south_[b];
         if (lhs.size() != rhs.size()) return lhs.size() > rhs.size();
+        if (south_[a] != south_[b]) return south_[a] > south_[b];
       } else {
         if (last_phrase_ != -1) {
           // prefer less {SE,SW}.
@@ -234,6 +244,7 @@ class PhraseSet {
   // dynamic component
   std::vector<int> order_;
   std::vector<bool> seen_;
+  int seen_count_;
   int last_phrase_;
   bool semai_;
 };
@@ -317,7 +328,7 @@ std::string solve_on_graph(
         return hint;
     }
     if (!phrase_succeeded) {
-      for (const auto& ph: default_moves) //random_default_moves())
+      for (const auto& ph: phrases.default_moves())
         if (try_phrase(ph))
           break;
     }
@@ -450,6 +461,8 @@ void rewrite_main(
       after += before.substr(s);
       break;
     }
+    phrase_set.percentage_passed(s*100 / before.size());
+
     // New unit spawned.
     UnitLocation start = game.current_unit();
     for (int i=s;; ++i) {
