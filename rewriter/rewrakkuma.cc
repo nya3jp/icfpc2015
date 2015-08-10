@@ -116,60 +116,57 @@ class PhraseSet {
   }
 
   void reset() {
-    unseen_.clear();
-    unseen_.insert(phrases_.begin(), phrases_.end());
-    seen_.clear();
+    seen_.assign(phrases_.size(), false);
+    order_.clear();
+    for (int i=0; i<phrases_.size(); ++i)
+      order_.push_back(i);
+    update_order();
   }
-  struct iterator;
-  iterator begin() {
-    return iterator(unseen_.begin(), unseen_.end(), seen_.begin());
+
+  std::vector<int>::const_iterator begin() const {
+    return order_.begin();
   }
-  iterator end() {
-    return iterator(unseen_.end(), unseen_.end(), seen_.end());
+
+  std::vector<int>::const_iterator end() {
+    return order_.end();
   }
-  void mark_as_used(const std::string& ph) {
-    unseen_.erase(ph);
-    seen_.insert(ph);
+
+  const std::string& get(int id) {
+    return phrases_[id];
+  }
+
+  void log_used(int id) {
+    seen_[id] = true;
+    update_order();
   }
 
  private:
-  const std::vector<std::string> phrases_;
-
- private:
-  struct ByLength {
-    static int count_south(const std::string& s) {
-      int cnt = 0;
-      for (char ch: s) {
-        auto c = Game::Char2Command(ch);
-        cnt += (c==Game::Command::SE || c==Game::Command::SW);
-      }
-      return cnt;
-    }
-    bool operator()(const std::string& lhs, const std::string& rhs) const {
+  void update_order() {
+    std::sort(order_.begin(), order_.end(), [&](int a, int b) {
+      if(seen_[a] != seen_[b])
+        return seen_[a] < seen_[b];
+      const std::string& lhs = phrases_[a];
+      const std::string& rhs = phrases_[b];
       int sl = count_south(lhs), sr = count_south(rhs);
       if (sl != sr) return sl < sr;
       if (lhs.size() != rhs.size()) return lhs.size() < rhs.size();
       return lhs < rhs;
-    }
-  };
-  std::set<std::string, ByLength> unseen_, seen_;
-  typedef typename std::set<std::string, ByLength>::const_iterator inner_iterator;
+    });
+  }
 
- public:
-  struct iterator {
-    iterator(inner_iterator as, inner_iterator as_end, inner_iterator bs)
-        : as_(as), as_end_(as_end), bs_(bs) {}
-    void operator++() {
-      ++(as_ == as_end_ ? bs_ : as_);
+  static int count_south(const std::string& s) {
+    int cnt = 0;
+    for (char ch: s) {
+      auto c = Game::Char2Command(ch);
+      cnt += (c==Game::Command::SE || c==Game::Command::SW);
     }
-    const std::string& operator*() const {
-      return *(as_ == as_end_ ? bs_ : as_);
-    }
-    bool operator!=(const iterator& rhs) const {
-      return as_!=rhs.as_ || bs_!=rhs.bs_;
-    }
-    inner_iterator as_, as_end, as_end_, bs_;
-  };
+    return cnt;
+  }
+
+ private:
+  const std::vector<std::string> phrases_;
+  std::vector<bool> seen_;
+  std::vector<int> order_;
 };
 
 std::string solve_on_graph(
@@ -229,7 +226,7 @@ std::string solve_on_graph(
       }
       return true;
     };
-    auto try_phrase = [&](const std::string& ph) {
+    auto try_phrase = [&](std::string ph) {
       auto snapshot_visited = visited;
       Vert snapshot_cur = cur;
       if (!walk_by(ph) || !is_goalable()) {
@@ -242,9 +239,9 @@ std::string solve_on_graph(
     };
 
     bool phrase_succeeded = false;
-    for (const auto& ph: phrases) {
-      if (try_phrase(ph)) {
-        phrases.mark_as_used(ph);
+    for (int phi: phrases) {
+      if (try_phrase(phrases.get(phi))) {
+        phrases.log_used(phi);
         phrase_succeeded = true;
         break;
       }
