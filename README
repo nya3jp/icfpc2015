@@ -24,3 +24,12 @@ Environment
   (running `make` installs prerequisite packages and sets cgroup memory)
 - To install dependencies, run ./install_deps.sh.
 
+Members
+-----------
+@kinaba
+@phoenixstarhiro
+@riesz
+@gusmachine
+@chunjp
+
+
