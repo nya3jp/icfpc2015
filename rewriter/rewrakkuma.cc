@@ -21,6 +21,7 @@
 #include "../../simulator/board.h"
 #include "../../simulator/game.h"
 #include "../../simulator/unit.h"
+#include "../../simulator/scorer.h"
 
 /////////////////////////////////////////////////////////////////////////////////
 // Signal handling.
@@ -52,24 +53,6 @@ class six_vector {
   std::array<T, 6> data;
   size_t size;
 };
-
-int count_occurrence(const std::string& heystack, const std::string& needle) {
-  int cnt = 0;
-  for(int s=0; s+needle.size()<=heystack.size(); ++s)
-    if(needle == heystack.substr(s, needle.size()))
-      ++cnt;
-  return cnt;
-}
-
-int score(const std::string& cmd, const std::vector<std::string>& phrases) {
-  int total_score = 0;
-  for(auto& p: phrases) {
-    int resp = count_occurrence(cmd, p);
-    int lenp = p.size();
-    total_score += 2 * lenp * resp + (resp ? 300 : 0);
-  }
-  return total_score;
-}
 
 const char* g_cmds[] = {
   "p'!.03", // W
@@ -378,7 +361,7 @@ void rewrite_main(
   std::string after;
   const int64_t oldscore = (output_entry->contains("_score") ?
       output_entry->get("_score").get<int64_t>() : 0);
-  const int beforescore = score(before, phrases);
+  const int beforescore = PowerScore(before, phrases);
 
   // Initialize the game.
   GameData game_data;
@@ -421,7 +404,7 @@ void rewrite_main(
   }
 
   // Output metadata.
-  int afterscore = score(after, phrases);
+  int afterscore = PowerScore(after, phrases);
   LOG(INFO) << "Before: " << oldscore;
   LOG(INFO) << "After: " << oldscore + afterscore - beforescore << "(+" << afterscore << ")";
   output_entry->get("solution") = picojson::value(after);
@@ -434,15 +417,10 @@ void rewrite_main(
 DEFINE_string(problem, "", "problem file");
 DEFINE_string(output, "", "output file");
 DEFINE_int64(id, -1, "specific id");
-DEFINE_string(p,
-  "Ei!,"
-  "R'lyeh,"
-  "yuggoth,"
-  "ia! ia!,"
-  "necronomiconi,"
-  "yogsothoth,"
-  "planet 10"
-  , "comma separted list of phrases");
+DEFINE_string(
+      p, "ei!,r'lyeh,yuggoth,ia! ia!,necronomicon,yogsothoth,planet 10,"
+       "john bigboote",
+       "Power phrase");
 
 std::vector<std::string> split(const std::string& str, char sep=',') {
   std::vector<std::string> result;
