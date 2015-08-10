@@ -12,10 +12,41 @@ CXXFLAGS=-O2 -DPICOJSON_USE_INT64 --std=c++11 $(INCLUDE)
 
 .PHONY: clean
 
-all: duralstarman
+all: duralstarman ds_3 ds_5 ds_7 ds_13 ds_19
 
 duralstarman: main.o duralstarman.o board.o game.o solver.o scorer.o ai_util.o unit.o kamineko.o
 	g++ -Wl,-rpath=$(PWD)/../../googlelib/glog/.libs $(CXXFLAGS) -o $@ $^ $(LIBS)
+
+ds_3: ds_3.o duralstarman.o board.o game.o solver.o scorer.o ai_util.o unit.o kamineko.o
+	g++ -Wl,-rpath=$(PWD)/../../googlelib/glog/.libs $(CXXFLAGS) -o $@ $^ $(LIBS)
+
+ds_5: ds_5.o duralstarman.o board.o game.o solver.o scorer.o ai_util.o unit.o kamineko.o
+	g++ -Wl,-rpath=$(PWD)/../../googlelib/glog/.libs $(CXXFLAGS) -o $@ $^ $(LIBS)
+
+ds_7: ds_7.o duralstarman.o board.o game.o solver.o scorer.o ai_util.o unit.o kamineko.o
+	g++ -Wl,-rpath=$(PWD)/../../googlelib/glog/.libs $(CXXFLAGS) -o $@ $^ $(LIBS)
+
+ds_13: ds_13.o duralstarman.o board.o game.o solver.o scorer.o ai_util.o unit.o kamineko.o
+	g++ -Wl,-rpath=$(PWD)/../../googlelib/glog/.libs $(CXXFLAGS) -o $@ $^ $(LIBS)
+
+ds_19: ds_19.o duralstarman.o board.o game.o solver.o scorer.o ai_util.o unit.o kamineko.o
+	g++ -Wl,-rpath=$(PWD)/../../googlelib/glog/.libs $(CXXFLAGS) -o $@ $^ $(LIBS)
+
+ds_3.o: main.cc
+	g++ -DFIXED_WIDTH=3 $(CXXFLAGS) -c -o $@ $<
+
+ds_5.o: main.cc
+	g++ -DFIXED_WIDTH=5 $(CXXFLAGS) -c -o $@ $<
+
+ds_7.o: main.cc
+	g++ -DFIXED_WIDTH=7 $(CXXFLAGS) -c -o $@ $<
+
+ds_13.o: main.cc
+	g++ -DFIXED_WIDTH=13 $(CXXFLAGS) -c -o $@ $<
+
+ds_19.o: main.cc
+	g++ -DFIXED_WIDTH=19 $(CXXFLAGS) -c -o $@ $<
+
 
 ai_util.o: ../../simulator/ai_util.cc
 	g++ $(CXXFLAGS) -c -o $@ $<
