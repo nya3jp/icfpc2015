@@ -48,6 +48,7 @@ class Game {
 
   int score() const { return score_; }
   int current_index() const { return current_index_; }
+  int units_remaining() const { return data_->source_length() - current_index_; }
   bool is_finished() const { return is_finished_; }
   bool error() const { return error_; }
 

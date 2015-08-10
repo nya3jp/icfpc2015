@@ -67,21 +67,14 @@ class TrivialSolver : public Solver {
 public:
   TrivialSolver()
     : checked_units_(false),
-      is_appropriate_(false),
-      max_size_(0) {}
+      is_bar_only_game_(false),
+      max_unit_size_(0) {}
   virtual ~TrivialSolver() {}
 
-  std::set<int> GetForbiddenArea(const Board& board) {
-    std::set<int> result;
-    for (int x = -2; x <= 2; ++x) {
-      for (int y = 0; y <= 2; ++y) {
-        HexPoint p(board.width() / 2 + x, y);
-        if (!InBoard(board, p))
-          continue;
-        result.insert(p.x() + p.y() * board.width());
-      }
-    }
-    return result;
+  bool IsForbidden(const Board& board, const HexPoint& p) {
+    return (p.x() <= board.width() / 2 + 2) &&
+      (p.x() >= board.width() / 2 - 2) &&
+      (p.y() <= 2);
   }
 
   static bool InBoard(const Board& board, const HexPoint& p) {
@@ -286,8 +279,7 @@ public:
 
   std::string Tetris(const Game& game,
                      const std::vector<Game::SearchResult>& bfsresult,
-                     const std::set<int> tetris_positions,
-                     const std::set<int> forbidden_area) {
+                     const std::set<int> tetris_positions) {
     std::vector<Game::Command> ret;
 
     int max_cleared = -1;
@@ -311,15 +303,15 @@ public:
     }
 
     if (max_cleared <= 0) {
-      return SouthWest(game, bfsresult, tetris_positions, forbidden_area);
+      return SouthWest(game, bfsresult, tetris_positions);
     }
 
     return Game::Commands2SimpleString(ret);
   }
 
   bool checked_units_;
-  bool is_appropriate_;
-  int max_size_;
+  bool is_bar_only_game_;
+  int max_unit_size_;
 
   virtual std::string NextCommands(const Game& game) {
     if (!checked_units_) {
@@ -328,7 +320,8 @@ public:
       bool non_bar_found = false;
       HexPoint origin(0, 0);
       for (const auto& unit : game.units()) {
-        max_size_ = std::max(max_size_, static_cast<int>(unit.members().size()));
+        max_unit_size_ = std::max(max_unit_size_,
+                                  static_cast<int>(unit.members().size()));
 
         UnitLocation loc(&unit, origin);
 
@@ -352,27 +345,25 @@ public:
       }
 
       if (non_bar_found) {
-        is_appropriate_ = false;
+        is_bar_only_game_ = false;
       } else {
-        is_appropriate_ = true;
+        is_bar_only_game_ = true;
       }
     }
 
-    if (!is_appropriate_) {
+    if (!is_bar_only_game_) {
       if (false) {
         std::vector<Game::Command> ret;
         ret.push_back(Game::Command::SW);
         return Game::Commands2SimpleString(ret);
       }
-
-      max_size_ = 1;
     }
 
     std::vector<Game::SearchResult> bfsresult;
     game.ReachableUnits(&bfsresult);
 
     //if (GetBottom(game.current_unit()) != GetTop(game.current_unit())) {
-    //return Tetris(game, bfsresult, tetris_positions, forbidden_area);
+    //return Tetris(game, bfsresult, tetris_positions);
     //}
 
     const Board& board = game.GetBoard();
@@ -419,17 +410,16 @@ public:
       //break;
     }
 
-    const std::set<int> forbidden_area = GetForbiddenArea(board);
-
     for (const auto &res: bfsresult) {
       int cleared = game.GetBoard().LockPreview(res.first);
-      if ((cleared == 1 && max_size_ == 1) || cleared > 5)
-        return Tetris(game, bfsresult, tetris_positions, forbidden_area);
+      if (cleared >= 6 ||
+          (cleared > 0 && (game.units_remaining() < 3 ||
+                           game.prev_cleared_lines() > 1 ||
+                           !is_bar_only_game_ ||
+                           max_unit_size_ == 1)))
+        return Tetris(game, bfsresult, tetris_positions);
     }
 
-    if (game.prev_cleared_lines() > 1) {
-      return Tetris(game, bfsresult, tetris_positions, forbidden_area);
-    }
 
 
 
@@ -445,7 +435,7 @@ public:
         if (y <= 1 && x + game.current_unit().members().size() >= 5) {
           //if (y <= 3 && x + game.current_unit().members().size() >= 5) {
           DVLOG(1) << "TETRIS MODE";
-          return Tetris(game, bfsresult, tetris_positions, forbidden_area);
+          return Tetris(game, bfsresult, tetris_positions);
         }
 
         if (board(x, y))
@@ -457,7 +447,7 @@ public:
           for (const auto& member : res.first.members()) {
             int id = member.x() + member.y() * board.width();
             if (tetris_positions.count(id) ||
-                forbidden_area.count(id)) {
+                IsForbidden(board, member)) {
               conflict = true;
               break;
             }
@@ -476,25 +466,32 @@ public:
           int bottom = GetBottom(res.first);
           int left = GetLeft(res.first);
 
-          int score = CountContact(board, res.first.members());
+          int score = 0;
+
+          if (is_bar_only_game_) {
+            if (game.units_remaining() >= 4 && top != bottom)
+              continue;
+          }
+
+
+          score = CountContact(board, res.first.members());
           score *= 1;
 
           score += y - x;
 
 
-          if (top != bottom)
-            continue;
-
           if (score < score_of_best)
             continue;
 
           if (score == score_of_best) {
-            if (top < lowest_top)
-              continue;
-
-            if (top == lowest_top) {
-              if (left > most_left)
+            if (is_bar_only_game_) {
+              if (top < lowest_top)
                 continue;
+
+              if (top == lowest_top) {
+                if (left > most_left)
+                  continue;
+              }
             }
           }
 
@@ -521,13 +518,12 @@ public:
 
     }
 
-    return Tetris(game, bfsresult, tetris_positions, forbidden_area);
+    return Tetris(game, bfsresult, tetris_positions);
   }
 
   std::string SouthWest(const Game& game,
                         const std::vector<Game::SearchResult>& bfsresult,
-                        const std::set<int> tetris_positions,
-                        const std::set<int> forbidden_area) {
+                        const std::set<int> tetris_positions) {
     std::vector<Game::Command> ret;
     ret.push_back(Game::Command::SW);
 
@@ -545,7 +541,7 @@ public:
         int id = member.x() + member.y() * game.GetBoard().width();
         if (tetris_positions.count(id))
           score = -1;
-        if (forbidden_area.count(id))
+        if (IsForbidden(game.GetBoard(), member))
           score = -2;
       }
 
