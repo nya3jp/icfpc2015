@@ -20,4 +20,15 @@ private:
   int depth_;
 };
 
+class DuralStarmanSolver : public Solver {
+ public:
+  DuralStarmanSolver(GameScorer* scorer, int width, int depth);
+  virtual ~DuralStarmanSolver();
+  virtual std::string NextCommands(const Game& game);
+ private:
+  GameScorer* scorer_;
+  int width_;
+  int depth_;
+};
+
 #endif  // DURALSTARMAN_H__
