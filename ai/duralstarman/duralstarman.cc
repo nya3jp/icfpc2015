@@ -55,11 +55,19 @@ int64_t DuralStarmanScorer::Score(const Game& game, bool finished,
       for (const auto& res : bfsresult) {
         Game ng(cur_game);
         bool f2 = !ng.RunSequence(res.second);
-        const int64_t score = parent_->Score(ng, f2, nullptr);  // TODO:debug
+        std::string nd;
+        int64_t score;
+        if (debug) {
+          score = parent_->Score(ng, f2, &nd);
+        } else {
+          score = parent_->Score(ng, f2, nullptr);
+        }
         next_states.emplace_back(new GameState(ng, f2, score));
       }
     }
     sort(next_states.begin(), next_states.end(), by_score_descend);
+    VLOG(1) << "d:" << d << ", width " << prev_states.size() << "->"
+            << next_states.size() << ">>" << width_;
     next_states.resize(width_);
     prev_states.swap(next_states);
   }

@@ -66,7 +66,7 @@ int64_t KaminekoScorer::Score(const Game& game, bool finished,
        << " shade:" << shade
        << " score:" << game.score()
        << " total:" << result;
-    *debug = os.str();
+    *debug += os.str();
   }
 #endif
   return result;
