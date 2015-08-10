@@ -89,13 +89,18 @@ public:
     for(size_t i = 0; i < bfsresult.size(); ++i) {
       const Game::SearchResult &res = bfsresult[i];
       const UnitLocation &u = res.first;
+      // note high == smaller y
+      int highesty = 1 << 30;
+      int largestdx = -1;
       for(const auto &m: u.members()) {
-        int dx = std::abs(m.x() - (game.GetBoard().width() >> 1));
-        scoretype newscore(isgood[i] ? 1 : 0, m.y(), dx);
-        if(newscore > bestscore) {
-          ret = res.second;
-          bestscore = newscore;
-        }
+        highesty = std::min(highesty, m.y());
+        int dx = std::min(m.x(), game.GetBoard().width() - 1 - m.x());
+        largestdx = std::max(largestdx, dx);
+      }
+      scoretype newscore(isgood[i] ? 1 : 0, highesty, largestdx);
+      if(newscore > bestscore) {
+        ret = res.second;
+        bestscore = newscore;
       }
     }
     return Game::Commands2SimpleString(ret);
