@@ -39,7 +39,11 @@
               <tr class="{{ tag_class_map[tag] }}">
                 <td>{{ tag }}</td>
                 % for problem_id in problem_ids:
-                <td>{{ solution_map[(problem_id, tag)]['_avg_score'] }}</td>
+                <td>
+                  {{! '<b>' if tag == best_tag_map[problem_id] else '' }}
+                  {{ solution_map[(problem_id, tag)]['_avg_score'] }}
+                  {{! '</b>' if tag == best_tag_map[problem_id] else '' }}
+                </td>
                 % end
               </tr>
               % end

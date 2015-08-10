@@ -307,11 +307,12 @@ void rewrite_main(
   }
 
   // Original metadata.
-  std::string before = output_entry->get("solution").get<std::string>();
-  std::string old_tag = output_entry->get("tag").get<std::string>();
+  const std::string before = output_entry->get("solution").get<std::string>();
+  const std::string old_tag = output_entry->get("tag").get<std::string>();
   std::string after;
-  int64_t oldscore = (output_entry->contains("_score") ?
+  const int64_t oldscore = (output_entry->contains("_score") ?
       output_entry->get("_score").get<int64_t>() : 0);
+  const int beforescore = score(before, phrases);
 
   // Initialize the game.
   GameData game_data;
@@ -351,10 +352,9 @@ void rewrite_main(
   }
 
   // Output metadata.
-  int beforescore = score(before, phrases);
   int afterscore = score(after, phrases);
-  LOG(INFO) << "Before: " << oldscore + beforescore;
-  LOG(INFO) << "After: " << oldscore + afterscore << "(+" << afterscore << ")";
+  LOG(INFO) << "Before: " << oldscore;
+  LOG(INFO) << "After: " << oldscore + afterscore - beforescore << "(+" << afterscore << ")";
   output_entry->get("solution") = picojson::value(after);
   output_entry->get("tag") = picojson::value("rewrakkuma");
   output_entry->get("_score") = picojson::value(oldscore + afterscore - beforescore);
