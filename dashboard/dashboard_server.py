@@ -61,7 +61,7 @@ def index_handler():
   best_tag_map = {}
   for problem_id in problem_ids:
     for tag in tags:
-      if tag in ('rewrakkuma', 'handplay_viz'):
+      if tag in ('rewrakkuma', 'handplay_viz', 'shinku'):
         continue
       if (problem_id not in best_tag_map or
           solution_map[(problem_id, tag)]['_avg_score'] >
