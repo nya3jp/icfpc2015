@@ -4,3 +4,4 @@ yuggoth
 ia! ia!
 necronomicon
 yogsothoth
+planet 10

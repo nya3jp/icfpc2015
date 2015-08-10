@@ -14,8 +14,9 @@
 DEFINE_string(problem, "", "problem file");
 DEFINE_string(output, "", "output file");
 
-DEFINE_string(p, "ei!,r'lyeh,yuggoth,ia! ia!,necronomicon,yogsothoth",
-              "Power phrase");
+DEFINE_string(
+    p, "ei!,r'lyeh,yuggoth,ia! ia!,necronomicon,yogsothoth,planet 10",
+    "Power phrase");
 DEFINE_bool(report_error, false,
             "Returns non-zero status code if an error is found in any case.");
 
